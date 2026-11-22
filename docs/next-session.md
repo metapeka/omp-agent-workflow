@@ -15,8 +15,8 @@
 - Готово (docs): вики `docs/architecture.md`, `contracts.md`,
   `orchestrator.md`, `operations.md`, `decisions.md`,
   `AUTOPLAN.example.md`.
-- Готово (0.5, этапы A–D): `lib/orchestrator/*`, `orchestrator.ts`,
-  `bin/omp-orchestrate`; 70 тестов всего; Orca backend проверен create/rm.
+- Live E2E 0.5: T1/T2 → boundary handoff → новая сессия → T3 → plan-done;
+  70 тестов, Orca backend проверен create/rm.
 - Проверки: `npm test` 70/70, `npm run typecheck`, загрузка extension,
   e2e supervisor в Orca.
 - `omp plugin link` указывает на `main`; изменения в worktree не влияют на
@@ -24,12 +24,11 @@
 
 ## Следующий этап
 
-Реализация 0.5 завершена. Осталось:
+Реализация 0.5 и live E2E завершены. Осталось:
 
-1. Ручная проверка живого TUI-цикла: `/orchestrate` → subagents → merge →
-   handoff → новая сессия.
-2. Remote/GitHub, npm/marketplace, английский README — только по решению
+1. Remote/GitHub, npm/marketplace, английский README — только по решению
    владельца.
+2. Удалить worktree `feat/orchestrator` после выхода из сессии.
 3. P2: экономика handoff/компакции с `omp-cache-monitor`.
 
 Перед изменениями прочитать `docs/decisions.md` — D1–D10 подтверждены.

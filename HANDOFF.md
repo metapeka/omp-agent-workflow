@@ -18,8 +18,9 @@
 | Automatic handoff | session info, marker, supervisor, continuation prompt |
 | Защита от цикла | cooldown 300 с, stale-marker guard по `sessionFile` |
 | Launcher | `bin/omp-yoda` — supervisor + OMP в режиме `yoda-supervised` |
-| Проверки | `npm test` 19/19, `npm run typecheck`, загрузка extension в OMP |
+| Проверки | `npm test` 70/70, `npm run typecheck`, загрузка extension в OMP |
 | E2E | supervisor → `/handoff-new` в реальном Orca-терминале; новая сессия прочитала `HANDOFF.md` |
+| Live E2E 0.5 | T1/T2 → boundary handoff → new session → T3 → `plan-done`; spend ≈$0.067 |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` |
 | Вики | `docs/README.md`: архитектура, контракт, orchestrator 0.5, runbook, решения |
 | Orchestrator 0.5 | Этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate`; 70 тестов; Orca backend проверен create/rm |
@@ -80,12 +81,11 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
 
 ## Следующие шаги
 
-Реализация 0.5 завершена в worktree `feat/orchestrator`; решения D1–D10 —
+Реализация 0.5 завершена; live E2E пройден. Решения D1–D10 —
 `docs/decisions.md`. Осталось:
 
-1. Ручная проверка живого TUI-цикла: `/orchestrate` → implementer/verifier/
-   reviewer → merge → handoff → новая сессия.
-2. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
+1. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
+2. Удалить worktree `feat/orchestrator` после выхода из сессии.
 3. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
 
 ## Риски
@@ -97,8 +97,8 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
 - `task` subagent не имеет `cwd`/worktree; изоляция держится на абсолютных
   путях и проверках (см. `docs/architecture.md`).
 - Spend считается по session JSONL; формат зависит от версии OMP.
-- Orca worktree backend проверен реальным create/rm; полный цикл с моделью —
-  ручная проверка.
+- Orca worktree backend проверен реальным create/rm; live E2E 0.5 пройден
+  на temp git repo с моделью и supervisor.
 - Retry после verify failure удаляет ветку с коммитами; для сохранения
   используй `stop` до повторного `start`.
 - Supervisor привязан к Orca terminal handle; вне Orca automatic handoff

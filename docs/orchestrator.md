@@ -2,8 +2,8 @@
 
 Статус: `[готово]`, версия `0.5.0`. Этапы A–D реализованы:
 план/state/бюджеты/политика, cost, worktree backend, actions, CLI, extension
-(tool/commands/hooks), acceptance-тест на 3 задачи. Живой TUI-цикл с моделью
-проверяется вручную.
+(tool/commands/hooks), acceptance-тест на 3 задачи. Live TUI E2E пройден
+2026-11-22 (T1/T2 → handoff → T3 → plan-done).
 
 Цель: main-агент проходит `AUTOPLAN.md` до конца или stop-gate, детерминированно
 выбирает задачи, создаёт worktree, проверяет, мержит и делает handoff на
@@ -404,6 +404,28 @@ Extension (fake ctx, как в 0.3-тестах):
 
 Работа — в текущем worktree `feat/orchestrator`, коммиты по этапам, merge в
 `main` после зелёных проверок.
+
+## Live E2E (2026-11-22)
+
+Изолированный temp git repo, 3 задачи (`T1/T2/T3`), `maxTasksPerSession: 2`,
+`yoda-supervised`, реальный Orca-терминал и модель.
+
+Результат: T1/T2 merged ff-only → boundary handoff → supervisor открыл новую
+сессию → T3 merged → `stop: plan-done`. Spend ≈ $0.067; все worktree удалены,
+base чистый.
+
+E2E нашёл и закрыл реальные баги:
+
+1. Свежий session JSONL ещё не создан → `cost-unavailable`. Теперь missing
+   файл без offsets = spend 0.
+2. Subagent reviewer перезаписывал `.omp-handoff-session.json`; supervisor
+   считал marker stale. Session info пишет только main.
+3. Supervisor удалял marker при гонке с session info. Добавлен
+   `--stale-grace` (5 с).
+4. Agent не писал marker на boundary. Добавлен handoff-nudge с проверкой
+   уже записанного marker.
+5. `finish` требовал `review` даже при `review:false`. Теперь verdict нужен
+   только для `review:true`.
 
 ## Acceptance 0.5
 

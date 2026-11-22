@@ -5,8 +5,8 @@ OMP, Orca и контракт workflow. Источник истины — код
 объясняет, где что лежит и почему сделано именно так.
 
 Версия: `0.5.0` (context guard 0.3 + orchestrator 0.5).
-Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); живой
-TUI-цикл проверяется вручную. См. [orchestrator.md](orchestrator.md).
+Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
+TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 
 ## С чего начать
 

@@ -59,7 +59,7 @@ orchestrator/subagent-петля готовы; release/remote — по реше�
       `bin/omp-orchestrate` + integration.
 - [x] Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry.
 - [x] Этап D: E2E acceptance на 3 задачи, handoff на границе, stop-gate,
-      версия `0.5.0`. Живой TUI-цикл — ручная проверка.
+      версия `0.5.0`. Live TUI E2E: T1/T2 → handoff → T3 → plan-done.
 - Orchestrator (main) читает `AUTOPLAN.md`/`HANDOFF.md`, выбирает задачу,
   спавнит implementer/verifier/reviewer/scout, мержит и обновляет state.
 - `STATE.json`: current task, branch, commit, status, context %, spend, last
