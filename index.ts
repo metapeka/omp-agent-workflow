@@ -149,6 +149,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		try {
 			// OMP 19.1 принимает строку инструкций напрямую.
 			await ctx.compact(HANDOFF_INSTRUCTIONS);
+			// session_compact мог сбросить флаг; не запускаем второй проход сразу.
+			autoCompacted = true;
 		} catch (error) {
 			autoCompacted = false;
 			const message = error instanceof Error ? error.message : String(error);
