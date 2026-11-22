@@ -1,12 +1,9 @@
 # Передача: omp-agent-workflow
 
-Дата: 2026-11-22. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main` содержит merge `feat/wrap-wizard` (ff-only), версия `0.5.1`.
-Worktree `~/orca/workspaces/omp-agent-workflow/wrap-wizard` ещё существует и
-совпадает с `main`; его можно удалить после выхода из сессии.
-
-Вики проекта — `docs/README.md`. Дизайн 0.5 — `docs/orchestrator.md`;
-`/wrap` — `docs/wrap.md`; оперативный backlog — `TODO.md`.
+Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
+`main` HEAD `a5ddfea`, версия `0.5.2`. Ветка `feat/supervisor-lock` слита
+ff-only; worktree `~/orca/workspaces/omp-agent-workflow/supervisor-lock`
+удалён. Вики проекта — `docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -18,47 +15,44 @@ Worktree `~/orca/workspaces/omp-agent-workflow/wrap-wizard` ещё сущест�
 | Защита от цикла | cooldown 300 с, stale-marker guard по `sessionFile` |
 | Launcher | `bin/omp-yoda` — supervisor + OMP в режиме `yoda-supervised` |
 | Orchestrator 0.5 | этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate` |
-| Wrap 0.5.1 | `/wrap` в `orchestrator.ts` + `lib/orchestrator/wrap.ts`; карточки, safe cleanup, next worktree |
-| Проверки | `npm test` 103/103, `npm run typecheck`, загрузка extension в OMP |
-| Reviewer | WrapSafetyReview: subdir-процессы, Orca ENOENT, handoff cwd, state/lock cwd, planError guard исправлены; тесты добавлены |
-| TUI E2E | cleanup: cancel (Esc/No) оставляет worktree, Yes удаляет; real Orca backend cleanup temp worktree прошёл |
-| Tarball | `0.5.1`: pack/install, extension load exit 0, `/wrap` открылся из установленного пакета |
-| Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` (`wrap.md`) |
+| Wrap 0.5.1 | `/wrap` в `orchestrator.ts` + `lib/orchestrator/wrap.ts` |
+| Supervisor singleton 0.5.2 | `lib/supervisor-lock.mjs`; lock на `--dir`, stale reclaim, identity guard |
+| Проверки | `npm test` 113/113, `npm run typecheck`, extension load exit 0 |
+| Reviewer | `SupervisorLockReview`: verdict ok; blocking-гонка reclaim закрыта, P3 (лог) исправлен |
 
-## `/wrap` 0.5.1
+## Supervisor singleton 0.5.2
 
-Human-in-the-loop: выбор карточки ничего не меняет; destructive/spend требует
-`confirm`.
+- lock-dir `<dir>/.omp-handoff-supervisor.lock/` с `owner.json`
+  (`pid`, `dir`, `startedAt`);
+- второй экземпляр для того же `--dir` пишет
+  `another supervisor is running` и выходит с кодом 0, marker не трогает;
+- stale lock (pid мёртв) перехватывается через rename с проверкой identity:
+  если lock успел взять живой supervisor, его каталог возвращается на место;
+- lock без `owner.json` считается инициализирующимся `--lock-grace` секунд
+  (default 10);
+- lock снимается на выходе и по `SIGINT`/`SIGTERM`/`SIGHUP`;
+- ошибки создания (`ENOENT`/`EACCES`/`ENOSPC`) — сообщение и exit 1, без
+  stack trace; ownerless lock не остаётся;
+- флаги: `--lock`, `--lock-grace`.
 
-| Карточка | Действие |
-|---|---|
-| Завершить сессию (handoff) | проверить `HANDOFF.md` в `ctx.cwd`, сказать выполнить `/handoff-new` |
-| Обновить `HANDOFF.md` | `sendUserMessage` с промптом агенту (spend) |
-| Удалить завершённые worktree | merged+clean+не текущий, без live-процесса; confirm с path/branch/HEAD |
-| Создать worktree для следующей задачи | `input` slug → `feat/<slug>`; confirm |
-| Ретро-review текущей ветки | `sendUserMessage` reviewer на `base...branch` (spend) |
-| Publish / remote | disabled: решение владельца |
-| Выйти | no-op |
+Файлы: `lib/supervisor-lock.mjs`, `bin/omp-handoff-supervisor.mjs`.
+Тесты: 7 новых в `test/context-guard.test.mjs` (identity guard, initializing,
+grace, live owner, dead owner, SIGTERM, два конкурентных стартера).
 
-Safety cleanup:
-
-- `git worktree list --porcelain -z`, не пользовательская строка;
-- `merge-base --is-ancestor`, `status --porcelain`, не base/current;
-- повторная проверка под `.omp-orchestrator.lock`, HEAD не изменился;
-- без `--force`, ветка — `git branch -d`; Orca `rm` без force;
-- текущий worktree не удаляется из-под OMP — только инструкция после выхода.
-
-`/wrap` не пишет `STATE.json`/marker, не мержит, не вызывает `newSession`,
-не делает publish.
+Проверено: 20 раундов × 3 стартера и 1 раунд × 20 стартеров на stale lock —
+ровно один живой supervisor, один лог `removed stale lock`, без `.stale-*`
+остатков; `--dir` в несуществующий каталог → exit 1 с сообщением; tarball
+содержит `lib/supervisor-lock.mjs`.
 
 ## Контракт
 
-- `OMP_WORKFLOW_MODE`: `manual` / `assisted` / `yoda` / `yoda-supervised`.
-- `/handoff` сжимает контекст; `/handoff-new` — новая сессия при наличии
-  `HANDOFF.md`.
-- Marker: `.omp-handoff-request.json` с `reason` и `sessionFile`.
-- Session info: `.omp-handoff-session.json`.
-- `/wrap` — additive 0.5.1; контракт 0.3, `index.ts`, supervisor не менялись.
+- Схемы `.omp-handoff-session.json` и `.omp-handoff-request.json` не
+  менялись (0.3).
+- Lock supervisor — additive runtime-файл, не контракт; gitignored.
+- `index.ts`, supervisor CLI-контракт (`--dir`, marker, session, cooldown)
+  и supervisor-протокол не менялись; изменено только поведение при
+  конкурирующих экземплярах.
+- `/wrap` не пишет `STATE.json`/marker, не мержит, не вызывает `newSession`.
 
 ## Где что лежит
 
@@ -68,8 +62,10 @@ Safety cleanup:
 | Orchestrator entry | `orchestrator.ts` (tool, `/orchestrate`, `/wrap`) |
 | Wrap core | `lib/orchestrator/wrap.ts` |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` |
+| Supervisor lock | `lib/supervisor-lock.mjs` |
 | Launcher | `bin/omp-yoda` |
-| Тесты wrap core | `test/wrap.test.mjs` |
+| Тесты guard/supervisor/lock | `test/context-guard.test.mjs` |
+| Тесты orchestrator | `test/orchestrator.test.mjs` |
 | Тесты extension | `test/orchestrator-extension.test.mjs` |
 | Дизайн wrap | `docs/wrap.md` |
 | Дизайн 0.5 | `docs/orchestrator.md` |
@@ -79,40 +75,45 @@ Safety cleanup:
 ## Проверки
 
 ```bash
-cd ~/orca/workspaces/omp-agent-workflow/wrap-wizard
-npm test                 # 103/103
+cd ~/projects/omp-agent-workflow
+npm test                 # 113/113
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
+node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 ```
 
-TUI cleanup: `/wrap` → cleanup → target → confirm. Esc/No оставляет worktree и
-ветку; Yes удаляет. Real Orca backend проверен на temp Orca-worktree: cleanup
-удалил worktree и ветку; Orca-created worktree держит shell, поэтому до
-закрытия терминала cleanup блокируется.
+Конкурирующие supervisor'ы:
+
+```bash
+node bin/omp-handoff-supervisor.mjs --dir /tmp/sup-test &   # pid A
+node bin/omp-handoff-supervisor.mjs --dir /tmp/sup-test      # exit 0, "another supervisor"
+kill %1                                                      # lock снят
+```
 
 ## Следующие шаги
 
-1. Опционально: повторить TUI cleanup на Orca-managed worktree; core Orca и
-   TUI confirm/cancel уже проверены.
-2. После выхода из сессии удалить worktree `wrap-wizard` и ветку
-   `feat/wrap-wizard`; `main` уже содержит merge.
-3. Дальше — release/remote или 0.6 economics; публикация только по решению
-   владельца.
+1. Перезапустить `bin/omp-yoda`: supervisor, запущенный до merge, держит в
+   памяти старый код и не берёт lock; новый экземпляр возьмёт lock только
+   после рестарта сессии.
+2. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
+3. P2 0.6: экономика handoff/компакции с `omp-cache-monitor`.
+4. Опционально: кроссплатформенная live-process проверка (сейчас `/proc`);
+   полный TUI E2E `/wrap` на Orca-managed worktree.
 
 ## Риски
 
-- Cleanup зависит от состояния между сбором фактов и confirm; защита —
-  lock + повторная проверка HEAD/status/merged, но внешний `git`/Orca может
-  изменить состояние сразу после проверки.
-- `/proc`-проверка live-процессов Linux-only и best-effort; при недоступном
-  `/proc` она не блокирует.
-- Orca CLI может сохранить ветку, которую не может доказать merged; это
-  safe-результат, не ошибка.
-- Текущий worktree нельзя удалить из процесса: только ручная команда после
-  выхода.
-- `HANDOFF.md` freshness — эвристика по commit identity, не proof.
-- `ctx.ui.select/confirm` блокируют ход; destructive confirm без timeout.
+- Lock advisory: PID может быть переиспользован после падения; stale reclaim
+  считает такой процесс живым до его смерти.
+- Узкая гонка: delayed reclaimer может на мгновение унести живой lock; если
+  третий стартер займёт путь до rename-back, restore не удастся. В стрессe
+  20×20 не воспроизвелось; см. отчёт reviewer.
+- Две OMP-сессии в одном `--dir` делят marker и `HANDOFF.md` — это
+  конфигурационная ошибка; lock лишь не даёт двум supervisor'ам работать
+  одновременно.
+- `/proc`-проверка live-процессов Linux-only и best-effort.
 - Supervisor привязан к Orca terminal handle; вне Orca automatic handoff
   недоступен.
+- `HANDOFF.md` freshness — эвристика по commit identity, не proof.
+- `ctx.ui.select/confirm` блокируют ход; destructive confirm без timeout.
 - Remote отсутствует: push/publish — только по решению владельца.
