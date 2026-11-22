@@ -82,11 +82,15 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
 ## Следующие шаги
 
 Реализация 0.5 завершена; live E2E пройден. Решения D1–D10 —
-`docs/decisions.md`. Осталось:
+`docs/decisions.md`. Текущая сессия загрузила extension до merge: после
+`/handoff-new` новая сессия получит 0.5 и `/orchestrate`. Осталось:
 
-1. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
-2. Удалить worktree `feat/orchestrator` после выхода из сессии.
-3. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
+1. Ретро-review 0.5 diff (`f79ad85..4cc9054`) отдельным reviewer; поведение
+   уже покрыто 70 тестами и live E2E.
+2. Решить с владельцем: remote/GitHub, npm, marketplace, английский README;
+   CI на remote не запускался, потому что remote нет.
+3. Удалить worktree `feat/orchestrator` после выхода из сессии.
+4. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
 
 ## Риски
 
