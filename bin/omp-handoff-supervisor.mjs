@@ -262,12 +262,13 @@ try {
 	process.exitCode = 1;
 }
 
+if (lock?.reclaimed) {
+	console.error(
+		`[handoff-supervisor] removed stale lock (pid=${lock.reclaimed.pid ?? "unknown"})`,
+	);
+}
+
 if (lock?.ok) {
-	if (lock.reclaimed) {
-		console.error(
-			`[handoff-supervisor] removed stale lock (pid=${lock.reclaimed.pid ?? "unknown"})`,
-		);
-	}
 	lockHeld = true;
 	try {
 		await main();
