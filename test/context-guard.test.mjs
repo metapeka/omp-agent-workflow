@@ -3,7 +3,14 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
@@ -454,6 +461,91 @@ describe("supervisor", () => {
 			assert.equal(result.status, 0, result.stderr);
 			assert.match(result.stdout, /stale marker removed/);
 			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	function writeSupervisorLock(dir, pid) {
+		const lock = join(dir, ".omp-handoff-supervisor.lock");
+		mkdirSync(lock);
+		writeFileSync(
+			join(lock, "owner.json"),
+			JSON.stringify({ pid, dir, startedAt: new Date().toISOString() }),
+		);
+		return lock;
+	}
+
+	function writeHandoffFiles(dir) {
+		writeFileSync(
+			join(dir, ".omp-handoff-session.json"),
+			JSON.stringify({ terminal: "term_test" }),
+		);
+		writeFileSync(
+			join(dir, ".omp-handoff-request.json"),
+			JSON.stringify({ reason: "task-boundary" }),
+		);
+	}
+
+	it("refuses to run a second supervisor for the same dir", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeHandoffFiles(dir);
+			const lock = writeSupervisorLock(dir, process.pid);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{ encoding: "utf8" },
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stderr, /another supervisor is running/);
+			assert.doesNotMatch(result.stdout, /handoff-new/);
+			assert.equal(existsSync(lock), true);
+			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), true);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("reclaims a lock whose owner process is gone", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeHandoffFiles(dir);
+			const lock = writeSupervisorLock(dir, 2_147_483_647);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{ encoding: "utf8" },
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stderr, /removed stale lock/);
+			assert.match(result.stdout, /handoff-new/);
+			assert.equal(existsSync(lock), false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("removes its lock on normal exit", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeHandoffFiles(dir);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{ encoding: "utf8" },
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(
+				existsSync(join(dir, ".omp-handoff-supervisor.lock")),
+				false,
+			);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

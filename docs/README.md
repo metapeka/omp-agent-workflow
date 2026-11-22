@@ -4,10 +4,12 @@
 OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
 объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.1` (context guard 0.3 + orchestrator 0.5 + wrap).
+Версия: `0.5.2` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+singleton).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
+`0.5.2` — один supervisor на каталог, см. [operations.md](operations.md).
 
 ## С чего начать
 

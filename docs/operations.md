@@ -50,6 +50,19 @@ pgrep -af omp-handoff-supervisor
 tail -f /tmp/omp-yoda-supervisor.log
 ```
 
+Supervisor — один на каталог:
+
+- lock-dir `<dir>/.omp-handoff-supervisor.lock/` с `owner.json`
+  (`pid`, `dir`, `startedAt`);
+- второй экземпляр для того же `--dir` пишет в stderr
+  `another supervisor is running ...` и выходит с кодом 0, marker не трогает;
+- lock снимается на выходе и по `SIGINT`/`SIGTERM`/`SIGHUP`;
+- после `SIGKILL`/падения lock перехватывается, когда `pid` из `owner.json`
+  уже мёртв; пока `owner.json` не записан, lock считается инициализирующимся
+  `--lock-grace` секунд (default 10);
+- две OMP-сессии в одном каталоге делят marker и `HANDOFF.md` — это
+  конфигурационная ошибка, а не повод запускать два supervisor'а.
+
 ## Worktree
 
 Проект зарегистрирован в Orca как `omp-agent-workflow`; рабочие worktree —
@@ -102,6 +115,7 @@ cat .omp-handoff-session.json
 | Marker есть, handoff нет | Supervisor не запущен | `bin/omp-yoda` или `node bin/omp-handoff-supervisor.mjs --dir .` |
 | Supervisor молчит | Нет terminal handle (не Orca) | Запустить в Orca-терминале или вручную `/handoff-new` |
 | Marker игнорируется | `sessionFile` от старой сессии | Удалить stale marker, обновить state |
+| Второй supervisor сразу вышел | Lock держит живой supervisor того же `--dir` | Ожидаемо: один supervisor на каталог; смотреть `owner.json` |
 | Цикл handoff | Нет cooldown/старый marker | Проверить `OMP_HANDOFF_COOLDOWN_SECONDS`, логи, stale guard |
 | `/handoff-new` отказывает | Нет `HANDOFF.md` | Обновить файл |
 
@@ -183,6 +197,8 @@ worktree, ретро-review. Destructive/spend действия требуют c
 - **Handoff без `HANDOFF.md`.** `/handoff-new` откажет.
 - **Ожидание automatic handoff вне Orca.** Нет terminal handle — только
   ручная команда.
+- **Две сессии в одном каталоге.** Один supervisor на `--dir`; вторую сессию
+  запускать в своём worktree, иначе handoff и `HANDOFF.md` конфликтуют.
 
 ## Логи и артефакты
 
@@ -192,5 +208,6 @@ worktree, ретро-review. Destructive/spend действия требуют c
 | Session JSONL | `~/.omp/agent/sessions/<cwd-slug>/*.jsonl` |
 | Session info | `<worktree>/.omp-handoff-session.json` |
 | Marker | `<worktree>/.omp-handoff-request.json` |
+| Lock supervisor | `<worktree>/.omp-handoff-supervisor.lock/owner.json` |
 | State 0.5 | `<control-worktree>/STATE.json` |
 | Lock 0.5 | `<control-worktree>/.omp-orchestrator.lock` |

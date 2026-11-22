@@ -1,7 +1,7 @@
 # Архитектура и OMP API
 
-Статус: `[готово]` для 0.3, 0.5 и 0.5.1. OMP: `19.1.0`. Orca CLI: локальная
-установка проекта.
+Статус: `[готово]` для 0.3, 0.5, 0.5.1 и 0.5.2. OMP: `19.1.0`. Orca CLI:
+локальная установка проекта.
 
 ## Компоненты
 
@@ -24,11 +24,11 @@ flowchart LR
 | Часть | Путь | Роль |
 |---|---|---|
 | Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, session info, marker при пороге |
-| Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new` |
+| Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new`; singleton lock на `--dir` |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Wrap `[готово]` | `lib/orchestrator/wrap.ts` + `/wrap` в `orchestrator.ts` | 0.5.1: facts, cards, safe cleanup, next worktree |
-| Тесты 0.3 | `test/context-guard.test.mjs` | 22 теста guard/handoff/supervisor/session info |
+| Тесты 0.3 | `test/context-guard.test.mjs` | 25 тестов guard/handoff/supervisor/lock/session info |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
 | Тесты wrap core | `test/wrap.test.mjs` | 24 теста facts/cards/guards/cleanup/next worktree |

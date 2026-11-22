@@ -5,6 +5,8 @@ node_modules/
 .omp-handoff-session.json
 .omp-handoff-request.json
 .omp-handoff-done.json
+.omp-handoff-supervisor.lock/
+.omp-handoff-supervisor.lock.stale-*/
 STATE.json
 STATE.json.tmp-*
 .omp-orchestrator.lock/

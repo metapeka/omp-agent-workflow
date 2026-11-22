@@ -1,8 +1,8 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-22. Версия: `0.5.1`. Статус: context guard, handoff, режимы,
-orchestrator/subagent-петля и `/wrap` готовы; release/remote — по решению
-владельца. Оперативный список — `TODO.md`.
+Дата: 2026-11-23. Версия: `0.5.2`. Статус: context guard, handoff, режимы,
+orchestrator/subagent-петля и `/wrap` готовы; supervisor singleton; release/
+remote — по решению владельца. Оперативный список — `TODO.md`.
 
 ## Принципы
 
@@ -79,6 +79,15 @@ orchestrator/subagent-петля и `/wrap` готовы; release/remote — п�
       повторная проверка под lock, без `--force`/`-D`.
 - [x] Тесты core/extension; docs `docs/wrap.md`.
 - Текущий worktree не удаляется из процесса: инструкция после выхода.
+
+## Этап 0.5.2 — supervisor singleton (готово)
+
+- [x] Lock-dir `.omp-handoff-supervisor.lock/` рядом с marker; `owner.json`
+      (`pid`, `dir`, `startedAt`).
+- [x] Второй supervisor для того же `--dir` выходит с кодом 0, marker цел.
+- [x] Stale lock по мёртвому pid перехватывается; lock снимается на
+      exit/SIGINT/SIGTERM/SIGHUP.
+- [x] Тесты: live lock, stale reclaim, normal exit; runbook и артефакты.
 
 ## Этап 0.6 — экономика handoff (P2)
 

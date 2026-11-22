@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-23. Версия: `0.5.1`.
+Дата: 2026-11-23. Версия: `0.5.2`.
 
 ## Сейчас
 
@@ -13,8 +13,6 @@
 - [ ] Опционально: полный TUI E2E `/wrap` на Orca-managed worktree
       (confirm/cancel и branch retained); core Orca и TUI confirm/cancel
       уже проверены.
-- [ ] После выхода удалить worktree `wrap-wizard` и ветку
-      `feat/wrap-wizard`.
 
 ## Будущее
 
@@ -26,8 +24,6 @@
 - [ ] Метрики/status: spend, handoff, пороги, стоимость компакции.
 - [ ] Кроссплатформенная проверка live-процессов (сейчас `/proc`,
       Linux-only).
-- [ ] Supervisor singleton/lock, если допускаются две сессии в одном cwd;
-      сейчас каждый `omp-yoda` запускает свой supervisor.
 
 ## Закрытые задачи
 
@@ -42,6 +38,8 @@
       бюджеты, stop-gates, live E2E на 3 задачи.
 - [x] 0.5.1 — `/wrap`: карточки, handoff-инструкция, safe cleanup,
       следующий worktree, review; commit `de03df9`.
+- [x] 0.5.2 — supervisor singleton: lock-dir `.omp-handoff-supervisor.lock/`,
+      stale reclaim по мёртвому pid, release на exit/сигналах; тесты и runbook.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

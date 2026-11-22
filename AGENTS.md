@@ -25,14 +25,14 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.1`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.2`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
-  (`docs/wrap.md`).
+  (`docs/wrap.md`); 0.5.2 — supervisor singleton на каталог.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 103 теста (22 context guard + 38 orchestrator + 19 extension +
+- `npm test` — 106 тестов (25 context guard + 38 orchestrator + 19 extension +
   24 wrap); `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
@@ -101,6 +101,8 @@ orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<s
 - `/handoff-new` — новая сессия; сначала должен существовать `HANDOFF.md`.
 - Automatic handoff: агент пишет `.omp-handoff-request.json`, supervisor
   отправляет `/handoff-new` в terminal handle из `.omp-handoff-session.json`.
+- Supervisor — один на каталог (`--dir`): lock `.omp-handoff-supervisor.lock/`;
+  второй экземпляр выходит с кодом 0 и не трогает marker.
 - Не сжимать посреди tool-loop или незавершённого edit; ждать `turn_end` и
   `ctx.isIdle()`.
 - `context_pct` в native status line уже есть; свой процент не дублировать.
