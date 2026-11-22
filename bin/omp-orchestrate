@@ -197,8 +197,7 @@ async function main() {
 		case "finish": {
 			if (!task) throw new ActionError("finish: TASK is required");
 			if (!values.commit) throw new ActionError("finish: --commit is required");
-			if (!values.review) throw new ActionError("finish: --review is required");
-			result = await finish(ctx, task, values.commit, values.review);
+			result = await finish(ctx, task, values.commit, values.review ?? "");
 			break;
 		}
 		case "rebase":

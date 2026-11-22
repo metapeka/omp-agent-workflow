@@ -22,7 +22,7 @@
 | E2E | supervisor → `/handoff-new` в реальном Orca-терминале; новая сессия прочитала `HANDOFF.md` |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` |
 | Вики | `docs/README.md`: архитектура, контракт, orchestrator 0.5, runbook, решения |
-| Orchestrator 0.5 | Этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate`; 69 тестов; Orca backend проверен create/rm |
+| Orchestrator 0.5 | Этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate`; 70 тестов; Orca backend проверен create/rm |
 | CI | `.github/workflows/ci.yml` (Node 22: `npm ci`, test, typecheck) |
 
 ## Контракт
@@ -65,7 +65,7 @@
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                 # 69/69
+npm test                 # 70/70
 npm run typecheck
 omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   -p 'Reply with exactly: OK'        # exit 0, stderr пуст

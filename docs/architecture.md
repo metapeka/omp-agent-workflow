@@ -28,7 +28,7 @@ flowchart LR
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Тесты 0.3 | `test/context-guard.test.mjs` | 22 теста guard/handoff/supervisor/session info |
-| Тесты 0.5 | `test/orchestrator.test.mjs` | 37 тестов plan/state/cost/worktree/actions/policy |
+| Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 10 тестов tool/commands/hooks |
 
 ## Что extension может и не может (OMP 19.1.0)

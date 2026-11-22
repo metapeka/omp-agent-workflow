@@ -193,12 +193,11 @@ export default function orchestrator(pi: ExtensionAPI): void {
 			case "finish": {
 				if (!params.task) throw new ActionError("finish: task is required");
 				if (!params.commit) throw new ActionError("finish: commit is required");
-				if (!params.review) throw new ActionError("finish: review is required");
 				const merged = await finish(
 					context,
 					params.task,
 					params.commit,
-					params.review,
+					params.review ?? "",
 				);
 				if (merged.kind === "merged" && merged.decision.kind === "continue") {
 					pendingHandoff = false;

@@ -137,6 +137,7 @@ bin/omp-orchestrate status --json --dir /path/to/control-worktree
 bin/omp-orchestrate start T1 --dir /path/to/control-worktree
 bin/omp-orchestrate verify T1 --dir /path/to/control-worktree
 bin/omp-orchestrate finish T1 --commit SHA --review ok --dir /path/to/control-worktree
+# --review нужен только для задач с review:true
 ```
 
 Авто-продолжение работает только в `yoda`/`yoda-supervised` и только после

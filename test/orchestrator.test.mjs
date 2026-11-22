@@ -672,6 +672,18 @@ describe("actions on a real git repo", () => {
 		assert.equal(blocked.reason, "attempts-exceeded");
 	});
 
+	it("merges review:false without a reviewer verdict", async () => {
+		const s = await scenario({ tasks: [{ ...T1, review: false }] });
+		const started = await start(s.ctx, "T1");
+		assert.equal(started.kind, "started");
+		await commitFile(started.worktree, "work.txt", "done\n");
+		const verified = await verify(s.ctx, "T1");
+		assert.equal(verified.ok, true);
+		const merged = await finish(s.ctx, "T1", verified.commit, "");
+		assert.equal(merged.kind, "merged");
+		assert.equal(merged.decision.reason, "plan-done");
+	});
+
 	it("stops on a dirty base instead of merging", async () => {
 		const s = await scenario();
 		const started = await start(s.ctx, "T1");

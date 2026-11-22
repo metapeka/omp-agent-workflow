@@ -175,7 +175,7 @@ Tool `orchestrator` (`approval: "exec"`) и CLI `bin/omp-orchestrate` вызыв
 | `next` | нет | plan валиден, hash совпадает | следующий ready task или stop reason |
 | `start [id]` | worktree, branch, state; failed current очищается | deps, gate, budget, branch свободен | task spec + worktree + prompt |
 | `verify [id]` | запуск команд; `status: verified/failed`; failed verify увеличивает attempts | current совпадает | checks, commit |
-| `finish [id] --commit SHA --review ok` | ff-only merge, cleanup, state | verified, HEAD == SHA, clean base, review, полный набор checks | `merged` + decision |
+| `finish [id] --commit SHA [--review ok]` | ff-only merge, cleanup, state | verified, HEAD == SHA, clean base, полный набор checks; review обязателен только при `review:true` | `merged` + decision |
 | `rebase [id]` | rebase на base + verify | non-ff, чистое worktree | новый commit, снова verified/failed |
 | `stop --reason R` | state.stop | — | причина и detail |
 | `resume` | снять stop | plan/hash валидны | run.active |
@@ -391,7 +391,7 @@ Extension (fake ctx, как в 0.3-тестах):
 - `manual` не продолжает;
 - `session_start` будит active run без `current`;
 - 22 теста 0.3 остаются зелёными;
-- всего 69 тестов (`npm test`).
+- всего 70 тестов (`npm test`).
 
 ## Этапы
 

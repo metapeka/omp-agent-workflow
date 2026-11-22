@@ -430,7 +430,7 @@ export async function finish(
 	ctx: ActionContext,
 	id: string,
 	commit: string,
-	review: string,
+	review = "",
 ): Promise<FinishOutcome> {
 	const { planPath, statePath } = pathsFor(ctx);
 	const plan = readPlan(planPath);
