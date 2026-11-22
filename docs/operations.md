@@ -37,7 +37,7 @@ OMP_WORKFLOW_MODE=yoda-supervised bin/omp-yoda
 
 Launcher:
 
-- читает Settings → Plugins (`omp plugin config get`); env остаётся fallback;
+- читает Settings → Plugins (`omp plugin config list`); env остаётся fallback;
 - запускает supervisor на `OMP_YODA_DIR` (default `$PWD`), если
   `supervisorEnabled` и `orcaEnabled` включены;
 - при выключенном supervisor печатает причину и запускает OMP без него;

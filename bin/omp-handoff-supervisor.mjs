@@ -57,7 +57,7 @@ let staleCandidate = null;
 const orca = process.env.ORCA_CLI_COMMAND || "orca";
 const envEnabled = (name) => {
 	const raw = process.env[name]?.trim().toLowerCase();
-	return raw !== "0" && raw !== "false" && raw !== "off";
+	return raw !== "0" && raw !== "false" && raw !== "off" && raw !== "no";
 };
 const orcaEnabled = envEnabled("OMP_ORCA_ENABLED");
 const orcaPreflight = envEnabled("OMP_ORCA_PREFLIGHT");

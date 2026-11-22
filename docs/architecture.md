@@ -50,7 +50,7 @@ flowchart LR
 `package.json#omp.settings` → Settings → Plugins. Extension читает явные
 значения через `getPluginSettings` (dynamic import OMP loader; вне OMP —
 fallback на env) и сводит их с env/режимом в `lib/workflow-settings.ts`.
-Launcher читает те же ключи через `omp plugin config get` и передаёт
+Launcher читает те же ключи через `omp plugin config list` и передаёт
 `OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED` supervisor'у. Приоритет:
 **Settings > env > режим/дефолт** (D12).
 
