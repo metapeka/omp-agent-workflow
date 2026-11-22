@@ -2,8 +2,9 @@
 
 Продукт: `omp-agent-workflow`, отдельно от `omp-cache-monitor`.
 Дата: 2026-11-22. Статус: context guard 0.2.0, `/handoff-new`, marker и
-supervisor реализованы; Yoda-режимы (`manual`/`assisted`/`yoda`/
-`yoda-supervised`) — дизайн, следующий этап.
+supervisor реализованы; automatic handoff проверен end-to-end в Orca.
+Yoda-режимы (`manual`/`assisted`/`yoda`/`yoda-supervised`) — дизайн,
+следующий этап.
 Цель: агент сам двигается по глобальному плану, сам тестирует и делает
 handoff, но не выходит за рамки, которые требуют решения владельца.
 

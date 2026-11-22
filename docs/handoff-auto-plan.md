@@ -21,8 +21,10 @@
 - [x] tests — 15 тестов: command, marker, supervisor dry-run, no duplicate.
 - [x] docs — README, AGENTS, остановки и бюджеты.
 
-Осталось: Yoda mode config и end-to-end прогон supervisor в реальном
-Orca-терминале.
+E2E пройден в реальном Orca-терминале: marker → supervisor → `/handoff-new`
+→ новая сессия прочитала `HANDOFF.md` и ответила `OK`.
+
+Осталось: Yoda mode config (`manual`/`assisted`/`yoda`/`yoda-supervised`).
 
 ## Протокол
 
