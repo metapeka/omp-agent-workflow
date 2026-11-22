@@ -25,6 +25,7 @@ const HANDOFF_INSTRUCTIONS =
 const DEFAULT_WARN = 35;
 const DEFAULT_SUGGEST = 50;
 const DEFAULT_AUTO = 60;
+const DEFAULT_HANDOFF_COOLDOWN = 300;
 const SESSION_INFO = ".omp-handoff-session.json";
 const HANDOFF_NEW_PROMPT =
 	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
@@ -52,6 +53,15 @@ function handoffPercentFromEnv(): number | null {
 	if (!raw || raw.toLowerCase() === "off") return null;
 	const value = Number(raw);
 	return Number.isFinite(value) && value > 0 && value <= 100 ? value : null;
+}
+
+/** Пауза между handoff, чтобы новая сессия не ушла в цикл. */
+function handoffCooldownMsFromEnv(): number {
+	const raw = process.env.OMP_HANDOFF_COOLDOWN_SECONDS?.trim();
+	if (!raw) return DEFAULT_HANDOFF_COOLDOWN * 1000;
+	const value = Number(raw);
+	if (!Number.isFinite(value) || value < 0) return DEFAULT_HANDOFF_COOLDOWN * 1000;
+	return value * 1000;
 }
 
 /** Краткий вид контекста: `42% (420k/1000k)`. */
@@ -108,12 +118,14 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	const suggestAt = percentFromEnv("OMP_CONTEXT_SUGGEST", DEFAULT_SUGGEST);
 	const autoAt = autoPercentFromEnv();
 	const handoffAt = handoffPercentFromEnv();
+	const handoffCooldownMs = handoffCooldownMsFromEnv();
 
 	let warned = false;
 	let suggested = false;
 	let autoCompacted = false;
 	let compacting = false;
 	let handoffRequested = false;
+	let handoffCooldownUntil = 0;
 
 	/** После падения ниже warning пороги снова активны. */
 	const resetIfBelow = (percent: number): void => {
@@ -168,18 +180,25 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	 */
 	const checkHandoff = async (ctx: ExtensionContext): Promise<void> => {
 		if (!isMainTui(ctx) || handoffAt === null) return;
+		if (Date.now() < handoffCooldownUntil) return;
 		const usage = readUsage(ctx);
 		if (!usage) return;
 		if (usage.percent < handoffAt) {
 			handoffRequested = false;
+			handoffCooldownUntil = 0;
 			return;
 		}
 		if (handoffRequested || !ctx.isIdle() || ctx.hasPendingMessages()) return;
 
 		handoffRequested = true;
+		handoffCooldownUntil = Date.now() + handoffCooldownMs;
+		const marker = JSON.stringify({
+			reason: "context",
+			sessionFile: ctx.sessionManager.getSessionFile() ?? null,
+		});
 		const text =
 			`HANDOFF: контекст ${usageText(usage)}. Заверши текущую задачу, обнови HANDOFF.md, ` +
-			`запиши .omp-handoff-request.json с {"reason":"context"} и заверши ход. ` +
+			`запиши .omp-handoff-request.json с ${marker} и заверши ход. ` +
 			"Не начинай новую задачу.";
 		try {
 			await pi.sendUserMessage(text);
@@ -226,6 +245,14 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		autoCompacted = false;
 		compacting = false;
 		handoffRequested = false;
+		try {
+			// Дочерняя сессия после /handoff-new не должна сразу уйти в новый handoff.
+			if (ctx.sessionManager.getHeader()?.parentSession) {
+				handoffCooldownUntil = Date.now() + handoffCooldownMs;
+			}
+		} catch {
+			// старый runner без getHeader
+		}
 		writeSessionInfo(ctx);
 		checkWarnings(ctx);
 	});
@@ -261,6 +288,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		suggested = false;
 		autoCompacted = false;
 		handoffRequested = false;
+		handoffCooldownUntil = 0;
 		notify(ctx, "Контекст сжат.", "info");
 	});
 
@@ -270,6 +298,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		autoCompacted = false;
 		compacting = false;
 		handoffRequested = false;
+		handoffCooldownUntil = 0;
 		writeSessionInfo(ctx);
 		checkWarnings(ctx);
 	});

@@ -38,6 +38,8 @@ const markerPath = resolve(dir, values.marker);
 const sessionPath = resolve(dir, values.session);
 const intervalMs = Math.max(250, Number(values.interval) * 1000);
 const maxAttempts = Math.max(1, Number(values["max-attempts"]));
+const cooldownMs = Math.max(0, Number(values.cooldown) * 1000);
+let lastHandoffAt = 0;
 const orca = process.env.ORCA_CLI_COMMAND || "orca";
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
@@ -54,6 +56,23 @@ function readJson(path) {
 
 function runOrca(args) {
 	return spawnSync(orca, args, { encoding: "utf8", timeout: 30_000 });
+}
+
+/** Дождаться, пока extension запишет session info новой сессии. */
+async function waitForNewSession(previous, timeoutMs = 15_000) {
+	const start = Date.now();
+	while (Date.now() - start < timeoutMs) {
+		const current = readJson(sessionPath);
+		if (
+			current &&
+			typeof current.sessionFile === "string" &&
+			current.sessionFile !== previous
+		) {
+			return current;
+		}
+		await sleep(250);
+	}
+	return readJson(sessionPath);
 }
 
 function fail(message) {
@@ -97,6 +116,8 @@ async function main() {
 			continue;
 		}
 
+		const previousSessionFile =
+			typeof session.sessionFile === "string" ? session.sessionFile : null;
 		const sent = runOrca([
 			"terminal",
 			"send",
@@ -119,11 +140,25 @@ async function main() {
 			continue;
 		}
 
+		const next = await waitForNewSession(previousSessionFile);
+		if (
+			!next ||
+			typeof next.sessionFile !== "string" ||
+			next.sessionFile === previousSessionFile
+		) {
+			fail("new session was not detected; marker kept for retry");
+			if (values.once) return;
+			await sleep(intervalMs);
+			continue;
+		}
+
 		rmSync(markerPath, { force: true });
+		lastHandoffAt = Date.now();
 		console.log(`[handoff-supervisor] /handoff-new sent to ${terminal}`);
+		console.log("[handoff-supervisor] new session detected");
 
 		if (!values["no-prompt"]) {
-			await sleep(1500);
+			await sleep(300);
 			const prompt = runOrca([
 				"terminal",
 				"send",

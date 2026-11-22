@@ -20,6 +20,7 @@ const ENV_KEYS = [
 	"OMP_CONTEXT_SUGGEST",
 	"OMP_CONTEXT_AUTO",
 	"OMP_HANDOFF_AT",
+	"OMP_HANDOFF_COOLDOWN_SECONDS",
 ];
 
 function install(env = {}) {
@@ -55,6 +56,7 @@ function view(percent, options = {}) {
 		complete = true,
 		cwd = join(tmpdir(), "omp-agent-workflow-no-write"),
 		sessionFile = "/tmp/session.jsonl",
+		parentSession = null,
 		newSessionResult = { cancelled: false },
 	} = options;
 	const notes = [];
@@ -70,6 +72,9 @@ function view(percent, options = {}) {
 		sessionManager: {
 			getSessionFile() {
 				return sessionFile;
+			},
+			getHeader() {
+				return parentSession ? { parentSession } : null;
 			},
 		},
 		ui: {
@@ -201,6 +206,14 @@ describe("automatic handoff request", () => {
 	it("does not ask below the threshold", async () => {
 		const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
 		const v = view(54);
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 0);
+	});
+
+	it("cools down in a child session after handoff", async () => {
+		const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+		const v = view(56, { parentSession: "/tmp/parent.jsonl" });
+		await fire(handlers, "session_start", {}, v.ctx);
 		await fire(handlers, "turn_end", {}, v.ctx);
 		assert.equal(sent.length, 0);
 	});

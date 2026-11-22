@@ -30,13 +30,17 @@ E2E пройден в реальном Orca-терминале: marker → super
 
 1. Агент заканчивает задачу и обновляет `HANDOFF.md`.
 2. Агент пишет `.omp-handoff-request.json`:
-   `{"reason":"task-boundary","requestedAt":"..."}`.
+   `{"reason":"task-boundary","sessionFile":"..."}`. `sessionFile` обязателен:
+   supervisor отбрасывает marker от прошлой сессии.
 3. Supervisor видит marker и session info, ждёт idle, отправляет
    `/handoff-new` в terminal handle.
 4. `/handoff-new` ждёт idle, проверяет `HANDOFF.md`, вызывает `newSession`,
    добавляет custom message «прочитай HANDOFF.md и продолжай».
 5. Supervisor проверяет, что новая сессия стартовала, marker удалён, двух
    активных сессий нет.
+6. Cooldown: extension не просит новый handoff 300 с
+   (`OMP_HANDOFF_COOLDOWN_SECONDS`), supervisor столько же не принимает
+   ранние/stale marker'ы (`--cooldown`). Иначе новая сессия может уйти в цикл.
 
 ## Почему так
 

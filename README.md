@@ -55,10 +55,10 @@ Session info пишется расширением:
 { "terminal": "term_...", "sessionFile": "...", "cwd": "...", "pid": 123 }
 ```
 
-Marker пишет агент:
+Marker пишет агент; `sessionFile` защищает от stale-marker после handoff:
 
 ```json
-{ "reason": "task-boundary" }
+{ "reason": "task-boundary", "sessionFile": "/path/to/session.jsonl" }
 ```
 
 Запуск supervisor:
@@ -71,6 +71,11 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 `--dry-run` показывает terminal, команду и prompt, ничего не отправляя.
 Supervisor не является LLM: только marker, terminal handle и `orca terminal
 send`.
+
+После handoff действует cooldown: extension не просит новый handoff
+(`OMP_HANDOFF_COOLDOWN_SECONDS`, по умолчанию 300), а supervisor удаляет
+ранние и stale marker'ы (`--cooldown`, по умолчанию 300). Это защищает от
+цикла «новая сессия сразу просит следующий handoff».
 
 Yoda-режимы и оркестрация: `docs/yoda-workflow.md`.
 План automatic handoff: `docs/handoff-auto-plan.md`.
