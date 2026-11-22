@@ -45,7 +45,7 @@ Non-goals: <что не делаем>.
   "id": "T1",
   "title": "<короткое имя>",
   "deps": [],
-  "branch": "feat/t1-<slug>",
+  "branch": "feat/t1-example",
   "files": ["path/to/file.ts"],
   "acceptance": [
     "<проверяемое утверждение>",
@@ -64,7 +64,7 @@ Non-goals: <что не делаем>.
   "id": "T2",
   "title": "<короткое имя>",
   "deps": ["T1"],
-  "branch": "feat/t2-<slug>",
+  "branch": "feat/t2-example",
   "files": ["path/to/other.ts"],
   "acceptance": ["<проверяемое утверждение>"],
   "verify": ["npm test", "npm run typecheck"],

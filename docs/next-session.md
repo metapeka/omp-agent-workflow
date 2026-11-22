@@ -16,23 +16,23 @@
 - Готово (docs): вики `docs/architecture.md`, `contracts.md`,
   `orchestrator.md`, `operations.md`, `decisions.md`,
   `AUTOPLAN.example.md`.
-- Проверки 0.3: `npm test` 19/19, `npm run typecheck`, загрузка extension,
+- Готово (0.5, этап A): `lib/orchestrator/{plan,state,budgets,policy,types}.ts`,
+  44 теста всего; этапы B–D впереди.
+- Проверки: `npm test` 44/44, `npm run typecheck`, загрузка extension,
   e2e supervisor в Orca.
 - `omp plugin link` указывает на `main`; изменения в worktree не влияют на
   живую сессию до merge.
 
 ## Следующий этап
 
-Реализация 0.5 по `docs/orchestrator.md`, этапы A–D:
+Реализация 0.5 по `docs/orchestrator.md`, этапы B–D:
 
-1. A: `lib/orchestrator/plan.ts`, `state.ts`, `budgets.ts`, `policy.ts` +
-   unit-тесты.
-2. B: `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate` +
+1. B: `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate` +
    integration на temp git repo.
-3. C: `orchestrator.ts` (tool `orchestrator`, `/orchestrate`,
+2. C: `orchestrator.ts` (tool `orchestrator`, `/orchestrate`,
    `/orchestrate-stop`, hooks), второй entry в `package.json`; spike
    загрузки.
-4. D: docs/example, версия `0.5.0`, E2E 3 задачи в Orca, handoff на границе,
+3. D: docs/example, версия `0.5.0`, E2E 3 задачи в Orca, handoff на границе,
    stop-gate.
 
 Перед кодом прочитать `docs/decisions.md` — D1–D10 подтверждены.

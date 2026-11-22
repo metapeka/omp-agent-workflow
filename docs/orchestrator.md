@@ -1,7 +1,8 @@
 # Orchestrator и subagent-петля (0.5)
 
-Статус: `[design]`, дизайн утверждён 2026-11-22. Код ещё не написан.
-Реализация — этапы A–D в конце страницы.
+Статус: `[partial]`, дизайн утверждён 2026-11-22. Этап A реализован
+(`plan.ts`, `state.ts`, `budgets.ts`, `policy.ts`, 25 unit-тестов); этапы
+B–D впереди.
 
 Цель: main-агент проходит `AUTOPLAN.md` до конца или stop-gate, детерминированно
 выбирает задачи, создаёт worktree, проверяет, мержит и делает handoff на
@@ -379,12 +380,12 @@ Extension (fake ctx, как в 0.3-тестах):
 
 ## Этапы
 
-| Этап | Содержимое | Acceptance |
-|---|---|---|
-| A | `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts`, тесты | Unit зелёные, typecheck |
-| B | `cost.ts`, `worktrees.ts`, `actions.ts`, CLI | Integration на temp git repo |
-| C | `orchestrator.ts`, tool, команды, hooks; spike второго entry | Fake-ctx тесты; extension грузится в OMP |
-| D | docs/example, README/AGENTS/ROADMAP/HANDOFF, `0.5.0` | E2E 3 задачи, handoff, stop-gate |
+| Этап | Содержимое | Acceptance | Статус |
+|---|---|---|---|
+| A | `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts`, тесты | Unit зелёные, typecheck | `[готово]` |
+| B | `cost.ts`, `worktrees.ts`, `actions.ts`, CLI | Integration на temp git repo | `[next]` |
+| C | `orchestrator.ts`, tool, команды, hooks; spike второго entry | Fake-ctx тесты; extension грузится в OMP | `[future]` |
+| D | docs/example, README/AGENTS/ROADMAP/HANDOFF, `0.5.0` | E2E 3 задачи, handoff, stop-gate | `[future]` |
 
 Работа — в текущем worktree `feat/orchestrator`, коммиты по этапам, merge в
 `main` после зелёных проверок.

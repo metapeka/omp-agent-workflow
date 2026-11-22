@@ -54,7 +54,8 @@
 - [x] Дизайн: `AUTOPLAN.md` (JSON-блоки), `STATE.json`, действия, политика,
       бюджеты, stop-gates, handoff на границе.
 - [x] Зафиксированы факты OMP API и ограничения — `docs/architecture.md`.
-- [ ] Этап A: `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts` + unit-тесты.
+- [x] Этап A: `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts` + unit-тесты
+      (44 теста всего).
 - [ ] Этап B: `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate`.
 - [ ] Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry.
 - [ ] Этап D: docs/example, версия `0.5.0`, E2E 3 задачи в Orca.

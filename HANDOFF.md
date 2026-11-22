@@ -21,7 +21,7 @@
 | E2E | supervisor → `/handoff-new` в реальном Orca-терминале; новая сессия прочитала `HANDOFF.md` |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` |
 | Вики | `docs/README.md`: архитектура, контракт, orchestrator 0.5, runbook, решения |
-| Дизайн 0.5 | `docs/orchestrator.md` — утверждён, код не написан |
+| Orchestrator 0.5 | Этап A: `lib/orchestrator/{plan,state,budgets,policy,types}.ts` + 25 тестов; B–D впереди |
 | CI | `.github/workflows/ci.yml` (Node 22: `npm ci`, test, typecheck) |
 
 ## Контракт
@@ -64,7 +64,7 @@
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                 # 19/19
+npm test                 # 44/44
 npm run typecheck
 omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   -p 'Reply with exactly: OK'        # exit 0, stderr пуст
@@ -79,17 +79,15 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
 Дизайн 0.5 утверждён; решения D1–D10 — `docs/decisions.md`. Реализация в
 worktree `feat/orchestrator`, коммиты по этапам:
 
-1. Этап A: `lib/orchestrator/plan.ts`, `state.ts`, `budgets.ts`,
-   `policy.ts` + unit-тесты.
-2. Этап B: `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate`;
-   integration на temp git repo.
-3. Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry;
+1. Этап B: `lib/orchestrator/cost.ts`, `worktrees.ts`, `actions.ts`,
+   `bin/omp-orchestrate`; integration на temp git repo.
+2. Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry;
    spike загрузки в OMP.
-4. Этап D: `docs/AUTOPLAN.example.md`, версия `0.5.0`, E2E 3 задачи в Orca,
+3. Этап D: `docs/AUTOPLAN.example.md`, версия `0.5.0`, E2E 3 задачи в Orca,
    handoff и stop-gate.
-5. После merge: `HANDOFF.md`/`ROADMAP.md`/`README.md` отражают 0.5.
-6. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
-7. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
+4. После merge: `HANDOFF.md`/`ROADMAP.md`/`README.md` отражают 0.5.
+5. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
+6. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
 
 ## Риски
 

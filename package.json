@@ -12,7 +12,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "test": "node --experimental-strip-types test/context-guard.test.mjs",
+    "test": "node --experimental-strip-types --test test/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "supervisor": "node bin/omp-handoff-supervisor.mjs"
   },
@@ -22,6 +22,7 @@
   },
   "files": [
     "index.ts",
+    "lib",
     "bin",
     "docs",
     "README.md",

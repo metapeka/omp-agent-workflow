@@ -1,6 +1,6 @@
 # Архитектура и OMP API
 
-Статус: `[готово]` для 0.3, `[design]` для 0.5.
+Статус: `[готово]` для 0.3, `[partial]` для 0.5 (этап A).
 OMP: `19.1.0`. Orca CLI: локальная установка проекта.
 
 ## Компоненты
@@ -26,8 +26,9 @@ flowchart LR
 | Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, session info, marker при пороге |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new` |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
-| Orchestrator `[design]` | `orchestrator.ts` + `lib/orchestrator/*` | Детерминированный state, worktree, verify/merge, политика продолжения |
-| Тесты | `test/context-guard.test.mjs` | 19 детерминированных тестов 0.3 |
+| Orchestrator `[partial]` | `orchestrator.ts` + `lib/orchestrator/*` | Этап A: state, план, бюджеты, политика; B–D — worktree/extension |
+| Тесты 0.3 | `test/context-guard.test.mjs` | 19 детерминированных тестов guard/handoff |
+| Тесты 0.5 | `test/orchestrator.test.mjs` | 25 тестов plan/state/budgets/policy |
 
 ## Что extension может и не может (OMP 19.1.0)
 
@@ -80,7 +81,7 @@ flowchart LR
 
 Детали схем — [contracts.md](contracts.md).
 
-## Поток 0.5 `[design]`
+## Поток 0.5 `[partial]`
 
 1. `/orchestrate` → validation, `STATE.json`, первый worktree.
 2. Main спавнит implementer (`task`) с абсолютным путём worktree.
