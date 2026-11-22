@@ -1,6 +1,6 @@
 # Архитектура и OMP API
 
-Статус: `[готово]` для 0.3 и 0.5. OMP: `19.1.0`. Orca CLI: локальная
+Статус: `[готово]` для 0.3, 0.5 и 0.5.1. OMP: `19.1.0`. Orca CLI: локальная
 установка проекта.
 
 ## Компоненты
@@ -27,9 +27,11 @@ flowchart LR
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new` |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
+| Wrap `[готово]` | `lib/orchestrator/wrap.ts` + `/wrap` в `orchestrator.ts` | 0.5.1: facts, cards, safe cleanup, next worktree |
 | Тесты 0.3 | `test/context-guard.test.mjs` | 22 теста guard/handoff/supervisor/session info |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
-| Тесты extension | `test/orchestrator-extension.test.mjs` | 10 тестов tool/commands/hooks |
+| Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
+| Тесты wrap core | `test/wrap.test.mjs` | 24 теста facts/cards/guards/cleanup/next worktree |
 
 ## Что extension может и не может (OMP 19.1.0)
 

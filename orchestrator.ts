@@ -2,8 +2,8 @@
  * Orchestrator 0.5 — OMP entry.
  *
  * Регистрирует tool `orchestrator`, команды `/orchestrate`,
- * `/orchestrate-stop` и hooks. Контракт 0.3 не меняет: это отдельный
- * extension entry, `index.ts` остаётся context guard.
+ * `/orchestrate-stop`, `/wrap` и hooks. Контракт 0.3 не меняет: это
+ * отдельный extension entry, `index.ts` остаётся context guard.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -32,6 +32,15 @@ import {
 } from "./lib/orchestrator/state.ts";
 import type { TaskSpec } from "./lib/orchestrator/types.ts";
 import { CommandError } from "./lib/orchestrator/worktrees.ts";
+import {
+	buildWrapCards,
+	cleanupCandidates,
+	collectWrapFacts,
+	createNextWorktree,
+	formatWrapSummary,
+	removeMergedWorktreeSafe,
+	type WrapFacts,
+} from "./lib/orchestrator/wrap.ts";
 
 type OrchestratorAction =
 	| "status"
@@ -57,9 +66,13 @@ function isMainTui(ctx: ExtensionContext): boolean {
 	return ctx.mode === "tui" && ctx.agent.kind === "main";
 }
 
-function notify(ctx: ExtensionContext, text: string): void {
+function notify(
+	ctx: ExtensionContext,
+	text: string,
+	level: "info" | "warning" = "info",
+): void {
 	try {
-		ctx.ui.notify(text, "info");
+		ctx.ui.notify(text, level);
 	} catch {
 		// контекст без UI
 	}
@@ -159,6 +172,24 @@ function handoffPrompt(detail: string, sessionFile: string): string {
 		"2. Запиши .omp-handoff-request.json ровно с этим содержимым:",
 		JSON.stringify({ reason: "task-boundary", sessionFile }, null, 2),
 		"3. Заверши ход. Не начинай следующую задачу и не мержи вручную.",
+	].join("\n");
+}
+
+function wrapHandoffPrompt(): string {
+	return [
+		"Завершение сессии через /wrap: обнови HANDOFF.md.",
+		"Сохрани цель, текущее состояние, принятые решения, изменённые файлы, проверки (команды и результат), риски и следующий шаг.",
+		"Укажи ссылки на AUTOPLAN.md и STATE.json, если run был.",
+		"Не начинай новых задач, не меняй код и не делай merge. После записи сообщи, что HANDOFF.md обновлён.",
+	].join("\n");
+}
+
+function wrapReviewPrompt(facts: WrapFacts): string {
+	return [
+		`Ретро-review ветки ${facts.branch} относительно ${facts.baseBranch}.`,
+		`Диапазон diff: ${facts.baseBranch}...${facts.branch}.`,
+		"Спавни reviewer (read-only) и проверь риски, нарушения контракта, тесты на поведение и незакоммиченные изменения.",
+		"Код не меняй; верни findings с файлами и строками.",
 	].join("\n");
 }
 
@@ -315,6 +346,150 @@ export default function orchestrator(pi: ExtensionAPI): void {
 				notify(ctx, `Orchestrator stop: ${result.reason}`);
 			} catch (error) {
 				notify(ctx, `Orchestrator: ${knownMessage(error) ?? String(error)}`);
+			}
+		},
+	});
+
+	pi.registerCommand("wrap", {
+		description:
+			"Завершить работу: handoff, cleanup merged worktree, следующая задача",
+		handler: async (_args, ctx) => {
+			if (!isMainTui(ctx)) return;
+			for (;;) {
+				let facts: WrapFacts;
+				try {
+					facts = await collectWrapFacts(ctx.cwd);
+				} catch (error) {
+					notify(
+						ctx,
+						`Wrap: ${knownMessage(error) ?? String(error)}`,
+						"warning",
+					);
+					return;
+				}
+				const cards = buildWrapCards(facts);
+				const choice = await ctx.ui.select(
+					formatWrapSummary(facts),
+					cards.map((card) => ({
+						label: card.label,
+						description: card.enabled
+							? card.description
+							: `недоступно: ${card.reason ?? "сейчас нельзя"}`,
+					})),
+				);
+				if (choice === undefined) return;
+				const card = cards.find((item) => item.label === choice);
+				if (!card) continue;
+				if (!card.enabled) {
+					notify(ctx, `Wrap: ${card.reason ?? "недоступно"}`, "warning");
+					continue;
+				}
+
+				try {
+					if (card.id === "exit") return;
+					if (card.id === "handoff") {
+						const note = facts.handoff.dirty
+							? " (есть незакоммиченные изменения)"
+							: facts.handoff.stale
+								? " (возможно, устарел)"
+								: "";
+						notify(
+							ctx,
+							`HANDOFF.md: ${facts.handoff.path}${note}. Выполни /handoff-new — новая сессия начнётся с него.`,
+							"info",
+						);
+						return;
+					}
+					if (card.id === "update-handoff") {
+						const ok = await ctx.ui.confirm(
+							"Обновить HANDOFF.md",
+							"Агент обновит HANDOFF.md: цель, состояние, проверки, риски и следующий шаг. Это расход токенов. Продолжить?",
+						);
+						if (!ok) continue;
+						await pi.sendUserMessage(wrapHandoffPrompt());
+						notify(ctx, "Wrap: запрос на обновление HANDOFF.md отправлен.", "info");
+						return;
+					}
+					if (card.id === "review") {
+						const ok = await ctx.ui.confirm(
+							"Ретро-review текущей ветки",
+							`Диапазон ${facts.baseBranch}...${facts.branch}.\nБудет запущен reviewer; это расход токенов. Продолжить?`,
+						);
+						if (!ok) continue;
+						await pi.sendUserMessage(wrapReviewPrompt(facts));
+						notify(ctx, "Wrap: запрос на ретро-review отправлен.", "info");
+						return;
+					}
+					if (card.id === "cleanup") {
+						const candidates = cleanupCandidates(facts);
+						if (candidates.length === 0) {
+							notify(ctx, "Wrap: нет merged+clean worktree для удаления.", "warning");
+							continue;
+						}
+						const targetPath = await ctx.ui.select(
+							`Удалить worktree (${candidates.length} кандидатов)`,
+							candidates.map((item) => ({
+								label: item.path,
+								description: `${item.branch ?? "?"} · ${item.head?.slice(0, 7) ?? "?"} · merged`,
+							})),
+						);
+						if (targetPath === undefined) continue;
+						const target = candidates.find((item) => item.path === targetPath);
+						if (!target) continue;
+						const ok = await ctx.ui.confirm(
+							"Удалить worktree?",
+							[
+								`Путь: ${target.path}`,
+								`Ветка: ${target.branch ?? "?"}`,
+								`HEAD: ${target.head ?? "?"}`,
+								`Ветка merged в ${facts.baseBranch}; worktree чистый.`,
+								"Каталог worktree будет удалён без --force; локальная ветка — только если safe delete разрешит.",
+							].join("\n"),
+						);
+						if (!ok) continue;
+						await ctx.waitForIdle();
+						const result = await removeMergedWorktreeSafe({
+							facts,
+							path: target.path,
+							backend: facts.plan?.config.backend ?? "orca",
+						});
+						notify(
+							ctx,
+							`Wrap: ${result.message}`,
+							result.ok ? "info" : "warning",
+						);
+						continue;
+					}
+					if (card.id === "next-task") {
+						const slug = await ctx.ui.input(
+							"Slug новой задачи",
+							"например wrap-wizard",
+						);
+						if (slug === undefined) continue;
+						const ok = await ctx.ui.confirm(
+							"Создать worktree?",
+							`Ветка feat/${slug.trim()} от ${
+								facts.plan?.config.baseBranch ?? facts.baseBranch
+							}.\nБудет создан worktree; текущая сессия не переключается.`,
+						);
+						if (!ok) continue;
+						await ctx.waitForIdle();
+						const result = await createNextWorktree({ facts, slug });
+						notify(
+							ctx,
+							`Wrap: ${result.message}`,
+							result.ok ? "info" : "warning",
+						);
+						continue;
+					}
+				} catch (error) {
+					notify(
+						ctx,
+						`Wrap: ${knownMessage(error) ?? String(error)}`,
+						"warning",
+					);
+					continue;
+				}
 			}
 		},
 	});

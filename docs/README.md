@@ -4,9 +4,10 @@
 OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
 объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.0` (context guard 0.3 + orchestrator 0.5).
+Версия: `0.5.1` (context guard 0.3 + orchestrator 0.5 + wrap).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
+`0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
 
 ## С чего начать
 
@@ -25,6 +26,7 @@ TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 | [architecture.md](architecture.md) | Компоненты, потоки данных, факты OMP API 19.1.0, что extension может и не может, источники истины, границы проекта |
 | [contracts.md](contracts.md) | Стабильный контракт 0.3: режимы, env, файлы marker/session, команды, инварианты; что нельзя менять |
 | [orchestrator.md](orchestrator.md) | Дизайн 0.5: роли, `AUTOPLAN.md`, `STATE.json`, действия, политика, бюджеты, stop-gates, handoff на границе, этапы A–D |
+| [wrap.md](wrap.md) | `/wrap` 0.5.1: карточки, safety для cleanup, handoff, следующая задача |
 | [operations.md](operations.md) | Runbook: установка, запуск, supervisor, worktree, проверки, типовые сбои |
 | [decisions.md](decisions.md) | Подтверждённые решения D1–D10, отклонённые альтернативы, открытые вопросы |
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |

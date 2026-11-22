@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import {
+	existsSync,
 	mkdtempSync,
 	rmSync,
 	writeFileSync,
@@ -21,7 +22,11 @@ import {
 	readState,
 	writeState,
 } from "../lib/orchestrator/state.ts";
-import { runCommand } from "../lib/orchestrator/worktrees.ts";
+import { branchExists, runCommand } from "../lib/orchestrator/worktrees.ts";
+import {
+	buildWrapCards,
+	collectWrapFacts,
+} from "../lib/orchestrator/wrap.ts";
 
 const ENV_KEYS = ["OMP_WORKFLOW_MODE", "OMP_HANDOFF_AT"];
 const NOW = new Date("2026-11-22T12:00:00.000Z");
@@ -417,5 +422,248 @@ describe("orchestrator extension", () => {
 		await fire(handlers, "agent_end", { willContinue: false }, v.ctx);
 		assert.equal(sent.length, 1);
 		assert.match(sent[0], /action=next/);
+	});
+});
+
+async function addWrapWorktree(base, root, branch, commit = false) {
+	const path = join(root, branch.replace(/[^A-Za-z0-9._-]+/g, "-"));
+	await mustRun("git", [
+		"-C",
+		base,
+		"worktree",
+		"add",
+		"-b",
+		branch,
+		path,
+		"main",
+	]);
+	if (commit) await commitFile(path, "work.txt", "work\n");
+	return path;
+}
+
+async function wrapScenario(options = {}) {
+	const base = await gitRepo();
+	const root = tempDir();
+	const plan = {
+		...BASE_PLAN,
+		backend: "git",
+		baseRepo: base,
+		worktreeRoot: root,
+		...(options.plan ?? {}),
+	};
+	writeFileSync(join(base, "AUTOPLAN.md"), planText(plan, []));
+	await mustRun("git", ["-C", base, "add", "AUTOPLAN.md"]);
+	await mustRun("git", ["-C", base, "commit", "-m", "plan"]);
+	const worktree = await addWrapWorktree(
+		base,
+		root,
+		"feat/current",
+		options.commit ?? false,
+	);
+	if (options.handoff !== false) {
+		writeFileSync(join(worktree, "HANDOFF.md"), "handoff\n");
+	}
+	return {
+		base,
+		root,
+		worktree,
+		plan,
+		sessionFile: join(tempDir(), "session.jsonl"),
+	};
+}
+
+function wrapView(s, options = {}) {
+	const notes = [];
+	const selects = [];
+	const confirms = [];
+	const inputs = [];
+	const ctx = {
+		mode: "tui",
+		cwd: s.worktree,
+		agent: { kind: options.kind ?? "main" },
+		ui: {
+			notify(text, level) {
+				notes.push({ text, level });
+			},
+			async select(title, items) {
+				selects.push({ title, items });
+				return options.select?.shift();
+			},
+			async confirm(title, message) {
+				confirms.push({ title, message });
+				return options.confirm?.shift() ?? false;
+			},
+			async input(title, placeholder) {
+				inputs.push({ title, placeholder });
+				return options.input?.shift();
+			},
+		},
+		sessionManager: {
+			getSessionFile() {
+				return s.sessionFile;
+			},
+			getHeader() {
+				return null;
+			},
+		},
+		getContextUsage() {
+			return { tokens: 1_000, contextWindow: 100_000, percent: 1 };
+		},
+		isIdle() {
+			return true;
+		},
+		hasPendingMessages() {
+			return false;
+		},
+		async waitForIdle() {},
+	};
+	return { ctx, notes, selects, confirms, inputs };
+}
+
+async function wrapLabel(cwd, id) {
+	const facts = await collectWrapFacts(cwd);
+	const card = buildWrapCards(facts).find((item) => item.id === id);
+	assert.ok(card, `wrap card ${id} is registered`);
+	return card.label;
+}
+
+describe("wrap command", () => {
+	it("opens the card menu and cancels without mutations", async () => {
+		const s = await wrapScenario();
+		const { commands } = install();
+		const v = wrapView(s, { select: [undefined] });
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.equal(v.selects.length, 1);
+		assert.match(v.selects[0].title, /Wrap: feat\/current/);
+		assert.ok(
+			v.selects[0].items.some((item) =>
+				/Завершить сессию/.test(item.label),
+			),
+		);
+		assert.equal(v.confirms.length, 0);
+		assert.equal(existsSync(s.worktree), true);
+	});
+
+	it("reports handoff readiness without switching the session", async () => {
+		const s = await wrapScenario();
+		const label = await wrapLabel(s.worktree, "handoff");
+		const { commands } = install();
+		const v = wrapView(s, { select: [label] });
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.ok(v.notes.some((note) => /handoff-new/.test(note.text)));
+		assert.equal(v.confirms.length, 0);
+	});
+
+	it("does not claim handoff readiness when HANDOFF.md is missing", async () => {
+		const s = await wrapScenario({ handoff: false });
+		const handoff = await wrapLabel(s.worktree, "handoff");
+		const exit = await wrapLabel(s.worktree, "exit");
+		const { commands } = install();
+		const v = wrapView(s, { select: [handoff, exit] });
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.ok(
+			v.notes.some((note) => /HANDOFF\.md не найден/.test(note.text)),
+		);
+		assert.equal(v.confirms.length, 0);
+	});
+
+	it("sends the HANDOFF update prompt only after confirmation", async () => {
+		const s = await wrapScenario();
+		const label = await wrapLabel(s.worktree, "update-handoff");
+		const { commands, sent } = install();
+
+		let v = wrapView(s, { select: [label], confirm: [false] });
+		await commands.get("wrap").handler("", v.ctx);
+		assert.equal(sent.length, 0);
+
+		v = wrapView(s, { select: [label], confirm: [true] });
+		await commands.get("wrap").handler("", v.ctx);
+		assert.equal(sent.length, 1);
+		assert.match(sent[0], /HANDOFF\.md/);
+	});
+
+	it("sends the review prompt with the base...branch range", async () => {
+		const s = await wrapScenario({ commit: true });
+		const label = await wrapLabel(s.worktree, "review");
+		const { commands, sent } = install();
+		const v = wrapView(s, { select: [label], confirm: [true] });
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.equal(sent.length, 1);
+		assert.match(sent[0], /main\.\.\.feat\/current/);
+		assert.match(sent[0], /reviewer/);
+	});
+
+	it("removes a merged clean worktree only after confirmation", async () => {
+		const s = await wrapScenario();
+		const merged = await addWrapWorktree(s.base, s.root, "feat/merged");
+		const cleanup = await wrapLabel(s.worktree, "cleanup");
+		const exit = await wrapLabel(s.worktree, "exit");
+		const { commands } = install();
+		const v = wrapView(s, {
+			select: [cleanup, merged, exit],
+			confirm: [true],
+		});
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.equal(v.confirms.length, 1);
+		assert.match(v.confirms[0].message, new RegExp(merged.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+		assert.equal(existsSync(merged), false);
+		assert.equal(await branchExists(s.base, "feat/merged"), false);
+	});
+
+	it("keeps the worktree when cleanup confirmation is denied", async () => {
+		const s = await wrapScenario();
+		const merged = await addWrapWorktree(s.base, s.root, "feat/merged");
+		const cleanup = await wrapLabel(s.worktree, "cleanup");
+		const exit = await wrapLabel(s.worktree, "exit");
+		const { commands } = install();
+		const v = wrapView(s, {
+			select: [cleanup, merged, exit],
+			confirm: [false],
+		});
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.equal(existsSync(merged), true);
+		assert.equal(await branchExists(s.base, "feat/merged"), true);
+	});
+
+	it("creates the next task worktree after input and confirmation", async () => {
+		const s = await wrapScenario();
+		const next = await wrapLabel(s.worktree, "next-task");
+		const exit = await wrapLabel(s.worktree, "exit");
+		const { commands } = install();
+		const v = wrapView(s, {
+			select: [next, exit],
+			input: ["next-task"],
+			confirm: [true],
+		});
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.equal(v.inputs.length, 1);
+		assert.equal(v.confirms.length, 1);
+		assert.equal(existsSync(join(s.root, "feat-next-task")), true);
+		assert.equal(await branchExists(s.base, "feat/next-task"), true);
+	});
+
+	it("does not run in a subagent session", async () => {
+		const s = await wrapScenario();
+		const { commands } = install();
+		const v = wrapView(s, { kind: "sub", select: [undefined] });
+
+		await commands.get("wrap").handler("", v.ctx);
+
+		assert.equal(v.selects.length, 0);
+		assert.equal(v.notes.length, 0);
 	});
 });

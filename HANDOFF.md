@@ -1,13 +1,12 @@
 # Передача: omp-agent-workflow
 
-Дата: 2026-11-22. Репозиторий: `~/projects/omp-agent-workflow`, ветка `main`,
-версия `0.5.0`. Ветка `feat/orchestrator` слита в `main`; worktree
-`~/orca/workspaces/omp-agent-workflow/orchestrator` оставлен до завершения
-сессии и может быть удалён после выхода.
-Проект зарегистрирован в Orca; рабочие worktree —
-`~/orca/workspaces/omp-agent-workflow/<slug>`.
+Дата: 2026-11-22. Основной репозиторий: `~/projects/omp-agent-workflow`,
+`main` на `678000c` (не менялся). Текущая работа — worktree
+`~/orca/workspaces/omp-agent-workflow/wrap-wizard`, ветка
+`feat/wrap-wizard`, версия `0.5.1`.
 
-Дизайн 0.5 реализован 2026-11-22; вики проекта — `docs/README.md`.
+Вики проекта — `docs/README.md`. Дизайн 0.5 — `docs/orchestrator.md`;
+`/wrap` — `docs/wrap.md`.
 
 ## Что готово
 
@@ -18,95 +17,98 @@
 | Automatic handoff | session info, marker, supervisor, continuation prompt |
 | Защита от цикла | cooldown 300 с, stale-marker guard по `sessionFile` |
 | Launcher | `bin/omp-yoda` — supervisor + OMP в режиме `yoda-supervised` |
-| Проверки | `npm test` 70/70, `npm run typecheck`, загрузка extension в OMP |
-| E2E | supervisor → `/handoff-new` в реальном Orca-терминале; новая сессия прочитала `HANDOFF.md` |
-| Live E2E 0.5 | T1/T2 → boundary handoff → new session → T3 → `plan-done`; spend ≈$0.067 |
-| Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` |
-| Вики | `docs/README.md`: архитектура, контракт, orchestrator 0.5, runbook, решения |
-| Orchestrator 0.5 | Этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate`; 70 тестов; Orca backend проверен create/rm |
-| CI | `.github/workflows/ci.yml` (Node 22: `npm ci`, test, typecheck) |
+| Orchestrator 0.5 | этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate` |
+| Wrap 0.5.1 | `/wrap` в `orchestrator.ts` + `lib/orchestrator/wrap.ts`; карточки, safe cleanup, next worktree |
+| Проверки | `npm test` 103/103, `npm run typecheck`, загрузка extension в OMP |
+| Reviewer | WrapSafetyReview: subdir-процессы, Orca ENOENT, handoff cwd, state/lock cwd, planError guard исправлены; тесты добавлены |
+| TUI smoke | `/wrap` открыл карточки в реальном TUI (temp repo), Esc отменил без мутаций |
+| Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` (`wrap.md`) |
+
+## `/wrap` 0.5.1
+
+Human-in-the-loop: выбор карточки ничего не меняет; destructive/spend требует
+`confirm`.
+
+| Карточка | Действие |
+|---|---|
+| Завершить сессию (handoff) | проверить `HANDOFF.md` в `ctx.cwd`, сказать выполнить `/handoff-new` |
+| Обновить `HANDOFF.md` | `sendUserMessage` с промптом агенту (spend) |
+| Удалить завершённые worktree | merged+clean+не текущий, без live-процесса; confirm с path/branch/HEAD |
+| Создать worktree для следующей задачи | `input` slug → `feat/<slug>`; confirm |
+| Ретро-review текущей ветки | `sendUserMessage` reviewer на `base...branch` (spend) |
+| Publish / remote | disabled: решение владельца |
+| Выйти | no-op |
+
+Safety cleanup:
+
+- `git worktree list --porcelain -z`, не пользовательская строка;
+- `merge-base --is-ancestor`, `status --porcelain`, не base/current;
+- повторная проверка под `.omp-orchestrator.lock`, HEAD не изменился;
+- без `--force`, ветка — `git branch -d`; Orca `rm` без force;
+- текущий worktree не удаляется из-под OMP — только инструкция после выхода.
+
+`/wrap` не пишет `STATE.json`/marker, не мержит, не вызывает `newSession`,
+не делает publish.
 
 ## Контракт
 
-- `OMP_WORKFLOW_MODE`: `manual` (ничего), `assisted` (auto 60%, без handoff),
-  `yoda` (handoff 55%, auto fallback 70%), `yoda-supervised` (то же + внешний
-  supervisor).
-- `OMP_HANDOFF_AT` — порог запроса handoff; `off` отключает.
-- `OMP_CONTEXT_AUTO` — порог авто-компакции; `off` отключает.
-- `OMP_HANDOFF_COOLDOWN_SECONDS` — пауза после handoff, default 300.
-- `/handoff` сжимает контекст; `/handoff-new` создаёт новую сессию только при
-  существующем `HANDOFF.md`.
-- Marker: `.omp-handoff-request.json` с `reason` и `sessionFile`; supervisor
-  отбрасывает marker от другой сессии.
-- Session info: `.omp-handoff-session.json` с `terminal`, `sessionFile`,
-  `cwd`, `pid`, `updatedAt`.
-- Supervisor не LLM: только marker, terminal handle и `orca terminal send`.
+- `OMP_WORKFLOW_MODE`: `manual` / `assisted` / `yoda` / `yoda-supervised`.
+- `/handoff` сжимает контекст; `/handoff-new` — новая сессия при наличии
+  `HANDOFF.md`.
+- Marker: `.omp-handoff-request.json` с `reason` и `sessionFile`.
+- Session info: `.omp-handoff-session.json`.
+- `/wrap` — additive 0.5.1; контракт 0.3, `index.ts`, supervisor не менялись.
 
 ## Где что лежит
 
 | Часть | Путь |
 |---|---|
 | Extension | `index.ts` |
+| Orchestrator entry | `orchestrator.ts` (tool, `/orchestrate`, `/wrap`) |
+| Wrap core | `lib/orchestrator/wrap.ts` |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` |
 | Launcher | `bin/omp-yoda` |
-| Тесты | `test/context-guard.test.mjs` |
-| Режимы и оркестрация | `docs/yoda-workflow.md` |
-| Протокол handoff | `docs/handoff-auto-plan.md` |
-| Пользовательский контракт | `README.md` |
-| План | `ROADMAP.md` |
-| Инструкции агенту | `AGENTS.md` |
-| Вики | `docs/README.md` |
-| Архитектура и API | `docs/architecture.md` |
-| Контракт 0.3 | `docs/contracts.md` |
+| Тесты wrap core | `test/wrap.test.mjs` |
+| Тесты extension | `test/orchestrator-extension.test.mjs` |
+| Дизайн wrap | `docs/wrap.md` |
 | Дизайн 0.5 | `docs/orchestrator.md` |
+| Контракт 0.3 | `docs/contracts.md` |
 | Runbook | `docs/operations.md` |
-| Решения | `docs/decisions.md` |
 
 ## Проверки
 
 ```bash
-cd ~/projects/omp-agent-workflow
-npm test                 # 70/70
+cd ~/orca/workspaces/omp-agent-workflow/wrap-wizard
+npm test                 # 97/97
 npm run typecheck
-omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
-  -p 'Reply with exactly: OK'        # exit 0, stderr пуст
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
-  --no-tools --mode json -p 'Reply with exactly: OK'
-bin/omp-orchestrate status --json --dir <control-worktree>
-bin/omp-yoda --version               # supervisor стартует, OMP получает режим
+  --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
 ```
 
-В TUI: `/handoff`, `/handoff-new`; automatic handoff — marker → supervisor →
-новая сессия. Вне Orca supervisor не получит terminal handle.
+TUI smoke: `/wrap` в temp git repo открывает карточки; Esc отменяет; мутаций
+нет. Реальный Orca cleanup (не git backend) ещё не прогонялся.
 
 ## Следующие шаги
 
-Реализация 0.5 завершена; live E2E пройден. Решения D1–D10 —
-`docs/decisions.md`. Текущая сессия загрузила extension до merge: после
-`/handoff-new` новая сессия получит 0.5 и `/orchestrate`. Осталось:
-
-1. Ретро-review 0.5 diff (`f79ad85..4cc9054`) отдельным reviewer; поведение
-   уже покрыто 70 тестами и live E2E.
-2. Решить с владельцем: remote/GitHub, npm, marketplace, английский README;
-   CI на remote не запускался, потому что remote нет.
-3. Удалить worktree `feat/orchestrator` после выхода из сессии.
-4. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
+1. Проверить `/wrap` в реальном Orca worktree: cleanup merged-соседа,
+   confirm/cancel, `branch retained` при безопасном отказе.
+2. После подтверждения владельца — merge `feat/wrap-wizard` в `main`
+   ff-only, затем удалить worktree и ветку.
+3. Обновить `HANDOFF.md` после merge; `main` сейчас `678000c`.
 
 ## Риски
 
-- `ctx.newSession()` доступен только в command context; event-handler не
-  может начать новую сессию.
-- `getContextUsage()` может вернуть `null` сразу после компакции — проверки
-  пропускаются до следующего хода.
-- `task` subagent не имеет `cwd`/worktree; изоляция держится на абсолютных
-  путях и проверках (см. `docs/architecture.md`).
-- Spend считается по session JSONL; формат зависит от версии OMP.
-- Orca worktree backend проверен реальным create/rm; live E2E 0.5 пройден
-  на temp git repo с моделью и supervisor.
-- Retry после verify failure удаляет ветку с коммитами; для сохранения
-  используй `stop` до повторного `start`.
+- Cleanup зависит от состояния между сбором фактов и confirm; защита —
+  lock + повторная проверка HEAD/status/merged, но внешний `git`/Orca может
+  изменить состояние сразу после проверки.
+- `/proc`-проверка live-процессов Linux-only и best-effort; при недоступном
+  `/proc` она не блокирует.
+- Orca CLI может сохранить ветку, которую не может доказать merged; это
+  safe-результат, не ошибка.
+- Текущий worktree нельзя удалить из процесса: только ручная команда после
+  выхода.
+- `HANDOFF.md` freshness — эвристика по commit identity, не proof.
+- `ctx.ui.select/confirm` блокируют ход; destructive confirm без timeout.
 - Supervisor привязан к Orca terminal handle; вне Orca automatic handoff
   недоступен.
-- Пороги — эвристика; стоимость компакции не измерена.
-- Remote отсутствует: `main` пока локальный, push/publish — только по
-  решению владельца.
+- Remote отсутствует: push/publish — только по решению владельца.

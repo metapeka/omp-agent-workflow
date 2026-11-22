@@ -1,7 +1,8 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-22. Версия: `0.5.0`. Статус: context guard, handoff, режимы и
-orchestrator/subagent-петля готовы; release/remote — по решению владельца.
+Дата: 2026-11-22. Версия: `0.5.1`. Статус: context guard, handoff, режимы,
+orchestrator/subagent-петля и `/wrap` готовы; release/remote — по решению
+владельца.
 
 ## Принципы
 
@@ -68,6 +69,16 @@ orchestrator/subagent-петля готовы; release/remote — по реше�
 - Handoff на границе задачи; аварийная компакция на 70% (0.3).
 - Acceptance: N задач подряд с тестами/typecheck; handoff не теряет state;
   stop-gate останавливает работу с причиной.
+
+## Этап 0.5.1 — wrap wizard (готово)
+
+- [x] `/wrap` в `orchestrator.ts` + `lib/orchestrator/wrap.ts`.
+- [x] Карточки: handoff, update `HANDOFF.md`, cleanup merged worktree,
+      следующий worktree, ретро-review; publish отключён.
+- [x] Safety: только merged+clean+не текущий worktree, без live-процесса,
+      повторная проверка под lock, без `--force`/`-D`.
+- [x] Тесты core/extension; docs `docs/wrap.md`.
+- Текущий worktree не удаляется из процесса: инструкция после выхода.
 
 ## Этап 0.6 — экономика handoff (P2)
 

@@ -1,9 +1,9 @@
 # Orchestrator и subagent-петля (0.5)
 
-Статус: `[готово]`, версия `0.5.0`. Этапы A–D реализованы:
+Статус: `[готово]`, версия `0.5.1`. Этапы A–D реализованы:
 план/state/бюджеты/политика, cost, worktree backend, actions, CLI, extension
 (tool/commands/hooks), acceptance-тест на 3 задачи. Live TUI E2E пройден
-2026-11-22 (T1/T2 → handoff → T3 → plan-done).
+2026-11-22 (T1/T2 → handoff → T3 → plan-done). 0.5.1 добавляет `/wrap`.
 
 Цель: main-агент проходит `AUTOPLAN.md` до конца или stop-gate, детерминированно
 выбирает задачи, создаёт worktree, проверяет, мержит и делает handoff на
@@ -316,6 +316,23 @@ Spend:
 - Конфликт → stop `merge-conflict`, worktree сохраняется.
 - После merge — удалить worktree и ветку, записать commit в `completed`.
 - Параллельные задачи в 0.5 запрещены: один `current`.
+
+## Wrap 0.5.1
+
+`/wrap` — отдельная human-in-the-loop команда в `orchestrator.ts`; ядро —
+`lib/orchestrator/wrap.ts`. Она не часть петли и не меняет `STATE.json`.
+
+- Карточки: handoff-инструкция, обновление `HANDOFF.md`, cleanup merged
+  worktree, следующий worktree, ретро-review, publish-disabled, exit.
+- Cleanup использует отдельную safe-операцию: merged через
+  `merge-base --is-ancestor`, чистый worktree, не текущий/base, без live
+  процесса, повторная проверка под lock; без `--force` и `-D`.
+- Текущий worktree не удаляется из процесса: только инструкция после выхода.
+- Handoff-карточка не вызывает `newSession`; после проверки `HANDOFF.md`
+  пользователь выполняет `/handoff-new`.
+- Publish/push не автоматизируются.
+
+Детали — [wrap.md](wrap.md).
 
 ## Extension-интеграция
 

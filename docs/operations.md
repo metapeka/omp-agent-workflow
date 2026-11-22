@@ -139,12 +139,32 @@ bin/omp-orchestrate resume --json
 3. `bin/omp-orchestrate resume` или `/orchestrate`.
 4. Не удалять `STATE.json` вручную: потеря state = `state-missing`.
 
+## Wrap: завершение работы
+
+```text
+/wrap
+```
+
+Карточки: handoff, обновить `HANDOFF.md`, cleanup merged worktree, следующий
+worktree, ретро-review. Destructive/spend действия требуют confirm.
+
+- Cleanup: только merged+clean+не текущий worktree, без live-процесса и без
+  `--force`; ветка удаляется `git branch -d`. Если Orca сохранила ветку —
+  это safe-результат.
+- Текущий worktree не удаляется из-под OMP: выйти и удалить вручную.
+- Handoff: `/wrap` проверяет `HANDOFF.md` в `ctx.cwd`, но не переключает
+  сессию; после карточки выполнить `/handoff-new`.
+- Publish/push не автоматизируются.
+
+Если cleanup недоступен, причина в описании карточки. Полный safety —
+[wrap.md](wrap.md).
+
 ## Проверки поведения
 
 | Что | Как |
 |---|---|
 | Загрузка extension | `omp --no-extensions -e ./index.ts ... -p '...'`; для 0.5 — `-e ./orchestrator.ts` |
-| Команды TUI | `/handoff`, `/handoff-new`; 0.5 — `/orchestrate`, `/orchestrate-stop` |
+| Команды TUI | `/handoff`, `/handoff-new`; 0.5 — `/orchestrate`, `/orchestrate-stop`; 0.5.1 — `/wrap` |
 | Supervisor e2e | Marker → `/handoff-new` → новая сессия ответила `OK` |
 | Worktree | `git -C <path> status`, `git -C <path> log -1` |
 | Merge | `git -C <base> log --oneline -3`; ff-only, без merge-коммита |

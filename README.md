@@ -144,6 +144,24 @@ bin/omp-orchestrate finish T1 --commit SHA --review ok --dir /path/to/control-wo
 явного `/orchestrate`. В `manual`/`assisted` следующую задачу запускает
 человек. Полный контракт — `docs/orchestrator.md`.
 
+## Wrap: завершение работы
+
+`/wrap` — guided wizard для конца задачи/сессии. Он показывает карточки:
+handoff, обновление `HANDOFF.md`, cleanup завершённых worktree, worktree для
+следующей задачи, ретро-review.
+
+- Ничего не меняется по выбору карточки: destructive/spend действия требуют
+  `confirm` с точным path/branch/HEAD.
+- Cleanup — только merged в base, чистый, не текущий worktree и без live
+  процесса; удаление без `--force`, ветка — `git branch -d`.
+- Текущий worktree не удаляется из-под работающего OMP: выйти и удалить
+  вручную.
+- Handoff-карточка не переключает сессию: после проверки `HANDOFF.md`
+  выполняется `/handoff-new`.
+- Publish/push не автоматизируются.
+
+Детали и safety: `docs/wrap.md`.
+
 Yoda-режимы и оркестрация: `docs/yoda-workflow.md`.
 План automatic handoff: `docs/handoff-auto-plan.md`.
 Состояние проекта: `HANDOFF.md`; план: `ROADMAP.md`; инструкции агенту:
