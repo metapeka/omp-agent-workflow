@@ -21,6 +21,7 @@ const ENV_KEYS = [
 	"OMP_CONTEXT_AUTO",
 	"OMP_HANDOFF_AT",
 	"OMP_HANDOFF_COOLDOWN_SECONDS",
+	"OMP_WORKFLOW_MODE",
 ];
 
 function install(env = {}) {
@@ -182,6 +183,32 @@ describe("context warnings", () => {
 			assert.equal(v.notes.length, 0);
 			assert.equal(v.compactions.length, 0);
 		}
+	});
+});
+
+describe("workflow modes", () => {
+	it("yoda enables handoff at 55 without auto-compaction", async () => {
+		const { handlers, sent } = install({ OMP_WORKFLOW_MODE: "yoda" });
+		const v = view(56);
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 1);
+		assert.equal(v.compactions.length, 0);
+	});
+
+	it("manual disables auto-compaction and handoff", async () => {
+		const { handlers, sent } = install({ OMP_WORKFLOW_MODE: "manual" });
+		const v = view(61);
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 0);
+		assert.equal(v.compactions.length, 0);
+	});
+
+	it("assisted keeps auto-compaction and no handoff", async () => {
+		const { handlers, sent } = install({ OMP_WORKFLOW_MODE: "assisted" });
+		const v = view(61);
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 0);
+		assert.equal(v.compactions.length, 1);
 	});
 });
 

@@ -25,7 +25,18 @@ const HANDOFF_INSTRUCTIONS =
 const DEFAULT_WARN = 35;
 const DEFAULT_SUGGEST = 50;
 const DEFAULT_AUTO = 60;
+const DEFAULT_HANDOFF = 55;
 const DEFAULT_HANDOFF_COOLDOWN = 300;
+
+type WorkflowMode = "manual" | "assisted" | "yoda" | "yoda-supervised";
+
+/** Режим workflow: manual/assisted/yoda/yoda-supervised. */
+function workflowModeFromEnv(): WorkflowMode {
+	const raw = process.env.OMP_WORKFLOW_MODE?.trim();
+	return raw === "manual" || raw === "yoda" || raw === "yoda-supervised"
+		? raw
+		: "assisted";
+}
 const SESSION_INFO = ".omp-handoff-session.json";
 const HANDOFF_NEW_PROMPT =
 	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
@@ -39,20 +50,21 @@ function percentFromEnv(name: string, fallback: number): number {
 }
 
 /** Авто-компакция: число или `off` (null). */
-function autoPercentFromEnv(): number | null {
+function autoPercentFromEnv(fallback: number | null): number | null {
 	const raw = process.env.OMP_CONTEXT_AUTO?.trim();
-	if (!raw) return DEFAULT_AUTO;
+	if (!raw) return fallback;
 	if (raw.toLowerCase() === "off") return null;
 	const value = Number(raw);
-	return Number.isFinite(value) && value > 0 && value <= 100 ? value : DEFAULT_AUTO;
+	return Number.isFinite(value) && value > 0 && value <= 100 ? value : fallback;
 }
 
 /** Порог автоматического запроса handoff: число или `off` (null). */
-function handoffPercentFromEnv(): number | null {
+function handoffPercentFromEnv(fallback: number | null): number | null {
 	const raw = process.env.OMP_HANDOFF_AT?.trim();
-	if (!raw || raw.toLowerCase() === "off") return null;
+	if (!raw) return fallback;
+	if (raw.toLowerCase() === "off") return null;
 	const value = Number(raw);
-	return Number.isFinite(value) && value > 0 && value <= 100 ? value : null;
+	return Number.isFinite(value) && value > 0 && value <= 100 ? value : fallback;
 }
 
 /** Пауза между handoff, чтобы новая сессия не ушла в цикл. */
@@ -114,10 +126,15 @@ function notify(
 }
 
 export default function contextGuard(pi: ExtensionAPI): void {
+	const mode = workflowModeFromEnv();
+	const defaultAuto =
+		mode === "manual" ? null : mode === "assisted" ? DEFAULT_AUTO : 70;
+	const defaultHandoff =
+		mode === "yoda" || mode === "yoda-supervised" ? DEFAULT_HANDOFF : null;
 	const warnAt = percentFromEnv("OMP_CONTEXT_WARN", DEFAULT_WARN);
 	const suggestAt = percentFromEnv("OMP_CONTEXT_SUGGEST", DEFAULT_SUGGEST);
-	const autoAt = autoPercentFromEnv();
-	const handoffAt = handoffPercentFromEnv();
+	const autoAt = autoPercentFromEnv(defaultAuto);
+	const handoffAt = handoffPercentFromEnv(defaultHandoff);
 	const handoffCooldownMs = handoffCooldownMsFromEnv();
 
 	let warned = false;

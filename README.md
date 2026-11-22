@@ -6,6 +6,19 @@ OMP-расширение для работы агента: предупрежд�
 Не заменяет native `context_pct` и не добавляет свой сегмент статус-строки.
 Задача — предупредить заранее и дать детерминированное действие.
 
+## Режимы
+
+| `OMP_WORKFLOW_MODE` | Авто-компакция | Handoff |
+|---|---|---|
+| `manual` | выкл | выкл |
+| `assisted` (default) | 60% | выкл |
+| `yoda` | 70% fallback | 55% |
+| `yoda-supervised` | 70% fallback | 55% + supervisor |
+
+Env-переменные `OMP_CONTEXT_AUTO` и `OMP_HANDOFF_AT` переопределяют режим.
+`yoda` без supervisor умеет только компакцию; `yoda-supervised` делает
+clean-window handoff.
+
 ## Пороги
 
 | Контекст | Действие |

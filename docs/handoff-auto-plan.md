@@ -17,14 +17,14 @@
       `orca terminal send --text /handoff-new --enter`.
 - [x] auto prompt — на `OMP_HANDOFF_AT` попросить агента обновить
       `HANDOFF.md` и записать marker; не делать новый session из event-handler.
-- [ ] Yoda mode config — `manual`/`assisted`/`yoda`/`yoda-supervised`.
-- [x] tests — 15 тестов: command, marker, supervisor dry-run, no duplicate.
+- [x] Yoda mode config — `manual`/`assisted`/`yoda`/`yoda-supervised`.
+- [x] tests — 19 тестов: command, marker, supervisor dry-run, no duplicate.
 - [x] docs — README, AGENTS, остановки и бюджеты.
 
 E2E пройден в реальном Orca-терминале: marker → supervisor → `/handoff-new`
 → новая сессия прочитала `HANDOFF.md` и ответила `OK`.
 
-Осталось: Yoda mode config (`manual`/`assisted`/`yoda`/`yoda-supervised`).
+Осталось: оркестратор и subagent-петля Yoda; режимы и handoff готовы.
 
 ## Протокол
 
