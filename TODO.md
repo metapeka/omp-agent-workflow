@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-23. Версия: `0.5.2`.
+Дата: 2026-11-23. Версия: `0.5.3`.
 
 ## Сейчас
 
@@ -40,6 +40,9 @@
       следующий worktree, review; commit `de03df9`.
 - [x] 0.5.2 — supervisor singleton: lock-dir `.omp-handoff-supervisor.lock/`,
       stale reclaim по мёртвому pid, release на exit/сигналах; тесты и runbook.
+- [x] 0.5.3 — additive Orca: `terminal list` в `/wrap` cleanup,
+      `terminal show` preflight в supervisor, `status` warning в launcher,
+      `ORCA_CLI_COMMAND`; D11 (OMP first) и anti-goals.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

@@ -25,15 +25,16 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.2`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.3`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
-  (`docs/wrap.md`); 0.5.2 — supervisor singleton на каталог.
+  (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
+  Orca-интеграция (terminal list/show, status warning) с fallback.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 113 тестов (32 context guard + 38 orchestrator + 19 extension +
-  24 wrap); `npm run typecheck`; CI в `.github/workflows/ci.yml`.
+- `npm test` — 117 тестов (33 context guard + 38 orchestrator + 19 extension +
+  27 wrap); `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
 
@@ -43,6 +44,9 @@ hit rate, этот проект управляет контекстом и см�
   разрешения владельца.
 - Добавлять runtime-зависимости, `any`, фейковые TTL/пороги или «магическую»
   смену сессии из event-handler.
+- Делать Orca обязательной: OMP работает без неё, Orca-вызовы best-effort с
+  fallback. Нельзя заменять marker/session 0.3 на Orca agent sessions или
+  Orca Runs/workers без нового решения.
 - Менять контракт `.omp-handoff-session.json` /
   `.omp-handoff-request.json` без решения владельца.
 - Коммитить секреты, session-файлы, логи, `node_modules`, временные файлы.

@@ -41,7 +41,10 @@ Launcher:
 - ставит `OMP_WORKFLOW_MODE=yoda-supervised`, `OMP_HANDOFF_AT=55`,
   `OMP_CONTEXT_AUTO=off`, если не переопределено;
 - снимает supervisor при выходе OMP;
-- лог: `${TMPDIR:-/tmp}/omp-yoda-supervisor.log`.
+- лог: `${TMPDIR:-/tmp}/omp-yoda-supervisor.log`;
+- если `orca` доступен, но `orca status --json` не ready — предупреждение
+  «automatic handoff не сработает»; OMP всё равно запускается;
+- путь к Orca CLI — `ORCA_CLI_COMMAND` (default `orca`).
 
 Проверить, что supervisor жив:
 
@@ -62,6 +65,11 @@ Supervisor — один на каталог:
   `--lock-grace` секунд (default 10);
 - две OMP-сессии в одном каталоге делят marker и `HANDOFF.md` — это
   конфигурационная ошибка, а не повод запускать два supervisor'а.
+
+Перед `orca terminal send` supervisor проверяет handle через
+`orca terminal show --terminal <handle> --json`. Если terminal больше не
+жив, handoff не отправляется, marker сохраняется, supervisor завершается
+с кодом 1 — обнови `.omp-handoff-session.json` или перезапусти OMP из Orca.
 
 ## Worktree
 
@@ -162,8 +170,10 @@ bin/omp-orchestrate resume --json
 Карточки: handoff, обновить `HANDOFF.md`, cleanup merged worktree, следующий
 worktree, ретро-review. Destructive/spend действия требуют confirm.
 
-- Cleanup: только merged+clean+не текущий worktree, без live-процесса и без
-  `--force`; ветка удаляется `git branch -d`. Orca-created worktree держит
+- Cleanup: только merged+clean+не текущий worktree, без live-процесса,
+  без live-терминала Orca (`orca terminal list --json`, `connected` и не
+  `orphaned`) и без `--force`; ветка удаляется `git branch -d`. `/proc` —
+  fallback, если Orca недоступен. Orca-created worktree держит
   shell-терминал — закрой его, иначе cleanup заблокирован.
 - Если Orca сохранила ветку — это safe-результат.
 - Текущий worktree не удаляется из-под OMP: выйти и удалить вручную.

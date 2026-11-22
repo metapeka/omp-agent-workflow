@@ -1,7 +1,7 @@
 # Архитектура и OMP API
 
-Статус: `[готово]` для 0.3, 0.5, 0.5.1 и 0.5.2. OMP: `19.1.0`. Orca CLI:
-локальная установка проекта.
+Статус: `[готово]` для 0.3, 0.5, 0.5.1, 0.5.2 и 0.5.3. OMP: `19.1.0`.
+Orca CLI: локальная установка проекта.
 
 ## Компоненты
 
@@ -29,10 +29,21 @@ flowchart LR
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Wrap `[готово]` | `lib/orchestrator/wrap.ts` + `/wrap` в `orchestrator.ts` | 0.5.1: facts, cards, safe cleanup, next worktree |
-| Тесты 0.3 | `test/context-guard.test.mjs` | 32 теста guard/handoff/supervisor/lock/session info |
+| Тесты 0.3 | `test/context-guard.test.mjs` | 33 теста guard/handoff/supervisor/lock/preflight/session info |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
-| Тесты wrap core | `test/wrap.test.mjs` | 24 теста facts/cards/guards/cleanup/next worktree |
+| Тесты wrap core | `test/wrap.test.mjs` | 27 тестов facts/cards/guards/cleanup/next worktree/orca terminals |
+
+### Orca-интеграция `[готово, additive]` (D11)
+
+- supervisor: `orca terminal show --terminal <handle> --json` перед send;
+  мёртвый handle — ошибка, marker сохранён;
+- `/wrap`: `orca terminal list --json` даёт live-терминалы worktree
+  (`connected`, не `orphaned`); `/proc` остаётся fallback;
+- launcher: `orca status --json` warning, если runtime недоступен; OMP
+  стартует в любом случае;
+- путь к CLI: `ORCA_CLI_COMMAND` (default `orca`);
+- без Orca: git backend, `/proc`, ручной `/handoff-new`.
 
 ## Что extension может и не может (OMP 19.1.0)
 

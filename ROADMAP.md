@@ -1,11 +1,14 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.2`. Статус: context guard, handoff, режимы,
-orchestrator/subagent-петля и `/wrap` готовы; supervisor singleton; release/
-remote — по решению владельца. Оперативный список — `TODO.md`.
+Дата: 2026-11-23. Версия: `0.5.3`. Статус: context guard, handoff, режимы,
+orchestrator/subagent-петля, `/wrap`, supervisor singleton и additive
+Orca-интеграция готовы; release/remote — по решению владельца. Оперативный
+список — `TODO.md`.
 
 ## Принципы
 
+- OMP first: Orca — опциональная среда (`terminal`, `worktree`, `status`),
+  не зависимость. Любой Orca-вызов best-effort с fallback (D11).
 - Детерминированная политика вместо «модель почувствовала»: пороги, границы
   задач, бюджеты и stop-gates.
 - Один агент — один worktree; main остаётся известным хорошим состоянием.
@@ -88,6 +91,16 @@ remote — по решению владельца. Оперативный спи
 - [x] Stale lock по мёртвому pid перехватывается; lock снимается на
       exit/SIGINT/SIGTERM/SIGHUP.
 - [x] Тесты: live lock, stale reclaim, normal exit; runbook и артефакты.
+
+## Этап 0.5.3 — additive Orca-интеграция (готово)
+
+- [x] `/wrap` cleanup: live-терминалы Orca через `orca terminal list --json`
+      (connected, не orphaned) вместе с `/proc` fallback.
+- [x] Supervisor preflight: `orca terminal show --terminal <handle> --json`;
+      мёртвый handle → ошибка, marker сохранён.
+- [x] Launcher: warning, если Orca runtime недоступен; OMP всё равно стартует.
+- [x] `ORCA_CLI_COMMAND` учитывается в `/wrap` и launcher.
+- [x] D11: OMP first, Orca additive; anti-goals зафиксированы.
 
 ## Этап 0.6 — экономика handoff (P2)
 

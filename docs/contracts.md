@@ -115,7 +115,10 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 2. Проверить terminal handle, `sessionFile`, cooldown, свежесть marker.
    Mismatched `sessionFile` удаляется только после `--stale-grace` секунд
    (default 5), чтобы не удалить валидный marker из-за гонки с session info.
-3. Отправить `/handoff-new` через `orca terminal send --terminal <handle>`
+3. Проверить terminal handle через
+   `orca terminal show --terminal <handle> --json`; мёртвый handle — ошибка,
+   marker сохраняется. Отправить `/handoff-new` через
+   `orca terminal send --terminal <handle>`
    (`--wait-submit 10`, до `--max-attempts` попыток).
 4. `/handoff-new` сам ждёт idle и открывает новую сессию; supervisor ждёт
    новую `sessionFile` до 15 с.

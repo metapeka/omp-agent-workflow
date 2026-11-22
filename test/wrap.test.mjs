@@ -25,14 +25,22 @@ import {
 import {
 	buildWrapCards,
 	cleanupCandidates,
-	collectWrapFacts,
+	collectWrapFacts as collectWrapFactsImpl,
+	countLiveTerminals,
 	createNextWorktree,
 	formatWrapSummary,
 	guardCleanup,
+	parseOrcaTerminals,
 	parseWorktreeList,
 	processesInPath,
-	removeMergedWorktreeSafe,
+	removeMergedWorktreeSafe as removeMergedWorktreeSafeImpl,
 } from "../lib/orchestrator/wrap.ts";
+
+/** Тесты не зависят от живого Orca: терминалы задаются явно. */
+const collectWrapFacts = (cwd, options = {}) =>
+	collectWrapFactsImpl(cwd, { orcaTerminals: [], ...options });
+const removeMergedWorktreeSafe = (options) =>
+	removeMergedWorktreeSafeImpl({ orcaTerminals: [], ...options });
 
 const NOW = new Date("2026-11-22T12:00:00.000Z");
 
@@ -259,6 +267,28 @@ describe("wrap facts", () => {
 		assert.deepEqual(processesInPath(target, procRoot).sort(), [999998, 999999]);
 	});
 
+	it("parses Orca terminals and counts only live ones by worktree", () => {
+		const output = JSON.stringify({
+			ok: true,
+			result: {
+				terminals: [
+					{ handle: "t1", worktreePath: "/w/a", connected: true, orphaned: false },
+					{ handle: "t2", worktreePath: "/w/a", connected: false },
+					{ handle: "t3", worktreePath: "/w/a", connected: true, orphaned: true },
+					{ handle: "t4", worktreePath: "/w/b", connected: true },
+					{ handle: "t5" },
+				],
+			},
+		});
+		const terminals = parseOrcaTerminals(output);
+		assert.equal(terminals.length, 5);
+		assert.equal(countLiveTerminals(terminals, "/w/a"), 1);
+		assert.equal(countLiveTerminals(terminals, "/w/b"), 1);
+		assert.equal(countLiveTerminals(terminals, "/w/c"), 0);
+		assert.deepEqual(parseOrcaTerminals("not json"), []);
+		assert.deepEqual(parseOrcaTerminals(JSON.stringify({ result: {} })), []);
+	});
+
 	it("parses detached, locked and prunable worktree records", () => {
 		const output = [
 			"worktree /a",
@@ -396,6 +426,26 @@ describe("wrap cleanup guards", () => {
 		const facts = await collectWrapFacts(control);
 		assert.equal(facts.planDir, base);
 		assert.equal(guardCleanup(facts, target).ok, true);
+	});
+
+	it("refuses a worktree with a live Orca terminal", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		writePlan(base, root);
+		const merged = await addWorktree(base, root, "feat/merged");
+		const facts = await collectWrapFacts(base, {
+			orcaTerminals: [
+				{
+					handle: "term_live",
+					worktreePath: merged,
+					connected: true,
+					orphaned: false,
+				},
+			],
+		});
+
+		assert.match(guardCleanup(facts, merged).reason, /терминал Orca/);
+		assert.equal(cleanupCandidates(facts).length, 0);
 	});
 });
 
@@ -547,6 +597,31 @@ describe("wrap cleanup execution", () => {
 		});
 		assert.equal(result.ok, false);
 		assert.match(result.message, /работает процесс/);
+		assert.equal(existsSync(merged), true);
+	});
+
+	it("refuses when an Orca terminal is still attached", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		writePlan(base, root);
+		const merged = await addWorktree(base, root, "feat/merged");
+		const facts = await collectWrapFacts(base);
+
+		const result = await removeMergedWorktreeSafe({
+			facts,
+			path: merged,
+			backend: "git",
+			orcaTerminals: [
+				{
+					handle: "term_live",
+					worktreePath: merged,
+					connected: true,
+					orphaned: false,
+				},
+			],
+		});
+		assert.equal(result.ok, false);
+		assert.match(result.message, /терминал Orca/);
 		assert.equal(existsSync(merged), true);
 	});
 

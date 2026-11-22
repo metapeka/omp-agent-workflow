@@ -185,6 +185,22 @@ async function main() {
 
 		const previousSessionFile =
 			typeof session.sessionFile === "string" ? session.sessionFile : null;
+		const shown = runOrca([
+			"terminal",
+			"show",
+			"--terminal",
+			terminal,
+			"--json",
+		]);
+		if (shown.status !== 0) {
+			attempts += 1;
+			fail(
+				`terminal ${terminal} is not live (${attempts}/${maxAttempts}): ${(shown.stderr || shown.stdout || "").trim()}`,
+			);
+			if (values.once || attempts >= maxAttempts) return;
+			await sleep(intervalMs);
+			continue;
+		}
 		const sent = runOrca([
 			"terminal",
 			"send",

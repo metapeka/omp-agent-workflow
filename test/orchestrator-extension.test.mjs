@@ -31,6 +31,9 @@ import {
 const ENV_KEYS = ["OMP_WORKFLOW_MODE", "OMP_HANDOFF_AT"];
 const NOW = new Date("2026-11-22T12:00:00.000Z");
 
+// Тесты не зависят от живого Orca: terminal list → пустой, cleanup → fallback.
+process.env.ORCA_CLI_COMMAND = "false";
+
 const BASE_PLAN = {
 	version: 1,
 	goal: "orchestrator extension tests",

@@ -51,6 +51,7 @@ export interface WorktreeRecord {
 	merged: boolean;
 	dirty: boolean;
 	liveProcesses: number;
+	liveTerminals: number;
 }
 
 export interface HandoffFacts {
@@ -195,6 +196,7 @@ export function parseWorktreeList(output: string): WorktreeRecord[] {
 				merged: false,
 				dirty: false,
 				liveProcesses: 0,
+				liveTerminals: 0,
 			};
 			continue;
 		}
@@ -242,6 +244,90 @@ export function processesInPath(target: string, procRoot = "/proc"): number[] {
 		}
 	}
 	return pids;
+}
+
+export interface OrcaTerminalRecord {
+	handle: string;
+	worktreePath: string | null;
+	connected: boolean;
+	orphaned: boolean;
+}
+
+function orcaTerminalListFromPayload(payload: unknown): unknown[] {
+	if (typeof payload !== "object" || payload === null) return [];
+	if ("result" in payload) {
+		const result = payload.result;
+		if (
+			typeof result === "object" &&
+			result !== null &&
+			"terminals" in result &&
+			Array.isArray(result.terminals)
+		) {
+			return result.terminals;
+		}
+	}
+	if ("terminals" in payload && Array.isArray(payload.terminals)) {
+		return payload.terminals;
+	}
+	return [];
+}
+
+/** Разобрать `orca terminal list --json`; мусор → пустой список. */
+export function parseOrcaTerminals(stdout: string): OrcaTerminalRecord[] {
+	let payload: unknown;
+	try {
+		payload = JSON.parse(stdout);
+	} catch {
+		return [];
+	}
+	const records: OrcaTerminalRecord[] = [];
+	for (const raw of orcaTerminalListFromPayload(payload)) {
+		if (typeof raw !== "object" || raw === null) continue;
+		records.push({
+			handle: "handle" in raw && typeof raw.handle === "string" ? raw.handle : "",
+			worktreePath:
+				"worktreePath" in raw && typeof raw.worktreePath === "string"
+					? raw.worktreePath
+					: null,
+			connected: !("connected" in raw) || raw.connected !== false,
+			orphaned: "orphaned" in raw && raw.orphaned === true,
+		});
+	}
+	return records;
+}
+
+/** Сколько живых (connected, не orphaned) терминалов Orca в каталоге. */
+export function countLiveTerminals(
+	terminals: readonly OrcaTerminalRecord[],
+	target: string,
+): number {
+	return terminals.filter(
+		(terminal) =>
+			terminal.connected &&
+			!terminal.orphaned &&
+			terminal.worktreePath !== null &&
+			samePath(terminal.worktreePath, target),
+	).length;
+}
+
+export function orcaCli(): string {
+	return process.env.ORCA_CLI_COMMAND || "orca";
+}
+
+/** `orca terminal list --json`; Orca недоступен → пустой список. */
+async function listOrcaTerminals(
+	run: CommandRunner,
+): Promise<OrcaTerminalRecord[]> {
+	try {
+		const result = await run(
+			orcaCli(),
+			["terminal", "list", "--json"],
+			{ timeoutMs: 15_000 },
+		);
+		return result.code === 0 ? parseOrcaTerminals(result.stdout) : [];
+	} catch {
+		return [];
+	}
 }
 
 async function inferBaseRepo(
@@ -394,6 +480,7 @@ async function enrichWorktree(
 	baseBranch: string,
 	baseExists: boolean,
 	procRoot: string | undefined,
+	terminals: readonly OrcaTerminalRecord[],
 ): Promise<void> {
 	if (!record.branch || record.bare || record.prunable) return;
 
@@ -410,12 +497,17 @@ async function enrichWorktree(
 	const status = await git(run, record.path, ["status", "--porcelain"]);
 	record.dirty = status.code !== 0 || status.stdout.trim().length > 0;
 	record.liveProcesses = processesInPath(record.path, procRoot).length;
+	record.liveTerminals = countLiveTerminals(terminals, record.path);
 }
 
 /** Собрать факты для `/wrap`; ошибки git не бросаются, а попадают в поля. */
 export async function collectWrapFacts(
 	cwd: string,
-	options: { run?: CommandRunner; procRoot?: string } = {},
+	options: {
+		run?: CommandRunner;
+		procRoot?: string;
+		orcaTerminals?: readonly OrcaTerminalRecord[];
+	} = {},
 ): Promise<WrapFacts> {
 	const run = options.run ?? runCommand;
 	const absolute = resolve(cwd);
@@ -527,6 +619,8 @@ export async function collectWrapFacts(
 	]);
 	if (list.code === 0) {
 		facts.worktrees = parseWorktreeList(list.stdout);
+		const terminals =
+			options.orcaTerminals ?? (await listOrcaTerminals(run));
 		for (const record of facts.worktrees) {
 			await enrichWorktree(
 				run,
@@ -535,6 +629,7 @@ export async function collectWrapFacts(
 				facts.baseBranch,
 				facts.baseExists,
 				options.procRoot,
+				terminals,
 			);
 		}
 	}
@@ -637,9 +732,9 @@ export function guardCleanup(facts: WrapFacts, target: string): CleanupGuard {
 		return no(`${record.branch} не merged в ${facts.baseBranch}`);
 	}
 	if (record.dirty) return no(`${record.path}: есть незакоммиченные изменения`);
-	if (record.liveProcesses > 0) {
+	if (record.liveProcesses > 0 || record.liveTerminals > 0) {
 		return no(
-			`${record.path}: в worktree работает процесс (${record.liveProcesses}); закрой терминал/процесс и повтори`,
+			`${record.path}: в worktree работает процесс или терминал Orca (процессов: ${record.liveProcesses}, терминалов: ${record.liveTerminals}); закрой его и повтори`,
 		);
 	}
 	const root = facts.plan?.config.worktreeRoot;
@@ -756,6 +851,7 @@ async function recheckCleanup(
 	facts: WrapFacts,
 	guard: CleanupGuard,
 	procRoot: string | undefined,
+	orcaTerminals: readonly OrcaTerminalRecord[] | undefined,
 ): Promise<string | null> {
 	if (!guard.branch) return "ветка не определена";
 	if (!facts.baseRepo) return "base repo не найден";
@@ -802,9 +898,12 @@ async function recheckCleanup(
 	if (ancestor.code !== 0) {
 		return `${guard.branch} больше не merged в ${facts.baseBranch}`;
 	}
+	const terminals =
+		orcaTerminals ?? (await listOrcaTerminals(run));
+	const liveTerminals = countLiveTerminals(terminals, guard.path);
 	const live = processesInPath(guard.path, procRoot);
-	if (live.length > 0) {
-		return `${guard.path}: в worktree работает процесс (${live.join(", ")}); закрой его и повтори`;
+	if (live.length > 0 || liveTerminals > 0) {
+		return `${guard.path}: в worktree работает процесс или терминал Orca (процессов: ${live.length}, терминалов: ${liveTerminals}); закрой его и повтори`;
 	}
 	return null;
 }
@@ -821,6 +920,7 @@ export async function removeMergedWorktreeSafe(options: {
 	backend?: WorktreeBackend;
 	run?: CommandRunner;
 	procRoot?: string;
+	orcaTerminals?: readonly OrcaTerminalRecord[];
 }): Promise<RemoveSafeResult> {
 	const { facts } = options;
 	const guard = guardCleanup(facts, options.path);
@@ -845,6 +945,7 @@ export async function removeMergedWorktreeSafe(options: {
 			facts,
 			guard,
 			options.procRoot,
+			options.orcaTerminals,
 		);
 		if (problem) return failed(problem);
 
@@ -852,7 +953,7 @@ export async function removeMergedWorktreeSafe(options: {
 		if (backend === "orca") {
 			try {
 				const orca = await run(
-					"orca",
+					orcaCli(),
 					[
 						"worktree",
 						"rm",

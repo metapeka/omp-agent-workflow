@@ -21,6 +21,13 @@ if [ ! -f "$supervisor" ]; then
   exit 1
 fi
 
+orca_cli="${ORCA_CLI_COMMAND:-orca}"
+if command -v "$orca_cli" >/dev/null 2>&1; then
+  if ! "$orca_cli" status --json >/dev/null 2>&1; then
+    echo "Yoda: orca runtime недоступен — automatic handoff не сработает" >&2
+  fi
+fi
+
 node "$supervisor" --dir "$dir" >"$log" 2>&1 &
 sup=$!
 echo "Yoda: supervisor pid=$sup log=$log dir=$dir"

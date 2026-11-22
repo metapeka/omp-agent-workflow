@@ -473,6 +473,37 @@ describe("supervisor", () => {
 		}
 	});
 
+	it("keeps the marker when the terminal handle is not live", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({ terminal: "term_dead" }),
+			);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary" }),
+			);
+			const fake = join(dir, "orca-fake");
+			writeFileSync(fake, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once"],
+				{
+					encoding: "utf8",
+					env: { ...process.env, ORCA_CLI_COMMAND: fake },
+				},
+			);
+
+			assert.equal(result.status, 1, result.stderr);
+			assert.match(result.stderr, /is not live/);
+			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), true);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	function writeSupervisorLock(dir, pid) {
 		const lock = join(dir, ".omp-handoff-supervisor.lock");
 		mkdirSync(lock);

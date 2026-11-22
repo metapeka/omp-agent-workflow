@@ -100,6 +100,25 @@ merge, бюджеты и handoff.
 **Следствие:** новые функции — additive; любое изменение схемы — отдельное
 решение и тест на старый файл.
 
+## D11. OMP first, Orca — additive integration
+
+**Статус:** accepted (2026-11-23).
+**Решение:** продукт — OMP-расширение; Orca используется только как
+опциональная среда: `terminal show/send/list`, `worktree list/create/rm`,
+`status`. OMP обязан работать без Orca: `manual`/`assisted`, git backend,
+`/proc` fallback.
+**Причина:** контракт 0.3 не зависит от Orca API; тесты и CI идут без Orca;
+изменения Orca не должны ломать handoff.
+**Следствие:** любой Orca-вызов — best-effort с fallback; Orca runtime не
+может быть обязательным для запуска или работы.
+
+Не делать без нового решения:
+
+- Orca Runs/gates/workers вместо OMP orchestrator (D1);
+- Orca agent sessions вместо marker/session 0.3;
+- обязательный `orca` при старте `bin/omp-yoda` или `/handoff`;
+- параллельные задачи/multi-repo (D8).
+
 ## Отклонённые альтернативы
 
 | Альтернатива | Почему нет |

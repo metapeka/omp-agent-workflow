@@ -1,7 +1,7 @@
 # Wrap: завершение работы `/wrap`
 
-Статус: `[готово]`, версия `0.5.1`. Команда main TUI; контракт 0.3
-(`docs/contracts.md`) не меняет.
+Статус: `[готово]`, версия `0.5.1`; проверка live-терминалов Orca — `0.5.3`.
+Команда main TUI; контракт 0.3 (`docs/contracts.md`) не меняет.
 
 `/wrap` — guided wizard, а не автомат. Он собирает факты, показывает карточки
 и выполняет действие только после явного подтверждения. Никаких решений
@@ -15,7 +15,8 @@
 | `STATE.json` | run/current/stop/completed; ищется в `ctx.cwd`, затем в base repo |
 | `AUTOPLAN.md` | `worktreeRoot`, `backend`, `baseBranch`; путь из `STATE.plan.path` или base |
 | `HANDOFF.md` | наличие, dirty, устаревание по commit, а не по mtime |
-| `/proc` | pid-ы процессов с cwd внутри worktree (best-effort, Linux) |
+| `orca terminal list --json` | live-терминалы worktree (`connected`, не `orphaned`), 0.5.3 |
+| `/proc` | pid-ы процессов с cwd внутри worktree (best-effort, Linux; fallback) |
 
 Если state или плана нет — `/wrap` работает с git-фактами, а plan-карточки
 показывает как недоступные.
@@ -44,8 +45,10 @@
 3. Ветка не `main`/base; не detached; worktree не bare/locked/prunable.
 4. `git merge-base --is-ancestor <HEAD> <base>` → merged.
 5. `git status --porcelain` в worktree пуст (включая untracked).
-6. Нет live-процесса с cwd внутри worktree. Orca-created worktree обычно
-   держит shell-терминал; закрой его, иначе cleanup будет заблокирован
+6. Нет live-процесса с cwd внутри worktree и нет live-терминала Orca
+   (`orca terminal list --json`: `connected` и не `orphaned`). `/proc` —
+   fallback, если Orca недоступен. Orca-created worktree обычно держит
+   shell-терминал; закрой его, иначе cleanup будет заблокирован
    (это защита, а не ошибка).
 7. Путь внутри `plan.worktreeRoot`, если план есть.
 8. Непосредственно перед удалением предусловия проверяются снова под
@@ -105,4 +108,5 @@ worktree.
   повторная проверка, а не «доверяем фактам».
 - Orca CLI может сохранить ветку, которую не может доказать merged; это
   нормальный safe-результат, не ошибка.
-- Тесты используют git backend; реальный Orca-путь проверяется в TUI.
+- Тесты используют git backend и явный список Orca-терминалов; живой Orca
+  нужен только для TUI-проверки.
