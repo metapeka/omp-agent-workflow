@@ -85,6 +85,17 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 Supervisor не является LLM: только marker, terminal handle и `orca terminal
 send`.
 
+Launcher `bin/omp-yoda` запускает supervisor на текущий каталог и OMP в
+режиме `yoda-supervised`:
+
+```bash
+bin/omp-yoda --version
+OMP_YODA_DIR=/path/to/worktree bin/omp-yoda
+```
+
+Лог supervisor — `${TMPDIR:-/tmp}/omp-yoda-supervisor.log`
+(`OMP_YODA_LOG` переопределяет). Supervisor снимается вместе с OMP.
+
 После handoff действует cooldown: extension не просит новый handoff
 (`OMP_HANDOFF_COOLDOWN_SECONDS`, по умолчанию 300), а supervisor удаляет
 ранние и stale marker'ы (`--cooldown`, по умолчанию 300). Это защищает от
@@ -92,6 +103,8 @@ send`.
 
 Yoda-режимы и оркестрация: `docs/yoda-workflow.md`.
 План automatic handoff: `docs/handoff-auto-plan.md`.
+Состояние проекта: `HANDOFF.md`; план: `ROADMAP.md`; инструкции агенту:
+`AGENTS.md`.
 
 ## Почему не авто на 50%
 
@@ -101,6 +114,9 @@ Yoda-режимы и оркестрация: `docs/yoda-workflow.md`.
 Посреди tool-loop или незавершённого edit контекст не сжимается.
 
 ## Установка
+
+Проект отдельный от `omp-cache-monitor`; в Orca зарегистрирован как
+`omp-agent-workflow`, рабочие worktree — `~/orca/workspaces/omp-agent-workflow/`.
 
 ```bash
 omp plugin link /home/db1/projects/omp-agent-workflow

@@ -17,7 +17,8 @@
     "supervisor": "node bin/omp-handoff-supervisor.mjs"
   },
   "bin": {
-    "omp-handoff-supervisor": "./bin/omp-handoff-supervisor.mjs"
+    "omp-handoff-supervisor": "./bin/omp-handoff-supervisor.mjs",
+    "omp-yoda": "./bin/omp-yoda"
   },
   "files": [
     "index.ts",

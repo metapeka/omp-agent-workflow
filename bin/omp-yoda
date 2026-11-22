@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Yoda workflow launcher: OMP + context guard + handoff supervisor.
+#
+# Запускает supervisor на текущий каталог и OMP с режимом yoda-supervised.
+# Supervisor живёт столько же, сколько OMP: снимается по EXIT/INT/TERM.
+set -u
+
+script="$(readlink -f "${BASH_SOURCE[0]}")"
+here="$(dirname "$script")"
+supervisor="$here/omp-handoff-supervisor.mjs"
+dir="${OMP_YODA_DIR:-$PWD}"
+log="${OMP_YODA_LOG:-${TMPDIR:-/tmp}/omp-yoda-supervisor.log}"
+
+if ! command -v omp >/dev/null 2>&1; then
+  echo "omp-yoda: omp not found in PATH" >&2
+  exit 127
+fi
+
+if [ ! -f "$supervisor" ]; then
+  echo "omp-yoda: supervisor not found: $supervisor" >&2
+  exit 1
+fi
+
+node "$supervisor" --dir "$dir" >"$log" 2>&1 &
+sup=$!
+echo "Yoda: supervisor pid=$sup log=$log dir=$dir"
+
+cleanup() {
+  kill "$sup" 2>/dev/null || true
+  wait "$sup" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+OMP_WORKFLOW_MODE="${OMP_WORKFLOW_MODE:-yoda-supervised}" \
+OMP_HANDOFF_AT="${OMP_HANDOFF_AT:-55}" \
+OMP_CONTEXT_AUTO="${OMP_CONTEXT_AUTO:-off}" \
+omp "$@"
+status=$?
+
+cleanup
+trap - EXIT INT TERM
+exit "$status"
