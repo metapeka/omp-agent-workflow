@@ -1,8 +1,8 @@
 # Orchestrator и subagent-петля (0.5)
 
-Статус: `[partial]`, дизайн утверждён 2026-11-22. Этап A реализован
-(`plan.ts`, `state.ts`, `budgets.ts`, `policy.ts`, 25 unit-тестов); этапы
-B–D впереди.
+Статус: `[partial]`, дизайн утверждён 2026-11-22. Этапы A и B реализованы:
+план/state/бюджеты/политика, cost, worktree backend, actions и CLI
+(`36` тестов orchestrator); этапы C–D впереди.
 
 Цель: main-агент проходит `AUTOPLAN.md` до конца или stop-gate, детерминированно
 выбирает задачи, создаёт worktree, проверяет, мержит и делает handoff на
@@ -127,9 +127,10 @@ pid). Запись — temp + `rename`.
     "id": "T2",
     "branch": "feat/t2",
     "worktree": "/home/u/orca/workspaces/omp-agent-workflow/t2",
-    "status": "running | verified | reviewed",
+    "status": "running | verified | reviewed | failed",
     "commit": null,
-    "startedAt": "2026-11-22T12:10:00.000Z"
+    "startedAt": "2026-11-22T12:10:00.000Z",
+    "checks": []
   },
   "completed": [
     {
@@ -171,10 +172,10 @@ Tool `orchestrator` (`approval: "exec"`) и CLI `bin/omp-orchestrate` вызыв
 |---|---|---|---|
 | `status` | нет | — | plan/state/current/budget summary |
 | `next` | нет | plan валиден, hash совпадает | следующий ready task или stop reason |
-| `start [id]` | worktree, branch, state | deps, gate, budget, branch свободен | task spec + worktree + prompt |
-| `verify [id]` | запуск команд, state | current совпадает | checks, `status: verified` |
-| `finish [id] --commit SHA --review ok` | ff-only merge, cleanup, state | verified, HEAD == SHA, clean base, review | `continue / handoff / stop` |
-| `rebase [id]` | rebase на base + verify | non-ff | новый commit, снова verified |
+| `start [id]` | worktree, branch, state; failed current очищается | deps, gate, budget, branch свободен | task spec + worktree + prompt |
+| `verify [id]` | запуск команд; `status: verified/failed`; failed verify увеличивает attempts | current совпадает | checks, commit |
+| `finish [id] --commit SHA --review ok` | ff-only merge, cleanup, state | verified, HEAD == SHA, clean base, review, полный набор checks | `merged` + decision |
+| `rebase [id]` | rebase на base + verify | non-ff, чистое worktree | новый commit, снова verified/failed |
 | `stop --reason R` | state.stop | — | причина и detail |
 | `resume` | снять stop | plan/hash валидны | run.active |
 
@@ -194,6 +195,13 @@ bin/omp-orchestrate resume [--json]
 `start` выводит готовый промпт implementer'а: JSON task, абсолютный worktree,
 запрет трогать base, требование коммита и тестов. Модель не выбирает
 worktree/branch — это делает код.
+
+Повтор после падения verify: `verify` ставит `current.status = "failed"` и
+увеличивает `attempts[id]`; следующий `start` удаляет worktree и ветку,
+создаёт их заново. После двух неудачных verify политика возвращает
+`stop: attempts-exceeded`, и `start` больше не создаёт worktree.
+Если неудачную попытку нужно сохранить, вызови `stop` и разбери worktree
+до повторного `start` — retry удаляет ветку с коммитами.
 
 ## Петля
 
@@ -383,8 +391,8 @@ Extension (fake ctx, как в 0.3-тестах):
 | Этап | Содержимое | Acceptance | Статус |
 |---|---|---|---|
 | A | `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts`, тесты | Unit зелёные, typecheck | `[готово]` |
-| B | `cost.ts`, `worktrees.ts`, `actions.ts`, CLI | Integration на temp git repo | `[next]` |
-| C | `orchestrator.ts`, tool, команды, hooks; spike второго entry | Fake-ctx тесты; extension грузится в OMP | `[future]` |
+| B | `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate` | Integration на temp git repo | `[готово]` |
+| C | `orchestrator.ts`, tool, команды, hooks; spike второго entry | Fake-ctx тесты; extension грузится в OMP | `[next]` |
 | D | docs/example, README/AGENTS/ROADMAP/HANDOFF, `0.5.0` | E2E 3 задачи, handoff, stop-gate | `[future]` |
 
 Работа — в текущем worktree `feat/orchestrator`, коммиты по этапам, merge в

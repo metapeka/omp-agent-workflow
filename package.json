@@ -18,7 +18,8 @@
   },
   "bin": {
     "omp-handoff-supervisor": "./bin/omp-handoff-supervisor.mjs",
-    "omp-yoda": "./bin/omp-yoda"
+    "omp-yoda": "./bin/omp-yoda",
+    "omp-orchestrate": "./bin/omp-orchestrate"
   },
   "files": [
     "index.ts",

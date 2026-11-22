@@ -1,9 +1,11 @@
 /**
- * Детерминированные тесты orchestrator 0.5 (этап A):
- * план, state/lock, бюджеты, политика. Без OMP, сети и модели.
+ * Детерминированные тесты orchestrator 0.5:
+ * план, state/lock, бюджеты, политика, cost/worktree/actions/CLI.
+ * Без OMP, сети и модели.
  */
 import assert from "node:assert/strict";
 import {
+	appendFileSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -12,10 +14,22 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
+import {
+	finish,
+	next as nextAction,
+	rebase,
+	resume,
+	start,
+	status as statusAction,
+	stop,
+	verify,
+} from "../lib/orchestrator/actions.ts";
 import { evaluateBudgets, elapsedMinutes } from "../lib/orchestrator/budgets.ts";
+import { readSessionCost } from "../lib/orchestrator/cost.ts";
 import {
 	PlanError,
 	hashPlan,
@@ -35,7 +49,13 @@ import {
 	updateState,
 	writeState,
 } from "../lib/orchestrator/state.ts";
+import {
+	branchExists,
+	orcaWorktreePath,
+	runCommand,
+} from "../lib/orchestrator/worktrees.ts";
 
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const NOW = new Date("2026-11-22T12:00:00.000Z");
 
 function planText(plan, tasks, prose = "") {
@@ -464,3 +484,258 @@ describe("policy", () => {
 		assert.equal(decision.task.id, "T2");
 	});
 });
+
+async function mustRun(command, args, cwd) {
+	const result = await runCommand(command, args, {
+		cwd,
+		timeoutMs: 120_000,
+	});
+	assert.equal(
+		result.code,
+		0,
+		`${command} ${args.join(" ")}\n${result.stdout}\n${result.stderr}`,
+	);
+	return result;
+}
+
+async function gitRepo() {
+	const dir = tempDir();
+	await mustRun("git", ["init", "-b", "main", dir]);
+	await mustRun("git", ["-C", dir, "config", "user.email", "test@example.com"]);
+	await mustRun("git", ["-C", dir, "config", "user.name", "Test"]);
+	writeFileSync(join(dir, "README.md"), "base\n");
+	await mustRun("git", ["-C", dir, "add", "."]);
+	await mustRun("git", ["-C", dir, "commit", "-m", "base"]);
+	return dir;
+}
+
+async function commitFile(repo, name, content, message = "change") {
+	writeFileSync(join(repo, name), content);
+	await mustRun("git", ["-C", repo, "add", name]);
+	await mustRun("git", ["-C", repo, "commit", "-m", message]);
+}
+
+function costLine(total) {
+	return `${JSON.stringify({
+		type: "message",
+		message: { role: "assistant", usage: { cost: { total } } },
+	})}\n`;
+}
+
+async function scenario(options = {}) {
+	const base = await gitRepo();
+	const control = tempDir();
+	const worktreeRoot = tempDir();
+	const sessionFile = join(tempDir(), "session.jsonl");
+	writeFileSync(sessionFile, costLine(0.1));
+	const plan = {
+		...BASE_PLAN,
+		backend: "git",
+		baseRepo: base,
+		worktreeRoot,
+		verify: [options.verify ?? 'node -e "process.exit(0)"'],
+	};
+	const tasks = options.tasks ?? [T1];
+	writeFileSync(join(control, "AUTOPLAN.md"), planText(plan, tasks));
+	return {
+		base,
+		control,
+		worktreeRoot,
+		sessionFile,
+		ctx: {
+			dir: control,
+			sessionFile,
+			mode: "yoda-supervised",
+			now: NOW,
+			handoffAt: 55,
+		},
+	};
+}
+
+describe("session cost", () => {
+	it("sums root and child sessions incrementally", () => {
+		const root = join(tempDir(), "session.jsonl");
+		const childDir = join(dirname(root), basename(root, ".jsonl"));
+		mkdirSync(childDir);
+		writeFileSync(root, costLine(0.1));
+		writeFileSync(join(childDir, "sub.jsonl"), costLine(0.2));
+
+		const first = readSessionCost(root, {});
+		assert.equal(first.available, true);
+		assert.ok(Math.abs(first.deltaUsd - 0.3) < 1e-9);
+		assert.equal(first.files.length, 2);
+
+		const second = readSessionCost(root, first.offsets);
+		assert.equal(second.deltaUsd, 0);
+
+		appendFileSync(root, costLine(0.05));
+		const third = readSessionCost(root, second.offsets);
+		assert.ok(Math.abs(third.deltaUsd - 0.05) < 1e-9);
+	});
+
+	it("does not consume an incomplete line", () => {
+		const root = join(tempDir(), "session.jsonl");
+		writeFileSync(root, costLine(0.1));
+		const first = readSessionCost(root, {});
+		appendFileSync(
+			root,
+			'{"type":"message","message":{"role":"assistant","usage":{"cost":{"total":0.07}}}}',
+		);
+		const partial = readSessionCost(root, first.offsets);
+		assert.equal(partial.deltaUsd, 0);
+		appendFileSync(root, "\n");
+		const complete = readSessionCost(root, partial.offsets);
+		assert.ok(Math.abs(complete.deltaUsd - 0.07) < 1e-9);
+	});
+
+	it("reports unavailable without a session file", () => {
+		assert.equal(readSessionCost(null, {}).available, false);
+		assert.equal(readSessionCost(join(tempDir(), "missing.jsonl"), {}).available, false);
+	});
+
+	it("finds a worktree path in a nested Orca response", () => {
+		assert.equal(
+			orcaWorktreePath({
+				result: { worktree: { path: "/tmp/wt", branch: "feat/T1" } },
+			}),
+			"/tmp/wt",
+		);
+		assert.equal(orcaWorktreePath({ result: {} }), null);
+	});
+});
+
+describe("actions on a real git repo", () => {
+	it("starts, verifies, merges ff-only and cleans up", async () => {
+		const s = await scenario();
+		const started = await start(s.ctx, "T1");
+		assert.equal(started.kind, "started");
+		assert.ok(existsSync(started.worktree));
+		let state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.current.id, "T1");
+		assert.equal(state.current.status, "running");
+		assert.ok(Math.abs(state.budgets.spendUsd - 0.1) < 1e-9);
+
+		await commitFile(started.worktree, "work.txt", "done\n");
+		const verified = await verify(s.ctx, "T1");
+		assert.equal(verified.ok, true);
+		assert.ok(verified.commit);
+		state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.current.status, "verified");
+
+		appendFileSync(s.sessionFile, costLine(0.05));
+		const merged = await finish(s.ctx, "T1", verified.commit, "ok");
+		assert.equal(merged.kind, "merged");
+		assert.equal(merged.decision.kind, "stop");
+		assert.equal(merged.decision.reason, "plan-done");
+		assert.equal(merged.nextTask, null);
+		assert.equal(existsSync(started.worktree), false);
+		assert.equal(await branchExists(s.base, "feat/T1"), false);
+
+		state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.current, null);
+		assert.equal(state.completed.length, 1);
+		assert.ok(Math.abs(state.budgets.spendUsd - 0.15) < 1e-9);
+		assert.equal(state.stop.reason, "plan-done");
+	});
+
+	it("retries a failed verify once, then stops after two attempts", async () => {
+		const s = await scenario({ verify: 'node -e "process.exit(1)"' });
+		const firstStart = await start(s.ctx, "T1");
+		assert.equal(firstStart.kind, "started");
+		const firstVerify = await verify(s.ctx, "T1");
+		assert.equal(firstVerify.ok, false);
+		let state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.current.status, "failed");
+		assert.equal(state.attempts.T1, 1);
+		assert.equal(state.stop, null);
+
+		const secondStart = await start(s.ctx, "T1");
+		assert.equal(secondStart.kind, "started");
+		const secondVerify = await verify(s.ctx, "T1");
+		assert.equal(secondVerify.ok, false);
+		state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.attempts.T1, 2);
+		assert.equal(state.stop.reason, "attempts-exceeded");
+
+		const blocked = await start(s.ctx, "T1");
+		assert.equal(blocked.kind, "stop");
+		assert.equal(blocked.reason, "attempts-exceeded");
+	});
+
+	it("stops on a dirty base instead of merging", async () => {
+		const s = await scenario();
+		const started = await start(s.ctx, "T1");
+		await commitFile(started.worktree, "work.txt", "done\n");
+		const verified = await verify(s.ctx, "T1");
+		writeFileSync(join(s.base, "dirty.txt"), "dirty\n");
+		const merged = await finish(s.ctx, "T1", verified.commit, "ok");
+		assert.equal(merged.kind, "stop");
+		assert.equal(merged.reason, "base-dirty");
+		assert.equal(readState(join(s.control, STATE_FILE)).current.status, "verified");
+	});
+
+	it("requires rebase on a diverged base and verifies again", async () => {
+		const s = await scenario();
+		const started = await start(s.ctx, "T1");
+		await commitFile(started.worktree, "work.txt", "done\n");
+		const verified = await verify(s.ctx, "T1");
+		await commitFile(s.base, "other.txt", "other\n", "base moved");
+
+		const blocked = await finish(s.ctx, "T1", verified.commit, "ok");
+		assert.equal(blocked.kind, "rebase-required");
+
+		const rebased = await rebase(s.ctx, "T1");
+		assert.equal(rebased.kind, "rebased");
+		assert.equal(rebased.ok, true);
+		assert.ok(rebased.commit && rebased.commit !== verified.commit);
+
+		const merged = await finish(s.ctx, "T1", rebased.commit, "ok");
+		assert.equal(merged.kind, "merged");
+		assert.equal(merged.decision.reason, "plan-done");
+	});
+
+	it("stops before starting a gated task and resumes", async () => {
+		const s = await scenario({ tasks: [{ ...T1, gate: "publish" }] });
+		assert.equal(nextAction(s.ctx).reason, "gate");
+		const blocked = await start(s.ctx, "T1");
+		assert.equal(blocked.kind, "stop");
+		assert.equal(blocked.reason, "gate");
+		assert.equal(readState(join(s.control, STATE_FILE)).stop.reason, "gate");
+
+		assert.equal(resume(s.ctx).kind, "resumed");
+		assert.equal(readState(join(s.control, STATE_FILE)).stop, null);
+		stop(s.ctx, "human", "pause");
+		assert.equal(readState(join(s.control, STATE_FILE)).stop.reason, "human");
+	});
+
+	it("reports status and next without mutating state", async () => {
+		const s = await scenario();
+		const before = statusAction(s.ctx);
+		assert.equal(before.plan.tasks, 1);
+		assert.equal(before.next.id, "T1");
+		assert.equal(existsSync(join(s.control, STATE_FILE)), false);
+		assert.equal(nextAction(s.ctx).kind, "task");
+		assert.equal(existsSync(join(s.control, STATE_FILE)), false);
+	});
+
+	it("runs the CLI status command", async () => {
+		const s = await scenario();
+		const result = await runCommand(
+			process.execPath,
+			[
+				"--experimental-strip-types",
+				join(ROOT, "bin/omp-orchestrate"),
+				"status",
+				"--json",
+				"--dir",
+				s.control,
+			],
+			{ cwd: s.control, timeoutMs: 120_000 },
+		);
+		assert.equal(result.code, 0, result.stderr);
+		const parsed = JSON.parse(result.stdout);
+		assert.equal(parsed.plan.tasks, 1);
+		assert.equal(parsed.next.id, "T1");
+	});
+});
+

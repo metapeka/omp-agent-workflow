@@ -55,7 +55,7 @@ export interface Autoplan {
 	tasks: TaskSpec[];
 }
 
-export type TaskStatus = "running" | "verified" | "reviewed";
+export type TaskStatus = "running" | "verified" | "reviewed" | "failed";
 
 export interface CheckResult {
 	cmd: string;
@@ -77,6 +77,7 @@ export interface CurrentTask {
 	status: TaskStatus;
 	commit: string | null;
 	startedAt: string;
+	checks: CheckResult[];
 }
 
 export interface RunInfo {

@@ -209,6 +209,15 @@ function validateState(value: unknown): OrchestratorState {
 		expectString(current, "status", "state.current");
 		expectNullableString(current, "commit", "state.current");
 		expectString(current, "startedAt", "state.current");
+		if (!Array.isArray(current.checks)) {
+			throw new StateError("state.current.checks: expected array", "state-corrupt");
+		}
+		for (const [index, item] of current.checks.entries()) {
+			const check = expectRecord(item, `state.current.checks[${index}]`);
+			expectString(check, "cmd", `state.current.checks[${index}]`);
+			expectNumber(check, "code", `state.current.checks[${index}]`);
+			expectString(check, "at", `state.current.checks[${index}]`);
+		}
 	}
 
 	if (!Array.isArray(root.completed)) {
