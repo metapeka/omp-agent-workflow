@@ -30,6 +30,7 @@ const { values } = parseArgs({
 		prompt: { type: "string", default: DEFAULT_PROMPT },
 		"no-prompt": { type: "boolean", default: false },
 		"max-attempts": { type: "string", default: "3" },
+		cooldown: { type: "string", default: "300" },
 	},
 });
 
@@ -100,6 +101,27 @@ async function main() {
 		if (typeof terminal !== "string" || terminal.length === 0) {
 			fail(`${sessionPath} has no terminal handle; start OMP from Orca`);
 			return;
+		}
+
+		if (
+			typeof marker.sessionFile === "string" &&
+			marker.sessionFile !== session.sessionFile
+		) {
+			rmSync(markerPath, { force: true });
+			console.log("[handoff-supervisor] stale marker removed (other session)");
+			if (values.once) return;
+			await sleep(intervalMs);
+			continue;
+		}
+
+		if (Date.now() - lastHandoffAt < cooldownMs) {
+			// После handoff новая сессия не должна просить следующий handoff
+			// раньше cooldown. Убираем marker, чтобы не было цикла.
+			rmSync(markerPath, { force: true });
+			console.log("[handoff-supervisor] early marker removed during cooldown");
+			if (values.once) return;
+			await sleep(intervalMs);
+			continue;
 		}
 
 		const plan = {
