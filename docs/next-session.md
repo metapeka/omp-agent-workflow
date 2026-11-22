@@ -5,11 +5,10 @@
 
 ## Состояние
 
-- Репозиторий: `/home/db1/projects/omp-agent-workflow`, `main` на `f79ad85`,
-  версия `0.5.0`.
-- Текущая работа: worktree
-  `~/orca/workspaces/omp-agent-workflow/orchestrator`, ветка
-  `feat/orchestrator`.
+- Репозиторий: `/home/db1/projects/omp-agent-workflow`, `main`, версия
+  `0.5.0`; ветка `feat/orchestrator` слита.
+- Worktree `~/orca/workspaces/omp-agent-workflow/orchestrator` можно удалить
+  после выхода из текущей сессии.
 - Готово (0.3): context guard 35/50, `/handoff`, `/handoff-new`, automatic
   handoff, supervisor, cooldown/stale-marker guard, режимы
   `manual`/`assisted`/`yoda`/`yoda-supervised`, launcher `bin/omp-yoda`.

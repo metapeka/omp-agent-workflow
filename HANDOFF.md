@@ -1,12 +1,13 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-22. Репозиторий: `~/projects/omp-agent-workflow`, ветка `main`,
-коммит `f79ad85`; текущая работа — worktree
-`~/orca/workspaces/omp-agent-workflow/orchestrator`, ветка `feat/orchestrator`.
-Версия `0.5.0`. Проект зарегистрирован в Orca; рабочие worktree —
+версия `0.5.0`. Ветка `feat/orchestrator` слита в `main`; worktree
+`~/orca/workspaces/omp-agent-workflow/orchestrator` оставлен до завершения
+сессии и может быть удалён после выхода.
+Проект зарегистрирован в Orca; рабочие worktree —
 `~/orca/workspaces/omp-agent-workflow/<slug>`.
 
-Дизайн 0.5 утверждён 2026-11-22; вики проекта — `docs/README.md`.
+Дизайн 0.5 реализован 2026-11-22; вики проекта — `docs/README.md`.
 
 ## Что готово
 
