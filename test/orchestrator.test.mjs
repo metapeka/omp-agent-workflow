@@ -596,9 +596,11 @@ describe("session cost", () => {
 		assert.ok(Math.abs(complete.deltaUsd - 0.07) < 1e-9);
 	});
 
-	it("reports unavailable without a session file", () => {
+	it("treats a fresh missing session as zero spend and a deleted one as unavailable", () => {
 		assert.equal(readSessionCost(null, {}).available, false);
-		assert.equal(readSessionCost(join(tempDir(), "missing.jsonl"), {}).available, false);
+		const missing = join(tempDir(), "missing.jsonl");
+		assert.equal(readSessionCost(missing, {}).available, true);
+		assert.equal(readSessionCost(missing, { [missing]: 100 }).available, false);
 	});
 
 	it("finds a worktree path in a nested Orca response", () => {

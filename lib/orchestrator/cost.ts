@@ -114,8 +114,10 @@ function readFromOffset(path: string, offset: number): {
 }
 
 /**
- * Прочитать новый spend. `available: false`, когда session file ещё не
- * создан: бюджет нельзя проверить, политика вернёт `cost-unavailable`.
+ * Прочитать новый spend. Свежий session file может ещё не существовать:
+ * тогда spend = 0 и `available: true`. `available: false` — только когда
+ * для этого файла уже были offsets (файл удалён/недоступен) или путь
+ * вообще не задан. Политика вернёт `cost-unavailable` только в этом случае.
  */
 export function readSessionCost(
 	rootFile: string | null,
@@ -126,7 +128,13 @@ export function readSessionCost(
 	}
 	const root = resolve(rootFile);
 	if (!existsSync(root)) {
-		return { available: false, deltaUsd: 0, offsets: { ...previous }, files: [] };
+		const known = previous[root] !== undefined;
+		return {
+			available: !known,
+			deltaUsd: 0,
+			offsets: { ...previous },
+			files: [],
+		};
 	}
 
 	const files = sessionFiles(root);
