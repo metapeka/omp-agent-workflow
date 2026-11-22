@@ -149,8 +149,9 @@ bin/omp-orchestrate resume --json
 worktree, ретро-review. Destructive/spend действия требуют confirm.
 
 - Cleanup: только merged+clean+не текущий worktree, без live-процесса и без
-  `--force`; ветка удаляется `git branch -d`. Если Orca сохранила ветку —
-  это safe-результат.
+  `--force`; ветка удаляется `git branch -d`. Orca-created worktree держит
+  shell-терминал — закрой его, иначе cleanup заблокирован.
+- Если Orca сохранила ветку — это safe-результат.
 - Текущий worktree не удаляется из-под OMP: выйти и удалить вручную.
 - Handoff: `/wrap` проверяет `HANDOFF.md` в `ctx.cwd`, но не переключает
   сессию; после карточки выполнить `/handoff-new`.

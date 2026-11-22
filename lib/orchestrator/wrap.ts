@@ -639,7 +639,7 @@ export function guardCleanup(facts: WrapFacts, target: string): CleanupGuard {
 	if (record.dirty) return no(`${record.path}: есть незакоммиченные изменения`);
 	if (record.liveProcesses > 0) {
 		return no(
-			`${record.path}: в worktree работает процесс (${record.liveProcesses})`,
+			`${record.path}: в worktree работает процесс (${record.liveProcesses}); закрой терминал/процесс и повтори`,
 		);
 	}
 	const root = facts.plan?.config.worktreeRoot;
@@ -804,7 +804,7 @@ async function recheckCleanup(
 	}
 	const live = processesInPath(guard.path, procRoot);
 	if (live.length > 0) {
-		return `${guard.path}: в worktree работает процесс (${live.join(", ")})`;
+		return `${guard.path}: в worktree работает процесс (${live.join(", ")}); закрой его и повтори`;
 	}
 	return null;
 }

@@ -44,7 +44,9 @@
 3. Ветка не `main`/base; не detached; worktree не bare/locked/prunable.
 4. `git merge-base --is-ancestor <HEAD> <base>` → merged.
 5. `git status --porcelain` в worktree пуст (включая untracked).
-6. Нет live-процесса с cwd внутри worktree.
+6. Нет live-процесса с cwd внутри worktree. Orca-created worktree обычно
+   держит shell-терминал; закрой его, иначе cleanup будет заблокирован
+   (это защита, а не ошибка).
 7. Путь внутри `plan.worktreeRoot`, если план есть.
 8. Непосредственно перед удалением предусловия проверяются снова под
    `.omp-orchestrator.lock`; HEAD не должен измениться.
