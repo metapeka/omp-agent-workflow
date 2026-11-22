@@ -326,10 +326,38 @@ describe("orchestrator extension", () => {
 		assert.equal(finished.details.decision.kind, "handoff");
 		assert.equal(finished.details.started, undefined);
 		await fire(handlers, "agent_end", { willContinue: false }, v.ctx);
-		assert.equal(sent.length, 0);
+		assert.equal(sent.length, 1);
+		assert.match(sent[0], /HANDOFF/);
+		assert.match(sent[0], /\.omp-handoff-request\.json/);
+		assert.match(sent[0], /task-boundary/);
 		const state = readState(join(s.control, STATE_FILE));
 		assert.equal(state.current, null);
 		assert.equal(state.run.active, true);
+	});
+
+	it("skips the handoff nudge when the agent already wrote the marker", async () => {
+		const s = await scenario({
+			tasks: [T1, T2],
+			plan: { budgets: { maxTasksPerSession: 1 } },
+		});
+		const { tools, handlers, sent } = install();
+		const v = view(s);
+
+		const started = await callTool(tools, { action: "start", task: "T1" }, v.ctx);
+		await commitFile(started.details.worktree, "work.txt", "done\n");
+		const verified = await callTool(tools, { action: "verify", task: "T1" }, v.ctx);
+		const finished = await callTool(
+			tools,
+			{ action: "finish", task: "T1", commit: verified.details.commit, review: "ok" },
+			v.ctx,
+		);
+		assert.equal(finished.details.decision.kind, "handoff");
+		writeFileSync(
+			join(s.control, ".omp-handoff-request.json"),
+			JSON.stringify({ reason: "task-boundary", sessionFile: s.sessionFile }),
+		);
+		await fire(handlers, "agent_end", { willContinue: false }, v.ctx);
+		assert.equal(sent.length, 0);
 	});
 
 	it("requires review and reports errors without throwing", async () => {

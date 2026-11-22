@@ -228,10 +228,11 @@ stateDiagram-v2
 3. `verify` гоняет команды в worktree; verifier-subagent повторяет.
 4. Reviewer смотрит diff; verdict `ok` передаётся в `finish`.
 5. `finish` проверяет инварианты, мержит, обновляет state и считает policy.
-6. Continue: extension на `agent_end` один раз отправляет промпт следующего
-   task.
-7. Handoff: инструкция обновить `HANDOFF.md` и записать marker
-   `{ "reason": "task-boundary", "sessionFile": "..." }`.
+6. Continue: extension на `agent_end` один раз отправляет nudge
+   `action=start task=<next>`.
+7. Handoff: `finish` ставит nudge обновить `HANDOFF.md` и записать marker
+   `{ "reason": "task-boundary", "sessionFile": "..." }`. Если marker уже
+   записан с текущим `sessionFile`, nudge не отправляется.
 8. Stop: причина в `STATE.stop`, continuation больше не отправляется.
 
 ## Политика
@@ -325,7 +326,7 @@ Spend:
 |---|---|
 | `/orchestrate [plan]` | Валидация, `run.active`, `start` первого task, prompt в main |
 | `/orchestrate-stop [reason]` | `stop` |
-| `agent_end` | Отправить pending nudge один раз; игнорировать `willContinue`/`awaitingAsyncWork` |
+| `agent_end` | Отправить pending nudge один раз; для handoff проверить marker и не дублировать; игнорировать `willContinue`/`awaitingAsyncWork` |
 | `before_subagent_spawn` | Блокировать при `state.stop` |
 | `session_start` | `current` → notify; active без `current` → resume-nudge; stop → notify |
 | `tool` `orchestrator` | Действия из таблицы; `start` очищает pending nudge |
@@ -339,6 +340,8 @@ Auto-continue:
 - только после явного `/orchestrate`;
 - `finish` не стартует следующий task сам: он ставит nudge
   `action=start task=<next>`; nudge уходит на `agent_end`;
+- handoff-nudge требует обновить `HANDOFF.md` и записать marker; если marker
+  уже есть, nudge пропускается;
 - если агент сам вызвал `start` до конца хода, pending очищается — дубля нет;
 - `manual`/`assisted` никогда не продолжают сами.
 
@@ -388,7 +391,7 @@ Extension (fake ctx, как в 0.3-тестах):
 - `manual` не продолжает;
 - `session_start` будит active run без `current`;
 - 19 тестов 0.3 остаются зелёными;
-- всего 65 тестов (`npm test`).
+- всего 66 тестов (`npm test`).
 
 ## Этапы
 

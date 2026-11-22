@@ -29,7 +29,7 @@ flowchart LR
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Тесты 0.3 | `test/context-guard.test.mjs` | 19 детерминированных тестов guard/handoff |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 37 тестов plan/state/cost/worktree/actions/policy |
-| Тесты extension | `test/orchestrator-extension.test.mjs` | 9 тестов tool/commands/hooks |
+| Тесты extension | `test/orchestrator-extension.test.mjs` | 10 тестов tool/commands/hooks |
 
 ## Что extension может и не может (OMP 19.1.0)
 

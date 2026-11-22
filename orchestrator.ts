@@ -5,6 +5,7 @@
  * `/orchestrate-stop` и hooks. Контракт 0.3 не меняет: это отдельный
  * extension entry, `index.ts` остаётся context guard.
  */
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
@@ -151,9 +152,20 @@ function resumePrompt(planPath: string): string {
 	].join("\n");
 }
 
+function handoffPrompt(detail: string, sessionFile: string): string {
+	return [
+		`HANDOFF: граница задачи достигнута (${detail}).`,
+		"1. Обнови HANDOFF.md: цель, состояние, завершённые задачи, следующую задачу, проверки и риски.",
+		"2. Запиши .omp-handoff-request.json ровно с этим содержимым:",
+		JSON.stringify({ reason: "task-boundary", sessionFile }, null, 2),
+		"3. Заверши ход. Не начинай следующую задачу и не мержи вручную.",
+	].join("\n");
+}
+
 export default function orchestrator(pi: ExtensionAPI): void {
 	const z = pi.zod;
 	let pendingContinuation: string | null = null;
+	let pendingHandoff = false;
 
 	async function runAction(
 		context: ActionContext,
@@ -167,6 +179,7 @@ export default function orchestrator(pi: ExtensionAPI): void {
 			case "start": {
 				const result = await start(context, params.task);
 				pendingContinuation = null;
+				pendingHandoff = false;
 				return result;
 			}
 			case "verify":
@@ -188,12 +201,25 @@ export default function orchestrator(pi: ExtensionAPI): void {
 					params.review,
 				);
 				if (merged.kind === "merged" && merged.decision.kind === "continue") {
+					pendingHandoff = false;
 					if (context.mode === "yoda" || context.mode === "yoda-supervised") {
 						pendingContinuation = continuationPrompt(
 							merged.decision.task,
 							context.planPath ?? "AUTOPLAN.md",
 						);
 					}
+				}
+				if (
+					merged.kind === "merged" &&
+					merged.decision.kind === "handoff" &&
+					(context.mode === "yoda" || context.mode === "yoda-supervised") &&
+					context.sessionFile
+				) {
+					pendingContinuation = handoffPrompt(
+						merged.decision.detail,
+						context.sessionFile,
+					);
+					pendingHandoff = true;
 				}
 				return merged;
 			}
@@ -296,6 +322,7 @@ export default function orchestrator(pi: ExtensionAPI): void {
 
 	pi.on("session_start", async (_event, ctx) => {
 		pendingContinuation = null;
+		pendingHandoff = false;
 		if (!isMainTui(ctx)) return;
 		try {
 			const state = readState(join(ctx.cwd, STATE_FILE));
@@ -319,6 +346,7 @@ export default function orchestrator(pi: ExtensionAPI): void {
 
 	pi.on("session_switch", async () => {
 		pendingContinuation = null;
+		pendingHandoff = false;
 	});
 
 	pi.on("agent_end", async (event, ctx) => {
@@ -330,16 +358,43 @@ export default function orchestrator(pi: ExtensionAPI): void {
 			const state = readState(join(ctx.cwd, STATE_FILE));
 			if (state?.stop) {
 				pendingContinuation = null;
+				pendingHandoff = false;
 				return;
 			}
 		} catch {
 			// продолжение не блокируем: state мог быть создан позже
+		}
+		if (pendingHandoff) {
+			const markerPath = join(ctx.cwd, ".omp-handoff-request.json");
+			if (existsSync(markerPath)) {
+				try {
+					const parsed: unknown = JSON.parse(readFileSync(markerPath, "utf8"));
+					const marker =
+						typeof parsed === "object" && parsed !== null
+							? (parsed as Record<string, unknown>)
+							: null;
+					const current = ctx.sessionManager.getSessionFile();
+					if (
+						marker &&
+						typeof marker.sessionFile === "string" &&
+						current &&
+						marker.sessionFile === current
+					) {
+						pendingContinuation = null;
+						pendingHandoff = false;
+						return;
+					}
+				} catch {
+					// битый marker: отправим инструкцию ещё раз
+				}
+			}
 		}
 		const message = pendingContinuation;
 		if (!message) return;
 		try {
 			await pi.sendUserMessage(message);
 			pendingContinuation = null;
+			pendingHandoff = false;
 		} catch (error) {
 			notify(
 				ctx,
