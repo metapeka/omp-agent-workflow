@@ -1,0 +1,33 @@
+{
+  "name": "omp-agent-workflow",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Context guard and /handoff command for OMP: warn before context bloat and compact with handoff instructions",
+  "keywords": [
+    "omp-plugin",
+    "oh-my-pi",
+    "context",
+    "compaction",
+    "handoff"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "node --experimental-strip-types test/context-guard.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "index.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "omp": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@oh-my-pi/pi-coding-agent": "19.1.0",
+    "@types/node": "22.20.5",
+    "typescript": "7.0.2"
+  }
+}
