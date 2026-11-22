@@ -21,7 +21,7 @@
 | E2E | supervisor → `/handoff-new` в реальном Orca-терминале; новая сессия прочитала `HANDOFF.md` |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` |
 | Вики | `docs/README.md`: архитектура, контракт, orchestrator 0.5, runbook, решения |
-| Orchestrator 0.5 | Этапы A–B: `lib/orchestrator/*`, `bin/omp-orchestrate` + 36 тестов; C–D впереди |
+| Orchestrator 0.5 | Этапы A–C: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate`; 64 теста; D впереди |
 | CI | `.github/workflows/ci.yml` (Node 22: `npm ci`, test, typecheck) |
 
 ## Контракт
@@ -64,10 +64,13 @@
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                 # 55/55
+npm test                 # 64/64
 npm run typecheck
 omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   -p 'Reply with exactly: OK'        # exit 0, stderr пуст
+omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
+  --no-tools --mode json -p 'Reply with exactly: OK'
+bin/omp-orchestrate status --json --dir <control-worktree>
 bin/omp-yoda --version               # supervisor стартует, OMP получает режим
 ```
 
@@ -79,13 +82,11 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
 Дизайн 0.5 утверждён; решения D1–D10 — `docs/decisions.md`. Реализация в
 worktree `feat/orchestrator`, коммиты по этапам:
 
-1. Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry;
-   spike загрузки в OMP.
-2. Этап D: `docs/AUTOPLAN.example.md`, версия `0.5.0`, E2E 3 задачи в Orca,
-   handoff и stop-gate.
-3. После merge: `HANDOFF.md`/`ROADMAP.md`/`README.md` отражают 0.5.
-4. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
-5. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
+1. Этап D: E2E 3 задачи в Orca, handoff на границе, stop-gate; версия
+   `0.5.0`; финальные docs.
+2. После merge: `HANDOFF.md`/`ROADMAP.md`/`README.md` отражают 0.5.
+3. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
+4. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
 
 ## Риски
 

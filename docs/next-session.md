@@ -16,22 +16,19 @@
 - Готово (docs): вики `docs/architecture.md`, `contracts.md`,
   `orchestrator.md`, `operations.md`, `decisions.md`,
   `AUTOPLAN.example.md`.
-- Готово (0.5, этапы A–B): `lib/orchestrator/{plan,state,cost,worktrees,actions,policy,types}.ts`,
-  `bin/omp-orchestrate`; 55 тестов всего; этапы C–D впереди.
-- Проверки: `npm test` 55/55, `npm run typecheck`, загрузка extension,
+- Готово (0.5, этапы A–C): `lib/orchestrator/*`, `orchestrator.ts`,
+  `bin/omp-orchestrate`; 64 теста всего; этап D впереди.
+- Проверки: `npm test` 64/64, `npm run typecheck`, загрузка extension,
   e2e supervisor в Orca.
 - `omp plugin link` указывает на `main`; изменения в worktree не влияют на
   живую сессию до merge.
 
 ## Следующий этап
 
-Реализация 0.5 по `docs/orchestrator.md`, этапы C–D:
+Реализация 0.5 по `docs/orchestrator.md`, этап D:
 
-1. C: `orchestrator.ts` (tool `orchestrator`, `/orchestrate`,
-   `/orchestrate-stop`, hooks), второй entry в `package.json`; spike
-   загрузки.
-2. D: docs/example, версия `0.5.0`, E2E 3 задачи в Orca, handoff на границе,
-   stop-gate.
+1. D: E2E 3 задачи в Orca, handoff на границе, stop-gate; версия `0.5.0`;
+   финальные docs.
 
 Перед кодом прочитать `docs/decisions.md` — D1–D10 подтверждены.
 
@@ -51,14 +48,9 @@ npm test
 npm run typecheck
 omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   -p 'Reply with exactly: OK'
-```
-
-Для 0.5 добавить:
-
-```bash
-omp --no-extensions -e ./orchestrator.ts --no-session --no-tools --mode json \
-  -p 'Reply with exactly: OK'
-bin/omp-orchestrate status --json
+omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
+  --no-tools --mode json -p 'Reply with exactly: OK'
+bin/omp-orchestrate status --json --dir <control-worktree>
 ```
 
 ## Стартовый prompt

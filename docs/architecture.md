@@ -1,6 +1,6 @@
 # Архитектура и OMP API
 
-Статус: `[готово]` для 0.3, `[partial]` для 0.5 (этапы A–B).
+Статус: `[готово]` для 0.3, `[partial]` для 0.5 (этапы A–C).
 OMP: `19.1.0`. Orca CLI: локальная установка проекта.
 
 ## Компоненты
@@ -26,9 +26,10 @@ flowchart LR
 | Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, session info, marker при пороге |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new` |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
-| Orchestrator `[partial]` | `orchestrator.ts` + `lib/orchestrator/*` | A–B: state, план, cost, worktree, actions, CLI; C–D — extension/E2E |
+| Orchestrator `[partial]` | `orchestrator.ts` + `lib/orchestrator/*` | A–C: state, cost, worktree, actions, CLI, extension; D — E2E/release |
 | Тесты 0.3 | `test/context-guard.test.mjs` | 19 детерминированных тестов guard/handoff |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 36 тестов plan/state/cost/worktree/actions/policy |
+| Тесты extension | `test/orchestrator-extension.test.mjs` | 9 тестов tool/commands/hooks |
 
 ## Что extension может и не может (OMP 19.1.0)
 

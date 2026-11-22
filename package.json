@@ -23,6 +23,7 @@
   },
   "files": [
     "index.ts",
+    "orchestrator.ts",
     "lib",
     "bin",
     "docs",
@@ -31,7 +32,8 @@
   ],
   "omp": {
     "extensions": [
-      "./index.ts"
+      "./index.ts",
+      "./orchestrator.ts"
     ]
   },
   "devDependencies": {

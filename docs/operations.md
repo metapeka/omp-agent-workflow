@@ -113,7 +113,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 
 ## Orchestrator `[partial]`
 
-CLI работает с этапа B; extension-интеграция (`/orchestrate`) — этап C.
+CLI и extension (`/orchestrate`, tool `orchestrator`) работают; E2E — этап D.
 
 ```bash
 # старт/статус

@@ -1,8 +1,8 @@
 # Orchestrator и subagent-петля (0.5)
 
-Статус: `[partial]`, дизайн утверждён 2026-11-22. Этапы A и B реализованы:
-план/state/бюджеты/политика, cost, worktree backend, actions и CLI
-(`36` тестов orchestrator); этапы C–D впереди.
+Статус: `[partial]`, дизайн утверждён 2026-11-22. Этапы A–C реализованы:
+план/state/бюджеты/политика, cost, worktree backend, actions, CLI, extension
+(tool/commands/hooks); этап D — E2E и release.
 
 Цель: main-агент проходит `AUTOPLAN.md` до конца или stop-gate, детерминированно
 выбирает задачи, создаёт worktree, проверяет, мержит и делает handoff на
@@ -305,7 +305,7 @@ Spend:
   --base-branch ... --no-parent --json`; удаление — `orca worktree rm
   --worktree path:<path> --delete-branch`.
 - `backend: "git"`: `git worktree add -b <branch> <path> <base>`; удаление —
-  `git worktree remove` + `git branch -d`.
+  `git worktree remove --force` + `git branch -D`.
 - Перед `finish`: base на `baseBranch`, `git status --porcelain` пуст,
   worktree HEAD == `--commit`, нет незакоммиченных изменений.
 - Merge только `git merge --ff-only <branch>`.
@@ -322,12 +322,12 @@ Spend:
 
 | Hook | Поведение |
 |---|---|
-| `/orchestrate [plan]` | Валидация, `run.active`, `start` первого task, prompt |
+| `/orchestrate [plan]` | Валидация, `run.active`, `start` первого task, prompt в main |
 | `/orchestrate-stop [reason]` | `stop` |
-| `agent_end` | Отправить pending continuation один раз; игнорировать `willContinue`/`awaitingAsyncWork` |
-| `before_subagent_spawn` | Блокировать при `state.stop` или budget hard stop |
-| `session_start` | Прочитать state; при незавершённом `current` — notify «продолжи через /orchestrate», без автоспавна |
-| `tool` `orchestrator` | Действия из таблицы |
+| `agent_end` | Отправить pending nudge один раз; игнорировать `willContinue`/`awaitingAsyncWork` |
+| `before_subagent_spawn` | Блокировать при `state.stop` |
+| `session_start` | `current` → notify; active без `current` → resume-nudge; stop → notify |
+| `tool` `orchestrator` | Действия из таблицы; `start` очищает pending nudge |
 
 Все hooks проверяют `ctx.agent.kind === "main"` и `ctx.mode === "tui"`.
 Subagent-сессии не продолжают цикл и не пишут marker.
@@ -336,8 +336,9 @@ Auto-continue:
 
 - только `yoda`/`yoda-supervised`;
 - только после явного `/orchestrate`;
-- только после успешного `finish`;
-- один pending prompt, очищается перед отправкой;
+- `finish` не стартует следующий task сам: он ставит nudge
+  `action=start task=<next>`; nudge уходит на `agent_end`;
+- если агент сам вызвал `start` до конца хода, pending очищается — дубля нет;
 - `manual`/`assisted` никогда не продолжают сами.
 
 ## Файлы
@@ -384,7 +385,9 @@ Extension (fake ctx, как в 0.3-тестах):
 - stop блокирует `before_subagent_spawn`;
 - handoff-boundary не отправляет continuation;
 - `manual` не продолжает;
-- 19 тестов 0.3 остаются зелёными.
+- `session_start` будит active run без `current`;
+- 19 тестов 0.3 остаются зелёными;
+- всего 64 теста (`npm test`).
 
 ## Этапы
 
@@ -392,8 +395,8 @@ Extension (fake ctx, как в 0.3-тестах):
 |---|---|---|---|
 | A | `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts`, тесты | Unit зелёные, typecheck | `[готово]` |
 | B | `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate` | Integration на temp git repo | `[готово]` |
-| C | `orchestrator.ts`, tool, команды, hooks; spike второго entry | Fake-ctx тесты; extension грузится в OMP | `[next]` |
-| D | docs/example, README/AGENTS/ROADMAP/HANDOFF, `0.5.0` | E2E 3 задачи, handoff, stop-gate | `[future]` |
+| C | `orchestrator.ts`, tool, команды, hooks; spike второго entry | Fake-ctx тесты; extension грузится в OMP | `[готово]` |
+| D | docs/example, README/AGENTS/ROADMAP/HANDOFF, `0.5.0` | E2E 3 задачи, handoff, stop-gate | `[next]` |
 
 Работа — в текущем worktree `feat/orchestrator`, коммиты по этапам, merge в
 `main` после зелёных проверок.

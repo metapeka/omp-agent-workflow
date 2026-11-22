@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import { readSessionCost } from "./cost.ts";
+import { workflowModeFromEnv } from "./config.ts";
 import {
 	selectNextTask,
 	readPlan,
@@ -22,7 +23,6 @@ import {
 	writeState,
 } from "./state.ts";
 import {
-	isWorkflowMode,
 	type Autoplan,
 	type CheckResult,
 	type OrchestratorState,
@@ -109,8 +109,7 @@ function resolveMode(
 ): WorkflowMode {
 	if (ctx.mode) return ctx.mode;
 	if (state?.run?.mode) return state.run.mode;
-	const env = process.env.OMP_WORKFLOW_MODE;
-	return isWorkflowMode(env) ? env : "assisted";
+	return workflowModeFromEnv();
 }
 
 /** При смене sessionFile счётчик задач сбрасывается; spend/time — нет. */
