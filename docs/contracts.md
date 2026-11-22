@@ -106,6 +106,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 
 1. Прочитать marker и session info.
 2. Проверить terminal handle, `sessionFile`, cooldown, свежесть marker.
+   Mismatched `sessionFile` удаляется только после `--stale-grace` секунд
+   (default 5), чтобы не удалить валидный marker из-за гонки с session info.
 3. Отправить `/handoff-new` через `orca terminal send --terminal <handle>`
    (`--wait-submit 10`, до `--max-attempts` попыток).
 4. `/handoff-new` сам ждёт idle и открывает новую сессию; supervisor ждёт
@@ -116,7 +118,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 7. Сбросить счётчик попыток и ждать следующий marker.
 
 Флаги: `--dir`, `--marker`, `--session`, `--interval`, `--once`,
-`--dry-run`, `--prompt`, `--no-prompt`, `--max-attempts`, `--cooldown`.
+`--dry-run`, `--prompt`, `--no-prompt`, `--max-attempts`, `--cooldown`,
+`--stale-grace`.
 
 Supervisor не LLM: только файлы, terminal handle и `orca terminal send`.
 Вне Orca terminal handle отсутствует — automatic handoff недоступен.

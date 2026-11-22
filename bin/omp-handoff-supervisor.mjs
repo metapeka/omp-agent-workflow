@@ -31,6 +31,7 @@ const { values } = parseArgs({
 		"no-prompt": { type: "boolean", default: false },
 		"max-attempts": { type: "string", default: "3" },
 		cooldown: { type: "string", default: "300" },
+		"stale-grace": { type: "string", default: "5" },
 	},
 });
 
@@ -40,7 +41,9 @@ const sessionPath = resolve(dir, values.session);
 const intervalMs = Math.max(250, Number(values.interval) * 1000);
 const maxAttempts = Math.max(1, Number(values["max-attempts"]));
 const cooldownMs = Math.max(0, Number(values.cooldown) * 1000);
+const staleGraceMs = Math.max(0, Number(values["stale-grace"]) * 1000);
 let lastHandoffAt = 0;
+let staleCandidate = null;
 const orca = process.env.ORCA_CLI_COMMAND || "orca";
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
@@ -89,6 +92,7 @@ async function main() {
 		const session = readJson(sessionPath);
 
 		if (!marker || !session) {
+			staleCandidate = null;
 			if (values.once) {
 				fail(`waiting for ${markerPath} and ${sessionPath}`);
 				return;
@@ -107,12 +111,29 @@ async function main() {
 			typeof marker.sessionFile === "string" &&
 			marker.sessionFile !== session.sessionFile
 		) {
+			const now = Date.now();
+			if (
+				!staleCandidate ||
+				staleCandidate.sessionFile !== marker.sessionFile
+			) {
+				staleCandidate = { sessionFile: marker.sessionFile, since: now };
+			}
+			if (now - staleCandidate.since < staleGraceMs) {
+				console.log(
+					"[handoff-supervisor] marker/session mismatch; waiting for grace",
+				);
+				if (values.once) return;
+				await sleep(intervalMs);
+				continue;
+			}
 			rmSync(markerPath, { force: true });
+			staleCandidate = null;
 			console.log("[handoff-supervisor] stale marker removed (other session)");
 			if (values.once) return;
 			await sleep(intervalMs);
 			continue;
 		}
+		staleCandidate = null;
 
 		if (Date.now() - lastHandoffAt < cooldownMs) {
 			// После handoff новая сессия не должна просить следующий handoff
@@ -162,14 +183,17 @@ async function main() {
 			continue;
 		}
 
-		const next = await waitForNewSession(previousSessionFile);
+		const next = await waitForNewSession(previousSessionFile, 30_000);
 		if (
 			!next ||
 			typeof next.sessionFile !== "string" ||
 			next.sessionFile === previousSessionFile
 		) {
-			fail("new session was not detected; marker kept for retry");
-			if (values.once) return;
+			attempts += 1;
+			fail(
+				`new session was not detected (${attempts}/${maxAttempts}); marker kept for retry`,
+			);
+			if (values.once || attempts >= maxAttempts) return;
 			await sleep(intervalMs);
 			continue;
 		}

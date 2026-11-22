@@ -390,8 +390,8 @@ Extension (fake ctx, как в 0.3-тестах):
 - handoff-boundary не отправляет continuation;
 - `manual` не продолжает;
 - `session_start` будит active run без `current`;
-- 19 тестов 0.3 остаются зелёными;
-- всего 66 тестов (`npm test`).
+- 21 тест 0.3 остаётся зелёным;
+- всего 68 тестов (`npm test`).
 
 ## Этапы
 

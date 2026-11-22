@@ -27,7 +27,7 @@ flowchart LR
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new` |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
-| Тесты 0.3 | `test/context-guard.test.mjs` | 19 детерминированных тестов guard/handoff |
+| Тесты 0.3 | `test/context-guard.test.mjs` | 21 тест guard/handoff/supervisor |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 37 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 10 тестов tool/commands/hooks |
 

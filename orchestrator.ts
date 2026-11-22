@@ -391,16 +391,17 @@ export default function orchestrator(pi: ExtensionAPI): void {
 		}
 		const message = pendingContinuation;
 		if (!message) return;
-		try {
-			await pi.sendUserMessage(message);
-			pendingContinuation = null;
-			pendingHandoff = false;
-		} catch (error) {
+		pendingContinuation = null;
+		pendingHandoff = false;
+		void pi.sendUserMessage(message).catch((error: unknown) => {
+			pendingContinuation = message;
 			notify(
 				ctx,
-				`Orchestrator continuation: ${error instanceof Error ? error.message : String(error)}`,
+				`Orchestrator continuation: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
 			);
-		}
+		});
 	});
 
 	pi.on("before_subagent_spawn", async (_event, ctx) => {

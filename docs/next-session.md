@@ -16,8 +16,8 @@
   `orchestrator.md`, `operations.md`, `decisions.md`,
   `AUTOPLAN.example.md`.
 - Готово (0.5, этапы A–D): `lib/orchestrator/*`, `orchestrator.ts`,
-  `bin/omp-orchestrate`; 65 тестов всего; Orca backend проверен create/rm.
-- Проверки: `npm test` 65/65, `npm run typecheck`, загрузка extension,
+  `bin/omp-orchestrate`; 68 тестов всего; Orca backend проверен create/rm.
+- Проверки: `npm test` 68/68, `npm run typecheck`, загрузка extension,
   e2e supervisor в Orca.
 - `omp plugin link` указывает на `main`; изменения в worktree не влияют на
   живую сессию до merge.

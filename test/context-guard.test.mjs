@@ -386,6 +386,58 @@ describe("supervisor", () => {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	});
+
+	it("keeps a mismatched marker during the stale grace window", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({ terminal: "term_test", sessionFile: "/tmp/new.jsonl" }),
+			);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/old.jsonl" }),
+			);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--stale-grace", "60"],
+				{ encoding: "utf8" },
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stdout, /waiting for grace/);
+			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), true);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("removes a mismatched marker after stale grace", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({ terminal: "term_test", sessionFile: "/tmp/new.jsonl" }),
+			);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/old.jsonl" }),
+			);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--stale-grace", "0"],
+				{ encoding: "utf8" },
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stdout, /stale marker removed/);
+			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("/handoff", () => {
