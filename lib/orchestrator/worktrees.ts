@@ -219,6 +219,11 @@ export interface CreateWorktreeInput {
 	path: string;
 }
 
+/** Путь к Orca CLI: `ORCA_CLI_COMMAND` или `orca` из PATH. */
+export function orcaCli(): string {
+	return process.env.ORCA_CLI_COMMAND || "orca";
+}
+
 export interface WorktreeInfo {
 	path: string;
 	branch: string;
@@ -254,7 +259,7 @@ export async function createWorktree(
 
 	const slug = input.branch.replace(/[^A-Za-z0-9._-]+/g, "-");
 	const result = await runChecked(
-		"orca",
+		orcaCli(),
 		[
 			"worktree",
 			"create",
@@ -303,7 +308,7 @@ export async function removeWorktree(input: RemoveWorktreeInput): Promise<void> 
 	let removal: CommandResult;
 	if (input.backend === "orca") {
 		removal = await runCommand(
-			"orca",
+			orcaCli(),
 			[
 				"worktree",
 				"rm",

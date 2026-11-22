@@ -32,7 +32,7 @@ flowchart LR
 | Тесты 0.3 | `test/context-guard.test.mjs` | 33 теста guard/handoff/supervisor/lock/preflight/session info |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
-| Тесты wrap core | `test/wrap.test.mjs` | 27 тестов facts/cards/guards/cleanup/next worktree/orca terminals |
+| Тесты wrap core | `test/wrap.test.mjs` | 28 тестов facts/cards/guards/cleanup/next worktree/orca terminals |
 
 ### Orca-интеграция `[готово, additive]` (D11)
 
@@ -40,7 +40,7 @@ flowchart LR
   мёртвый handle — ошибка, marker сохранён;
 - `/wrap`: `orca terminal list --json` даёт live-терминалы worktree
   (`connected`, не `orphaned`); `/proc` остаётся fallback;
-- launcher: `orca status --json` warning, если runtime недоступен; OMP
+- launcher: `orca status` warning, если runtime недоступен; OMP
   стартует в любом случае;
 - путь к CLI: `ORCA_CLI_COMMAND` (default `orca`);
 - без Orca: git backend, `/proc`, ручной `/handoff-new`.

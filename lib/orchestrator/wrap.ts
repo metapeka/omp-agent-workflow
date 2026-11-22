@@ -26,6 +26,7 @@ import type { Autoplan, OrchestratorState } from "./types.ts";
 import {
 	branchExists,
 	createWorktree,
+	orcaCli,
 	resolveWorktreeRoot,
 	runCommand,
 	worktreePath,
@@ -308,10 +309,6 @@ export function countLiveTerminals(
 			terminal.worktreePath !== null &&
 			samePath(terminal.worktreePath, target),
 	).length;
-}
-
-export function orcaCli(): string {
-	return process.env.ORCA_CLI_COMMAND || "orca";
 }
 
 /** `orca terminal list --json`; Orca недоступен → пустой список. */

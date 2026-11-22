@@ -42,7 +42,7 @@ Launcher:
   `OMP_CONTEXT_AUTO=off`, если не переопределено;
 - снимает supervisor при выходе OMP;
 - лог: `${TMPDIR:-/tmp}/omp-yoda-supervisor.log`;
-- если `orca` доступен, но `orca status --json` не ready — предупреждение
+- если `orca` доступен, но `orca status` возвращает ошибку — предупреждение
   «automatic handoff не сработает»; OMP всё равно запускается;
 - путь к Orca CLI — `ORCA_CLI_COMMAND` (default `orca`).
 

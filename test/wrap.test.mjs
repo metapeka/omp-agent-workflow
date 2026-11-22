@@ -7,6 +7,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	rmSync,
 	symlinkSync,
 	writeFileSync,
@@ -19,6 +20,7 @@ import { readPlan } from "../lib/orchestrator/plan.ts";
 import { acquireLock, createInitialState, writeState } from "../lib/orchestrator/state.ts";
 import {
 	branchExists,
+	createWorktree,
 	runCommand,
 	worktreePath,
 } from "../lib/orchestrator/worktrees.ts";
@@ -678,5 +680,39 @@ describe("wrap next worktree", () => {
 		const bad = await createNextWorktree({ facts: withPlan, slug: "Bad Slug" });
 		assert.equal(bad.ok, false);
 		assert.match(bad.message, /slug/);
+	});
+});
+
+describe("orca cli override", () => {
+	it("uses ORCA_CLI_COMMAND for worktree create", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		const target = join(root, "wt");
+		const log = join(tempDir(), "orca-calls.log");
+		const fake = join(tempDir(), "orca-custom");
+		const payload = JSON.stringify({
+			result: { worktree: { path: target, branch: "feat/cli" } },
+		});
+		writeFileSync(
+			fake,
+			`#!/bin/sh\nprintf '%s\\n' "$*" >> ${JSON.stringify(log)}\nprintf '%s\\n' '${payload}'\n`,
+			{ mode: 0o755 },
+		);
+		const previous = process.env.ORCA_CLI_COMMAND;
+		process.env.ORCA_CLI_COMMAND = fake;
+		try {
+			const info = await createWorktree({
+				backend: "orca",
+				baseRepo: base,
+				baseBranch: "main",
+				branch: "feat/cli",
+				path: target,
+			});
+			assert.equal(info.path, target);
+			assert.match(readFileSync(log, "utf8"), /worktree create/);
+		} finally {
+			if (previous === undefined) delete process.env.ORCA_CLI_COMMAND;
+			else process.env.ORCA_CLI_COMMAND = previous;
+		}
 	});
 });
