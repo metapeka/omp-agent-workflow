@@ -108,6 +108,12 @@ OMP_YODA_DIR=/path/to/worktree bin/omp-yoda
 Лог supervisor — `${TMPDIR:-/tmp}/omp-yoda-supervisor.log`
 (`OMP_YODA_LOG` переопределяет). Supervisor снимается вместе с OMP.
 
+Supervisor — один на каталог: lock `.omp-handoff-supervisor.lock/` с
+`owner.json`. Второй экземпляр для того же `--dir` пишет в stderr
+`another supervisor is running` и выходит, не трогая marker. Lock снимается
+на выходе и по сигналам; после падения перехватывается, когда pid из
+`owner.json` уже мёртв.
+
 После handoff действует cooldown: extension не просит новый handoff
 (`OMP_HANDOFF_COOLDOWN_SECONDS`, по умолчанию 300), а supervisor удаляет
 ранние и stale marker'ы (`--cooldown`, по умолчанию 300). Это защищает от

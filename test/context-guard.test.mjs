@@ -2,13 +2,14 @@
  * Deterministic tests for index.ts: no OMP runtime, no model, no network.
  */
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	utimesSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,6 +18,12 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import contextGuard from "../index.ts";
+import {
+	acquireLock,
+	readOwner,
+	reclaimStaleLock,
+	releaseLock,
+} from "../lib/supervisor-lock.mjs";
 
 const SUPERVISOR = fileURLToPath(
 	new URL("../bin/omp-handoff-supervisor.mjs", import.meta.url),
@@ -547,6 +554,158 @@ describe("supervisor", () => {
 				false,
 			);
 		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("supervisor lock", () => {
+	const makeDir = () => mkdtempSync(join(tmpdir(), "cg-lock-"));
+	const lockName = ".omp-handoff-supervisor.lock";
+	const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	it("treats a lock without owner.json as initializing", () => {
+		const dir = makeDir();
+		try {
+			const lockPath = join(dir, lockName);
+			mkdirSync(lockPath);
+			const result = acquireLock({ lockPath, dir, graceMs: 10_000, pid: 111 });
+			assert.equal(result.ok, false);
+			assert.equal(result.reason, "initializing");
+			assert.equal(existsSync(lockPath), true);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("reclaims an ownerless lock after the grace window", () => {
+		const dir = makeDir();
+		try {
+			const lockPath = join(dir, lockName);
+			mkdirSync(lockPath);
+			const old = new Date(Date.now() - 60_000);
+			utimesSync(lockPath, old, old);
+			const result = acquireLock({ lockPath, dir, graceMs: 10_000, pid: 4242 });
+			assert.equal(result.ok, true);
+			assert.equal(readOwner(lockPath).pid, 4242);
+			releaseLock({ lockPath, pid: 4242 });
+			assert.equal(existsSync(lockPath), false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses a lock held by a live process", () => {
+		const dir = makeDir();
+		try {
+			const lockPath = join(dir, lockName);
+			mkdirSync(lockPath);
+			writeFileSync(
+				join(lockPath, "owner.json"),
+				JSON.stringify({ pid: process.pid, dir, startedAt: "live" }),
+			);
+			const result = acquireLock({ lockPath, dir, graceMs: 0 });
+			assert.equal(result.ok, false);
+			assert.equal(result.reason, "running");
+			assert.equal(result.owner.pid, process.pid);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("reclaims a lock whose owner is dead", () => {
+		const dir = makeDir();
+		try {
+			const lockPath = join(dir, lockName);
+			mkdirSync(lockPath);
+			writeFileSync(
+				join(lockPath, "owner.json"),
+				JSON.stringify({ pid: 2_147_483_647, dir, startedAt: "stale" }),
+			);
+			const result = acquireLock({ lockPath, dir, graceMs: 0, pid: 777 });
+			assert.equal(result.ok, true);
+			assert.equal(result.reclaimed.pid, 2_147_483_647);
+			assert.equal(readOwner(lockPath).pid, 777);
+			releaseLock({ lockPath, pid: 777 });
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("restores a live lock taken over during stale reclaim", () => {
+		const dir = makeDir();
+		try {
+			const lockPath = join(dir, lockName);
+			mkdirSync(lockPath);
+			const liveOwner = { pid: process.pid, dir, startedAt: "live" };
+			writeFileSync(join(lockPath, "owner.json"), JSON.stringify(liveOwner));
+			const staleOwner = { pid: 2_147_483_647, dir, startedAt: "stale" };
+
+			const outcome = reclaimStaleLock(lockPath, staleOwner);
+
+			assert.equal(outcome, "foreign");
+			assert.equal(existsSync(lockPath), true);
+			assert.deepEqual(readOwner(lockPath), liveOwner);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("releases its lock on SIGTERM", async () => {
+		const dir = makeDir();
+		const lockPath = join(dir, lockName);
+		const child = spawn(
+			process.execPath,
+			[SUPERVISOR, "--dir", dir, "--interval", "0.25"],
+			{ stdio: "ignore" },
+		);
+		try {
+			const deadline = Date.now() + 3_000;
+			while (!existsSync(join(lockPath, "owner.json"))) {
+				if (Date.now() > deadline) assert.fail("supervisor did not take the lock");
+				await delay(25);
+			}
+			child.kill("SIGTERM");
+			const code = await new Promise((resolve) => child.once("exit", resolve));
+			assert.equal(code, 0);
+			assert.equal(existsSync(lockPath), false);
+		} finally {
+			child.kill("SIGKILL");
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps exactly one of two concurrent starters", async () => {
+		const dir = makeDir();
+		const lockPath = join(dir, lockName);
+		mkdirSync(lockPath);
+		writeFileSync(
+			join(lockPath, "owner.json"),
+			JSON.stringify({ pid: 2_147_483_647, dir, startedAt: "stale" }),
+		);
+		const children = [1, 2].map(() =>
+			spawn(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--interval", "0.25"],
+				{ stdio: "ignore" },
+			),
+		);
+		try {
+			await delay(1_500);
+			const alive = children.filter(
+				(child) => child.exitCode === null && child.signalCode === null,
+			);
+			assert.equal(alive.length, 1);
+			assert.equal(readOwner(lockPath).pid, alive[0].pid);
+		} finally {
+			for (const child of children) child.kill("SIGTERM");
+			await Promise.all(
+				children.map((child) =>
+					child.exitCode === null && child.signalCode === null
+						? new Promise((resolve) => child.once("exit", resolve))
+						: null,
+				),
+			);
 			rmSync(dir, { recursive: true, force: true });
 		}
 	});

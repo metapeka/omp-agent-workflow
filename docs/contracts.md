@@ -106,6 +106,11 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 
 Алгоритм:
 
+0. Взять lock `<dir>/.omp-handoff-supervisor.lock/` (owner.json: pid, dir,
+   startedAt). Если lock держит живой supervisor — выйти с кодом 0, не
+   трогая marker. Stale lock (pid мёртв) перехватывается с проверкой
+   identity; lock без owner.json считается инициализирующимся
+   `--lock-grace` секунд.
 1. Прочитать marker и session info.
 2. Проверить terminal handle, `sessionFile`, cooldown, свежесть marker.
    Mismatched `sessionFile` удаляется только после `--stale-grace` секунд
@@ -121,7 +126,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 
 Флаги: `--dir`, `--marker`, `--session`, `--interval`, `--once`,
 `--dry-run`, `--prompt`, `--no-prompt`, `--max-attempts`, `--cooldown`,
-`--stale-grace`.
+`--stale-grace`, `--lock`, `--lock-grace`.
 
 Supervisor не LLM: только файлы, terminal handle и `orca terminal send`.
 Вне Orca terminal handle отсутствует — automatic handoff недоступен.

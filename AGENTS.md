@@ -32,7 +32,7 @@ hit rate, этот проект управляет контекстом и см�
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 106 тестов (25 context guard + 38 orchestrator + 19 extension +
+- `npm test` — 113 тестов (32 context guard + 38 orchestrator + 19 extension +
   24 wrap); `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).

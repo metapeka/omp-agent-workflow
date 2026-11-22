@@ -15,17 +15,11 @@
  * marker. Второй экземпляр для того же `--dir` выходит, не трогая marker.
  */
 import { spawnSync } from "node:child_process";
-import {
-	existsSync,
-	mkdirSync,
-	readFileSync,
-	renameSync,
-	rmSync,
-	statSync,
-	writeFileSync,
-} from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
+
+import { acquireLock, releaseLock } from "../lib/supervisor-lock.mjs";
 
 const DEFAULT_PROMPT =
 	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
@@ -52,112 +46,28 @@ const dir = resolve(values.dir);
 const markerPath = resolve(dir, values.marker);
 const sessionPath = resolve(dir, values.session);
 const lockPath = resolve(dir, values.lock);
-const lockOwnerPath = join(lockPath, "owner.json");
 const intervalMs = Math.max(250, Number(values.interval) * 1000);
 const maxAttempts = Math.max(1, Number(values["max-attempts"]));
 const cooldownMs = Math.max(0, Number(values.cooldown) * 1000);
 const staleGraceMs = Math.max(0, Number(values["stale-grace"]) * 1000);
 const lockGraceMs = Math.max(0, Number(values["lock-grace"]) * 1000);
-let lockOwned = false;
+let lockHeld = false;
 let lastHandoffAt = 0;
 let staleCandidate = null;
 const orca = process.env.ORCA_CLI_COMMAND || "orca";
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
-function readLockOwner() {
-	try {
-		return JSON.parse(readFileSync(lockOwnerPath, "utf8"));
-	} catch {
-		return null;
-	}
+function releaseOwnLock() {
+	if (!lockHeld) return;
+	lockHeld = false;
+	releaseLock({ lockPath });
 }
 
-function pidAlive(pid) {
-	if (!Number.isInteger(pid) || pid <= 0) return false;
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch (error) {
-		// EPERM: процесс существует, но принадлежит другому пользователю.
-		return error.code === "EPERM";
-	}
-}
-
-function lockAgeMs() {
-	try {
-		return Date.now() - statSync(lockPath).mtimeMs;
-	} catch {
-		return 0;
-	}
-}
-
-function reclaimStaleLock(owner) {
-	const stalePath = `${lockPath}.stale-${process.pid}-${Date.now()}`;
-	try {
-		renameSync(lockPath, stalePath);
-	} catch (error) {
-		// Другой supervisor уже перехватил lock.
-		return error.code === "ENOENT";
-	}
-	rmSync(stalePath, { recursive: true, force: true });
-	console.error(
-		`[handoff-supervisor] removed stale lock (pid=${owner?.pid ?? "unknown"})`,
-	);
-	return true;
-}
-
-/** Один supervisor на каталог: lock-dir, stale по мёртвому pid. */
-function acquireLock() {
-	for (let attempt = 0; attempt < 3; attempt += 1) {
-		try {
-			mkdirSync(lockPath);
-			writeFileSync(
-				lockOwnerPath,
-				JSON.stringify({
-					pid: process.pid,
-					dir,
-					startedAt: new Date().toISOString(),
-				}),
-			);
-			lockOwned = true;
-			return true;
-		} catch (error) {
-			if (error.code !== "EEXIST") throw error;
-		}
-
-		const owner = readLockOwner();
-		if (owner && pidAlive(owner.pid)) {
-			console.error(
-				`[handoff-supervisor] another supervisor is running for ${dir} (pid=${owner.pid}); exiting`,
-			);
-			return false;
-		}
-		if (!owner && lockAgeMs() < lockGraceMs) {
-			console.error(
-				`[handoff-supervisor] lock ${lockPath} is initializing; exiting`,
-			);
-			return false;
-		}
-		if (!reclaimStaleLock(owner)) continue;
-	}
-
-	console.error(`[handoff-supervisor] cannot acquire ${lockPath}; exiting`);
-	return false;
-}
-
-function releaseLock() {
-	if (!lockOwned) return;
-	lockOwned = false;
-	const owner = readLockOwner();
-	if (owner && owner.pid !== process.pid) return;
-	rmSync(lockPath, { recursive: true, force: true });
-}
-
-process.on("exit", releaseLock);
+process.on("exit", releaseOwnLock);
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	process.on(signal, () => {
-		releaseLock();
+		releaseOwnLock();
 		process.exit(0);
 	});
 }
@@ -344,10 +254,34 @@ async function main() {
 	}
 }
 
-if (acquireLock()) {
+let lock = null;
+try {
+	lock = acquireLock({ lockPath, dir, graceMs: lockGraceMs });
+} catch (error) {
+	console.error(`[handoff-supervisor] cannot create ${lockPath}: ${error.message}`);
+	process.exitCode = 1;
+}
+
+if (lock?.ok) {
+	if (lock.reclaimed) {
+		console.error(
+			`[handoff-supervisor] removed stale lock (pid=${lock.reclaimed.pid ?? "unknown"})`,
+		);
+	}
+	lockHeld = true;
 	try {
 		await main();
 	} finally {
-		releaseLock();
+		releaseOwnLock();
 	}
+} else if (lock?.reason === "running") {
+	console.error(
+		`[handoff-supervisor] another supervisor is running for ${dir} (pid=${lock.owner?.pid}); exiting`,
+	);
+} else if (lock?.reason === "initializing") {
+	console.error(
+		`[handoff-supervisor] lock ${lockPath} is initializing; exiting`,
+	);
+} else if (lock) {
+	console.error(`[handoff-supervisor] cannot acquire ${lockPath}; exiting`);
 }
