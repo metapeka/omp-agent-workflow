@@ -57,7 +57,8 @@
 
 ### `.omp-handoff-session.json`
 
-Пишет extension на `session_start`/`session_switch`. Читает supervisor.
+Пишет extension на `session_start`/`session_switch` только для main-сессии.
+Subagent-сессии файл не трогают. Читает supervisor.
 
 ```json
 {
@@ -70,6 +71,7 @@
 ```
 
 - `terminal` — `ORCA_TERMINAL_HANDLE` или `null` вне Orca.
+- `sessionFile` — всегда main-сессия; иначе supervisor отбросит marker как stale.
 - Файл gitignored, не коммитится.
 
 ### `.omp-handoff-request.json`

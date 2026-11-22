@@ -27,7 +27,7 @@ flowchart LR
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new` |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
-| Тесты 0.3 | `test/context-guard.test.mjs` | 21 тест guard/handoff/supervisor |
+| Тесты 0.3 | `test/context-guard.test.mjs` | 22 теста guard/handoff/supervisor/session info |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 37 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 10 тестов tool/commands/hooks |
 
@@ -70,7 +70,7 @@ flowchart LR
 
 ## Поток 0.3
 
-1. `session_start` → session info с terminal handle, session file, cwd, pid.
+1. `session_start` (main) → session info с terminal handle, session file, cwd, pid.
 2. `turn_end`/`agent_end` → warning/suggest/auto/handoff по порогам.
 3. На `OMP_HANDOFF_AT` extension просит агента завершить задачу, обновить
    `HANDOFF.md` и записать marker.

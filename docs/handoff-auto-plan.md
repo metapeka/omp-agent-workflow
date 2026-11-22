@@ -18,7 +18,7 @@
 - [x] auto prompt — на `OMP_HANDOFF_AT` попросить агента обновить
       `HANDOFF.md` и записать marker; не делать новый session из event-handler.
 - [x] Yoda mode config — `manual`/`assisted`/`yoda`/`yoda-supervised`.
-- [x] tests — 19 тестов: command, marker, supervisor dry-run, no duplicate.
+- [x] tests — 22 теста: command, marker, supervisor, session info, no duplicate.
 - [x] docs — README, AGENTS, остановки и бюджеты.
 
 E2E пройден в реальном Orca-терминале: marker → supervisor → `/handoff-new`

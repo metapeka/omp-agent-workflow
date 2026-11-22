@@ -98,6 +98,7 @@ function isMainTui(ctx: ExtensionContext): boolean {
 
 /** Файл для supervisor: terminal handle и текущая сессия. */
 function writeSessionInfo(ctx: ExtensionContext): void {
+	if (!isMainTui(ctx)) return;
 	try {
 		const info = {
 			terminal: process.env.ORCA_TERMINAL_HANDLE ?? null,

@@ -3,7 +3,7 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
@@ -182,6 +182,26 @@ describe("context warnings", () => {
 			await fire(handlers, "agent_end", {}, v.ctx);
 			assert.equal(v.notes.length, 0);
 			assert.equal(v.compactions.length, 0);
+		}
+	});
+
+	it("writes session info only for the main session", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-session-info-"));
+		try {
+			const { handlers } = install();
+			const sub = view(40, { kind: "sub", cwd: dir });
+			await fire(handlers, "session_start", {}, sub.ctx);
+			assert.equal(existsSync(join(dir, ".omp-handoff-session.json")), false);
+
+			const main = view(40, { cwd: dir });
+			await fire(handlers, "session_start", {}, main.ctx);
+			const info = JSON.parse(
+				readFileSync(join(dir, ".omp-handoff-session.json"), "utf8"),
+			);
+			assert.equal(info.cwd, dir);
+			assert.equal(info.sessionFile, "/tmp/session.jsonl");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
 		}
 	});
 });
