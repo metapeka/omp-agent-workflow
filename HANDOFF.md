@@ -1,7 +1,7 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-22. Репозиторий: `~/projects/omp-agent-workflow`, ветка `main`,
-база `28effd9`, версия `0.3.0`. Проект зарегистрирован в Orca; рабочие
+коммит `9e63ca1`, версия `0.3.0`. Проект зарегистрирован в Orca; рабочие
 worktree — `~/orca/workspaces/omp-agent-workflow/<slug>`.
 
 ## Что готово
