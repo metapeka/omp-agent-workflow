@@ -1,8 +1,8 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Context guard and /handoff command for OMP: warn before context bloat and compact with handoff instructions",
+  "description": "Context guard, automatic handoff and Yoda workflow for OMP",
   "keywords": [
     "omp-plugin",
     "oh-my-pi",
@@ -13,10 +13,16 @@
   "license": "MIT",
   "scripts": {
     "test": "node --experimental-strip-types test/context-guard.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "supervisor": "node bin/omp-handoff-supervisor.mjs"
+  },
+  "bin": {
+    "omp-handoff-supervisor": "./bin/omp-handoff-supervisor.mjs"
   },
   "files": [
     "index.ts",
+    "bin",
+    "docs",
     "README.md",
     "LICENSE"
   ],

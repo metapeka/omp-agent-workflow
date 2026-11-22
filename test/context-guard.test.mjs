@@ -2,14 +2,24 @@
  * Deterministic tests for index.ts: no OMP runtime, no model, no network.
  */
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import contextGuard from "../index.ts";
+
+const SUPERVISOR = fileURLToPath(
+	new URL("../bin/omp-handoff-supervisor.mjs", import.meta.url),
+);
 
 const ENV_KEYS = [
 	"OMP_CONTEXT_WARN",
 	"OMP_CONTEXT_SUGGEST",
 	"OMP_CONTEXT_AUTO",
+	"OMP_HANDOFF_AT",
 ];
 
 function install(env = {}) {
@@ -18,6 +28,7 @@ function install(env = {}) {
 
 	const handlers = new Map();
 	const commands = new Map();
+	const sent = [];
 	const pi = {
 		on(name, handler) {
 			const list = handlers.get(name) ?? [];
@@ -27,9 +38,12 @@ function install(env = {}) {
 		registerCommand(name, definition) {
 			commands.set(name, definition);
 		},
+		async sendUserMessage(content) {
+			sent.push(content);
+		},
 	};
 	contextGuard(pi);
-	return { handlers, commands };
+	return { handlers, commands, sent };
 }
 
 function view(percent, options = {}) {
@@ -39,13 +53,25 @@ function view(percent, options = {}) {
 		idle = true,
 		pending = false,
 		complete = true,
+		cwd = join(tmpdir(), "omp-agent-workflow-no-write"),
+		sessionFile = "/tmp/session.jsonl",
+		newSessionResult = { cancelled: false },
 	} = options;
 	const notes = [];
 	const compactions = [];
+	const newSessions = [];
+	const customMessages = [];
+	let waits = 0;
 	let finish = () => {};
 	const ctx = {
 		mode,
+		cwd,
 		agent: { kind },
+		sessionManager: {
+			getSessionFile() {
+				return sessionFile;
+			},
+		},
 		ui: {
 			notify(text, level) {
 				notes.push({ text, level });
@@ -64,6 +90,18 @@ function view(percent, options = {}) {
 		hasPendingMessages() {
 			return pending;
 		},
+		async waitForIdle() {
+			waits += 1;
+		},
+		async newSession(options) {
+			newSessions.push(options);
+			await options.setup?.({
+				appendCustomMessageEntry(...args) {
+					customMessages.push(args);
+				},
+			});
+			return newSessionResult;
+		},
 		compact(instructions) {
 			compactions.push(instructions);
 			if (complete) return Promise.resolve();
@@ -72,7 +110,15 @@ function view(percent, options = {}) {
 			});
 		},
 	};
-	return { ctx, notes, compactions, finish: () => finish() };
+	return {
+		ctx,
+		notes,
+		compactions,
+		newSessions,
+		customMessages,
+		waits: () => waits,
+		finish: () => finish(),
+	};
 }
 
 async function fire(handlers, name, event, ctx) {
@@ -134,6 +180,32 @@ describe("context warnings", () => {
 	});
 });
 
+describe("automatic handoff request", () => {
+	it("asks once at the threshold and resets after compaction", async () => {
+		const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+		const v = view(56);
+
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 1);
+		assert.match(sent[0], /HANDOFF/);
+		assert.match(sent[0], /\.omp-handoff-request\.json/);
+
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 1);
+
+		await fire(handlers, "session_compact", {}, v.ctx);
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 2);
+	});
+
+	it("does not ask below the threshold", async () => {
+		const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+		const v = view(54);
+		await fire(handlers, "turn_end", {}, v.ctx);
+		assert.equal(sent.length, 0);
+	});
+});
+
 describe("auto compaction", () => {
 	it("compacts once at the default auto threshold and resets after compaction", async () => {
 		const { handlers } = install();
@@ -186,6 +258,93 @@ describe("auto compaction", () => {
 		const v = view(90);
 		await fire(handlers, "turn_end", {}, v.ctx);
 		assert.equal(v.compactions.length, 0);
+	});
+});
+
+describe("/handoff-new", () => {
+	it("creates a new session after HANDOFF.md exists", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		try {
+			writeFileSync(join(dir, "HANDOFF.md"), "# state\n");
+			const { commands } = install();
+			const v = view(40, { cwd: dir, sessionFile: "/tmp/parent.jsonl" });
+
+			await command(commands, "handoff-new", v.ctx);
+
+			assert.equal(v.newSessions.length, 1);
+			assert.equal(v.newSessions[0].parentSession, "/tmp/parent.jsonl");
+			assert.equal(v.waits(), 1);
+			assert.equal(v.customMessages.length, 1);
+			assert.equal(v.customMessages[0][0], "handoff");
+			assert.match(v.customMessages[0][1], /HANDOFF\.md/);
+			assert.match(v.notes[0].text, /HANDOFF-NEW/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses without HANDOFF.md", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		try {
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+
+			await command(commands, "handoff-new", v.ctx);
+
+			assert.equal(v.newSessions.length, 0);
+			assert.match(v.notes[0].text, /HANDOFF не найден/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("reports a cancelled new session", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		try {
+			writeFileSync(join(dir, "HANDOFF.md"), "# state\n");
+			const { commands } = install();
+			const v = view(40, {
+				cwd: dir,
+				newSessionResult: { cancelled: true },
+			});
+
+			await command(commands, "handoff-new", v.ctx);
+
+			assert.equal(v.newSessions.length, 1);
+			assert.match(v.notes.at(-1).text, /отменён/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("supervisor", () => {
+	it("prints the handoff command in dry-run and keeps the marker", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({ terminal: "term_test" }),
+			);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary" }),
+			);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{ encoding: "utf8" },
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stdout, /term_test/);
+			assert.match(result.stdout, /\/handoff-new/);
+			assert.match(result.stdout, /task-boundary/);
+			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), true);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 

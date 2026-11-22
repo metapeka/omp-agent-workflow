@@ -12,6 +12,8 @@
  * Установка: `omp plugin link <каталог>` или копия в
  * `~/.omp/agent/extensions/context-guard.ts` (одно из двух).
  */
+import { existsSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
@@ -23,6 +25,9 @@ const HANDOFF_INSTRUCTIONS =
 const DEFAULT_WARN = 35;
 const DEFAULT_SUGGEST = 50;
 const DEFAULT_AUTO = 60;
+const SESSION_INFO = ".omp-handoff-session.json";
+const HANDOFF_NEW_PROMPT =
+	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
 
 /** Процент из env; невалидное значение откатывается к дефолту. */
 function percentFromEnv(name: string, fallback: number): number {
@@ -39,6 +44,14 @@ function autoPercentFromEnv(): number | null {
 	if (raw.toLowerCase() === "off") return null;
 	const value = Number(raw);
 	return Number.isFinite(value) && value > 0 && value <= 100 ? value : DEFAULT_AUTO;
+}
+
+/** Порог автоматического запроса handoff: число или `off` (null). */
+function handoffPercentFromEnv(): number | null {
+	const raw = process.env.OMP_HANDOFF_AT?.trim();
+	if (!raw || raw.toLowerCase() === "off") return null;
+	const value = Number(raw);
+	return Number.isFinite(value) && value > 0 && value <= 100 ? value : null;
 }
 
 /** Краткий вид контекста: `42% (420k/1000k)`. */
@@ -61,6 +74,22 @@ function isMainTui(ctx: ExtensionContext): boolean {
 	return ctx.mode === "tui" && ctx.agent.kind === "main";
 }
 
+/** Файл для supervisor: terminal handle и текущая сессия. */
+function writeSessionInfo(ctx: ExtensionContext): void {
+	try {
+		const info = {
+			terminal: process.env.ORCA_TERMINAL_HANDLE ?? null,
+			sessionFile: ctx.sessionManager.getSessionFile() ?? null,
+			cwd: ctx.cwd,
+			pid: process.pid,
+			updatedAt: new Date().toISOString(),
+		};
+		writeFileSync(resolve(ctx.cwd, SESSION_INFO), `${JSON.stringify(info, null, 2)}\n`);
+	} catch {
+		// readonly cwd или нет прав — supervisor просто не найдёт файл
+	}
+}
+
 /** UI-вызовы не должны ронять обработчик. */
 function notify(
 	ctx: ExtensionContext,
@@ -78,11 +107,13 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	const warnAt = percentFromEnv("OMP_CONTEXT_WARN", DEFAULT_WARN);
 	const suggestAt = percentFromEnv("OMP_CONTEXT_SUGGEST", DEFAULT_SUGGEST);
 	const autoAt = autoPercentFromEnv();
+	const handoffAt = handoffPercentFromEnv();
 
 	let warned = false;
 	let suggested = false;
 	let autoCompacted = false;
 	let compacting = false;
+	let handoffRequested = false;
 
 	/** После падения ниже warning пороги снова активны. */
 	const resetIfBelow = (percent: number): void => {
@@ -130,9 +161,38 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		}
 	};
 
+	/**
+	 * На пороге handoff просим агента завершить задачу, обновить state и
+	 * поставить marker. Новую сессию отсюда начать нельзя — это делает
+	 * supervisor через /handoff-new.
+	 */
+	const checkHandoff = async (ctx: ExtensionContext): Promise<void> => {
+		if (!isMainTui(ctx) || handoffAt === null) return;
+		const usage = readUsage(ctx);
+		if (!usage) return;
+		if (usage.percent < handoffAt) {
+			handoffRequested = false;
+			return;
+		}
+		if (handoffRequested || !ctx.isIdle() || ctx.hasPendingMessages()) return;
+
+		handoffRequested = true;
+		const text =
+			`HANDOFF: контекст ${usageText(usage)}. Заверши текущую задачу, обнови HANDOFF.md, ` +
+			`запиши .omp-handoff-request.json с {"reason":"context"} и заверши ход. ` +
+			"Не начинай новую задачу.";
+		try {
+			await pi.sendUserMessage(text);
+		} catch (error) {
+			handoffRequested = false;
+			const message = error instanceof Error ? error.message : String(error);
+			notify(ctx, `Не удалось запросить HANDOFF: ${message}`, "warning");
+		}
+	};
+
 	/** Авто-компакция на 60% только после завершения хода и без очереди. */
 	const checkAuto = async (ctx: ExtensionContext): Promise<void> => {
-		if (!isMainTui(ctx) || autoAt === null) return;
+		if (!isMainTui(ctx) || autoAt === null || handoffRequested) return;
 		const usage = readUsage(ctx);
 		if (!usage) return;
 		resetIfBelow(usage.percent);
@@ -165,17 +225,21 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		suggested = false;
 		autoCompacted = false;
 		compacting = false;
+		handoffRequested = false;
+		writeSessionInfo(ctx);
 		checkWarnings(ctx);
 	});
 
 	pi.on("turn_end", async (_event, ctx) => {
 		checkWarnings(ctx);
+		await checkHandoff(ctx);
 		await checkAuto(ctx);
 	});
 
 	pi.on("agent_end", async (event, ctx) => {
 		// Авто-продолжение или фоновая работа: это не финальная точка.
 		if (event.willContinue || event.awaitingAsyncWork) return;
+		await checkHandoff(ctx);
 		await checkAuto(ctx);
 	});
 
@@ -196,6 +260,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		warned = false;
 		suggested = false;
 		autoCompacted = false;
+		handoffRequested = false;
 		notify(ctx, "Контекст сжат.", "info");
 	});
 
@@ -204,7 +269,42 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		suggested = false;
 		autoCompacted = false;
 		compacting = false;
+		handoffRequested = false;
+		writeSessionInfo(ctx);
 		checkWarnings(ctx);
+	});
+
+	pi.registerCommand("handoff-new", {
+		description: "Начать новую сессию после обновления HANDOFF.md",
+		handler: async (args, ctx) => {
+			if (!isMainTui(ctx)) return;
+			const statePath = resolve(ctx.cwd, args.trim() || "HANDOFF.md");
+			if (!existsSync(statePath)) {
+				notify(ctx, `HANDOFF не найден: ${statePath}. Сначала обнови state.`, "warning");
+				return;
+			}
+
+			const usage = readUsage(ctx);
+			notify(
+				ctx,
+				`HANDOFF-NEW${usage ? ` ${usageText(usage)}` : ""}: жду idle и открываю новую сессию.`,
+				"info",
+			);
+			await ctx.waitForIdle();
+			const parentSession = ctx.sessionManager.getSessionFile();
+			try {
+				const result = await ctx.newSession({
+					...(parentSession ? { parentSession } : {}),
+					setup: async (sessionManager) => {
+						sessionManager.appendCustomMessageEntry("handoff", HANDOFF_NEW_PROMPT, true);
+					},
+				});
+				if (result.cancelled) notify(ctx, "HANDOFF-NEW отменён.", "info");
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				notify(ctx, `HANDOFF-NEW не удался: ${message}`, "warning");
+			}
+		},
 	});
 
 	pi.registerCommand("handoff", {
