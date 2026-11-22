@@ -21,7 +21,7 @@ Worktree `~/orca/workspaces/omp-agent-workflow/wrap-wizard` ещё сущест�
 | Wrap 0.5.1 | `/wrap` в `orchestrator.ts` + `lib/orchestrator/wrap.ts`; карточки, safe cleanup, next worktree |
 | Проверки | `npm test` 103/103, `npm run typecheck`, загрузка extension в OMP |
 | Reviewer | WrapSafetyReview: subdir-процессы, Orca ENOENT, handoff cwd, state/lock cwd, planError guard исправлены; тесты добавлены |
-| TUI smoke | `/wrap` открыл карточки в реальном TUI (temp repo), Esc отменил без мутаций |
+| TUI E2E | cleanup: cancel (Esc/No) оставляет worktree, Yes удаляет; real Orca backend cleanup temp worktree прошёл |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` (`wrap.md`) |
 
 ## `/wrap` 0.5.1
@@ -85,13 +85,15 @@ omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
 ```
 
-TUI smoke: `/wrap` в temp git repo открывает карточки; Esc отменяет; мутаций
-нет. Реальный Orca cleanup (не git backend) ещё не прогонялся.
+TUI cleanup: `/wrap` → cleanup → target → confirm. Esc/No оставляет worktree и
+ветку; Yes удаляет. Real Orca backend проверен на temp Orca-worktree: cleanup
+удалил worktree и ветку; Orca-created worktree держит shell, поэтому до
+закрытия терминала cleanup блокируется.
 
 ## Следующие шаги
 
-1. Проверить `/wrap` в реальном Orca worktree: cleanup merged-соседа,
-   confirm/cancel, `branch retained` при безопасном отказе.
+1. Опционально: повторить TUI cleanup на Orca-managed worktree; core Orca и
+   TUI confirm/cancel уже проверены.
 2. После выхода из сессии удалить worktree `wrap-wizard` и ветку
    `feat/wrap-wizard`; `main` уже содержит merge.
 3. Дальше — release/remote или 0.6 economics; публикация только по решению
