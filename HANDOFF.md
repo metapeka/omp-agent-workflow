@@ -6,7 +6,7 @@ Worktree `~/orca/workspaces/omp-agent-workflow/wrap-wizard` ещё сущест�
 совпадает с `main`; его можно удалить после выхода из сессии.
 
 Вики проекта — `docs/README.md`. Дизайн 0.5 — `docs/orchestrator.md`;
-`/wrap` — `docs/wrap.md`.
+`/wrap` — `docs/wrap.md`; оперативный backlog — `TODO.md`.
 
 ## Что готово
 
@@ -22,6 +22,7 @@ Worktree `~/orca/workspaces/omp-agent-workflow/wrap-wizard` ещё сущест�
 | Проверки | `npm test` 103/103, `npm run typecheck`, загрузка extension в OMP |
 | Reviewer | WrapSafetyReview: subdir-процессы, Orca ENOENT, handoff cwd, state/lock cwd, planError guard исправлены; тесты добавлены |
 | TUI E2E | cleanup: cancel (Esc/No) оставляет worktree, Yes удаляет; real Orca backend cleanup temp worktree прошёл |
+| Tarball | `0.5.1`: pack/install, extension load exit 0, `/wrap` открылся из установленного пакета |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` (`wrap.md`) |
 
 ## `/wrap` 0.5.1

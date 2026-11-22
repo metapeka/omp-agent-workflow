@@ -1,7 +1,7 @@
 # Next session: omp-agent-workflow 0.5.1
 
 Контекст для новой OMP-сессии в проекте `omp-agent-workflow`.
-Источник истины — `HANDOFF.md`; вики — `docs/README.md`.
+Источник истины — `HANDOFF.md`; вики — `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
@@ -18,6 +18,8 @@
   блокируется, пока терминал не закрыт.
 - Проверки: `npm test` 103/103, `npm run typecheck`, загрузка extension,
   `omp plugin list` → `omp-agent-workflow@0.5.1`.
+- Tarball `0.5.1` проверен: pack/install, `/wrap` из установленного пакета
+  открывается.
 - Текущая сессия запущена через `bin/omp-yoda`:
   `OMP_WORKFLOW_MODE=yoda-supervised`, handoff 55%, auto-compaction off,
   supervisor на `wrap-wizard`.

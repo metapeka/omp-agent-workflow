@@ -2,7 +2,7 @@
 
 Дата: 2026-11-22. Версия: `0.5.1`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля и `/wrap` готовы; release/remote — по решению
-владельца.
+владельца. Оперативный список — `TODO.md`.
 
 ## Принципы
 
