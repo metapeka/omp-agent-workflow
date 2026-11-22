@@ -1,9 +1,9 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main` HEAD `a5ddfea`, версия `0.5.2`. Ветка `feat/supervisor-lock` слита
-ff-only; worktree `~/orca/workspaces/omp-agent-workflow/supervisor-lock`
-удалён. Вики проекта — `docs/README.md`; backlog — `TODO.md`.
+`main` HEAD `46464cf`, версия `0.5.3`. Ветка `feat/orca-integration` слита
+ff-only; worktree `~/orca/workspaces/omp-agent-workflow/orca-integration`
+удалён вместе с Orca-терминалом. Вики — `docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -13,45 +13,46 @@ ff-only; worktree `~/orca/workspaces/omp-agent-workflow/supervisor-lock`
 | Workflow modes | `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | Automatic handoff | session info, marker, supervisor, continuation prompt |
 | Защита от цикла | cooldown 300 с, stale-marker guard по `sessionFile` |
-| Launcher | `bin/omp-yoda` — supervisor + OMP в режиме `yoda-supervised` |
+| Launcher | `bin/omp-yoda` — supervisor + OMP, warning при недоступном Orca |
 | Orchestrator 0.5 | этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate` |
 | Wrap 0.5.1 | `/wrap` в `orchestrator.ts` + `lib/orchestrator/wrap.ts` |
-| Supervisor singleton 0.5.2 | `lib/supervisor-lock.mjs`; lock на `--dir`, stale reclaim, identity guard |
-| Проверки | `npm test` 113/113, `npm run typecheck`, extension load exit 0 |
-| Reviewer | `SupervisorLockReview`: verdict ok; blocking-гонка reclaim закрыта, P3 (лог) исправлен |
+| Supervisor singleton 0.5.2 | `lib/supervisor-lock.mjs`; lock, stale reclaim, identity guard |
+| Orca additive 0.5.3 | terminal list/show, `status` warning, `ORCA_CLI_COMMAND`, fallbacks |
+| Проверки | `npm test` 119/119, `npm run typecheck`, extension load exit 0 |
+| Reviewer | `OrcaIntegrationReview`: verdict ok (2 P2 исправлены, test isolation) |
 
-## Supervisor singleton 0.5.2
+## Orca-интеграция 0.5.3 (OMP first, D11)
 
-- lock-dir `<dir>/.omp-handoff-supervisor.lock/` с `owner.json`
-  (`pid`, `dir`, `startedAt`);
-- второй экземпляр для того же `--dir` пишет
-  `another supervisor is running` и выходит с кодом 0, marker не трогает;
-- stale lock (pid мёртв) перехватывается через rename с проверкой identity:
-  если lock успел взять живой supervisor, его каталог возвращается на место;
-- lock без `owner.json` считается инициализирующимся `--lock-grace` секунд
-  (default 10);
-- lock снимается на выходе и по `SIGINT`/`SIGTERM`/`SIGHUP`;
-- ошибки создания (`ENOENT`/`EACCES`/`ENOSPC`) — сообщение и exit 1, без
-  stack trace; ownerless lock не остаётся;
-- флаги: `--lock`, `--lock-grace`.
+- `/wrap` cleanup: `orca terminal list --json` → live-терминалы worktree
+  (`connected` и не `orphaned`) блокируют удаление; `/proc` — fallback.
+- Supervisor: перед send — `orca terminal show --terminal <handle> --json`;
+  мёртвый handle → marker сохранён, retry до `--max-attempts`, затем exit 1.
+- Launcher: `orca status` (не `--json`, потому что JSON всегда exit 0);
+  ошибка → warning, OMP всё равно стартует.
+- `ORCA_CLI_COMMAND` учитывают supervisor, `/wrap` (terminal list, safe
+  remove), `createWorktree`/`removeWorktree` и launcher.
+- `removeWorktree` падает в git fallback и при невозможности spawn Orca CLI.
+- Без Orca: git backend, `/proc`, ручной `/handoff-new`.
 
-Файлы: `lib/supervisor-lock.mjs`, `bin/omp-handoff-supervisor.mjs`.
-Тесты: 7 новых в `test/context-guard.test.mjs` (identity guard, initializing,
-grace, live owner, dead owner, SIGTERM, два конкурентных стартера).
+Файлы: `lib/orchestrator/wrap.ts`, `lib/orchestrator/worktrees.ts`,
+`bin/omp-handoff-supervisor.mjs`, `bin/omp-yoda`.
+Тесты: `test/wrap.test.mjs` (29), `test/context-guard.test.mjs` (33),
+extension (19), orchestrator (38) — 119.
 
-Проверено: 20 раундов × 3 стартера и 1 раунд × 20 стартеров на stale lock —
-ровно один живой supervisor, один лог `removed stale lock`, без `.stale-*`
-остатков; `--dir` в несуществующий каталог → exit 1 с сообщением; tarball
-содержит `lib/supervisor-lock.mjs`.
+## D11: anti-goals (не делать без нового решения)
+
+- Orca Runs/gates/workers вместо OMP orchestrator (D1).
+- Orca agent sessions вместо marker/session 0.3.
+- Обязательный `orca` при старте `bin/omp-yoda` или `/handoff`.
+- Параллельные задачи/multi-repo (D8).
+- Публикация npm/marketplace и remote — только с разрешения владельца (D10).
 
 ## Контракт
 
 - Схемы `.omp-handoff-session.json` и `.omp-handoff-request.json` не
-  менялись (0.3).
-- Lock supervisor — additive runtime-файл, не контракт; gitignored.
-- `index.ts`, supervisor CLI-контракт (`--dir`, marker, session, cooldown)
-  и supervisor-протокол не менялись; изменено только поведение при
-  конкурирующих экземплярах.
+  менялись (0.3); добавлен только шаг preflight перед send.
+- Lock supervisor — additive runtime-файл; gitignored.
+- `index.ts` и `/orchestrate` контракт не менялись.
 - `/wrap` не пишет `STATE.json`/marker, не мержит, не вызывает `newSession`.
 
 ## Где что лежит
@@ -61,59 +62,49 @@ grace, live owner, dead owner, SIGTERM, два конкурентных стар
 | Extension | `index.ts` |
 | Orchestrator entry | `orchestrator.ts` (tool, `/orchestrate`, `/wrap`) |
 | Wrap core | `lib/orchestrator/wrap.ts` |
+| Worktree backend | `lib/orchestrator/worktrees.ts` (`orcaCli()`) |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` |
 | Supervisor lock | `lib/supervisor-lock.mjs` |
 | Launcher | `bin/omp-yoda` |
 | Тесты guard/supervisor/lock | `test/context-guard.test.mjs` |
-| Тесты orchestrator | `test/orchestrator.test.mjs` |
-| Тесты extension | `test/orchestrator-extension.test.mjs` |
-| Дизайн wrap | `docs/wrap.md` |
-| Дизайн 0.5 | `docs/orchestrator.md` |
-| Контракт 0.3 | `docs/contracts.md` |
+| Тесты wrap | `test/wrap.test.mjs` |
 | Runbook | `docs/operations.md` |
+| Решения | `docs/decisions.md` (D11) |
+| Дизайн 0.5 | `docs/orchestrator.md` |
+| Wrap | `docs/wrap.md` |
 
 ## Проверки
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                 # 113/113
+npm test                                  # 119/119
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
+bin/omp-yoda --version
+ORCA_USER_DATA_PATH=/tmp/empty bin/omp-yoda --version  # warning, OMP стартует
+orca terminal list --json | jq '.result.terminals[].worktreePath'
 node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
-```
-
-Конкурирующие supervisor'ы:
-
-```bash
-node bin/omp-handoff-supervisor.mjs --dir /tmp/sup-test &   # pid A
-node bin/omp-handoff-supervisor.mjs --dir /tmp/sup-test      # exit 0, "another supervisor"
-kill %1                                                      # lock снят
 ```
 
 ## Следующие шаги
 
-1. Перезапустить `bin/omp-yoda`: supervisor, запущенный до merge, держит в
-   памяти старый код и не берёт lock; новый экземпляр возьмёт lock только
-   после рестарта сессии.
+1. Перезапустить сессию через `bin/omp-yoda`: текущий OMP (0.5.2) и его
+   supervisor загружены до merge и не содержат preflight/terminal list.
 2. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
 3. P2 0.6: экономика handoff/компакции с `omp-cache-monitor`.
-4. Опционально: кроссплатформенная live-process проверка (сейчас `/proc`);
-   полный TUI E2E `/wrap` на Orca-managed worktree.
+4. Опционально: полный TUI E2E `/wrap` на Orca-managed worktree;
+   кроссплатформенная live-process проверка (сейчас `/proc` fallback).
 
 ## Риски
 
-- Lock advisory: PID может быть переиспользован после падения; stale reclaim
-  считает такой процесс живым до его смерти.
-- Узкая гонка: delayed reclaimer может на мгновение унести живой lock; если
-  третий стартер займёт путь до rename-back, restore не удастся. В стрессe
-  20×20 не воспроизвелось; см. отчёт reviewer.
-- Две OMP-сессии в одном `--dir` делят marker и `HANDOFF.md` — это
-  конфигурационная ошибка; lock лишь не даёт двум supervisor'ам работать
-  одновременно.
-- `/proc`-проверка live-процессов Linux-only и best-effort.
-- Supervisor привязан к Orca terminal handle; вне Orca automatic handoff
-  недоступен.
-- `HANDOFF.md` freshness — эвристика по commit identity, не proof.
-- `ctx.ui.select/confirm` блокируют ход; destructive confirm без timeout.
+- `orca terminal list` может быть недоступен/медленным (timeout 15 с):
+  fallback на `/proc`; на не-Linux без Orca live-проверка пустая.
+- `connected`/`orphaned` — эвристика Orca; при неясном поле терминал
+  считается живым (консервативно, блокирует cleanup).
+- Lock supervisor advisory: PID reuse и узкая тройная гонка reclaim
+  описаны в отчёте `SupervisorLockReview`.
+- Две OMP-сессии в одном `--dir` делят marker и `HANDOFF.md`.
+- Supervisor привязан к Orca terminal handle; вне Orca — только ручной
+  `/handoff-new`.
 - Remote отсутствует: push/publish — только по решению владельца.
