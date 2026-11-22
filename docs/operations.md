@@ -111,9 +111,10 @@ Dry-run supervisor показывает точную команду, ничег�
 node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
 ```
 
-## Orchestrator `[partial]`
+## Orchestrator `[готово]`
 
-CLI и extension (`/orchestrate`, tool `orchestrator`) работают; E2E — этап D.
+CLI и extension (`/orchestrate`, tool `orchestrator`) работают; живой
+TUI-цикл — ручная проверка.
 
 ```bash
 # старт/статус

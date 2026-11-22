@@ -25,13 +25,13 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.3.0`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.0`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
-  (`docs/orchestrator.md`), этапы A–C реализованы, дальше D.
+  (`docs/orchestrator.md`), этапы A–D реализованы.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 64 теста (19 context guard + 45 orchestrator);
+- `npm test` — 65 тестов (19 context guard + 46 orchestrator);
   `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).

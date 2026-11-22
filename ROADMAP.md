@@ -1,7 +1,7 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-22. Версия: `0.3.0`. Статус: context guard, handoff и режимы
-готовы; оркестратор и subagent-петля — следующий этап.
+Дата: 2026-11-22. Версия: `0.5.0`. Статус: context guard, handoff, режимы и
+orchestrator/subagent-петля готовы; release/remote — по решению владельца.
 
 ## Принципы
 
@@ -57,9 +57,9 @@
 - [x] Этап A: `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts` + unit-тесты.
 - [x] Этап B: `cost.ts`, `worktrees.ts`, `actions.ts`,
       `bin/omp-orchestrate` + integration.
-- [x] Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry;
-      64 теста всего.
-- [ ] Этап D: docs/example, версия `0.5.0`, E2E 3 задачи в Orca.
+- [x] Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry.
+- [x] Этап D: E2E acceptance на 3 задачи, handoff на границе, stop-gate,
+      версия `0.5.0`. Живой TUI-цикл — ручная проверка.
 - Orchestrator (main) читает `AUTOPLAN.md`/`HANDOFF.md`, выбирает задачу,
   спавнит implementer/verifier/reviewer/scout, мержит и обновляет state.
 - `STATE.json`: current task, branch, commit, status, context %, spend, last

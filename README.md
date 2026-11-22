@@ -113,6 +113,36 @@ OMP_YODA_DIR=/path/to/worktree bin/omp-yoda
 ранние и stale marker'ы (`--cooldown`, по умолчанию 300). Это защищает от
 цикла «новая сессия сразу просит следующий handoff».
 
+## Orchestrator 0.5
+
+Оркестратор включается явно: `/orchestrate [AUTOPLAN.md]`. Наличие
+`AUTOPLAN.md` само по себе ничего не запускает.
+
+- `AUTOPLAN.md` — цель, бюджеты и задачи в fenced JSON-блоках
+  `json plan` / `json task`; шаблон — `docs/AUTOPLAN.example.md`.
+- `STATE.json` — runtime-состояние: current task, worktree, commit, checks,
+  spend, stop reason; не коммитится.
+- Tool `orchestrator` — детерминированные действия `status`, `next`,
+  `start`, `verify`, `finish`, `rebase`, `stop`, `resume`.
+- `finish` мержит только `--ff-only` в чистый base, требует verify и
+  reviewer verdict.
+- Бюджеты: `maxTasksPerSession`, `maxSpendUsd`, `maxMinutes`; stop-gates
+  фиксируют причину.
+- Handoff на границе задачи: агент обновляет `HANDOFF.md` и пишет marker;
+  supervisor открывает новую сессию.
+- CLI:
+
+```bash
+bin/omp-orchestrate status --json --dir /path/to/control-worktree
+bin/omp-orchestrate start T1 --dir /path/to/control-worktree
+bin/omp-orchestrate verify T1 --dir /path/to/control-worktree
+bin/omp-orchestrate finish T1 --commit SHA --review ok --dir /path/to/control-worktree
+```
+
+Авто-продолжение работает только в `yoda`/`yoda-supervised` и только после
+явного `/orchestrate`. В `manual`/`assisted` следующую задачу запускает
+человек. Полный контракт — `docs/orchestrator.md`.
+
 Yoda-режимы и оркестрация: `docs/yoda-workflow.md`.
 План automatic handoff: `docs/handoff-auto-plan.md`.
 Состояние проекта: `HANDOFF.md`; план: `ROADMAP.md`; инструкции агенту:
@@ -135,7 +165,9 @@ omp plugin link /home/db1/projects/omp-agent-workflow
 ```
 
 Альтернатива — скопировать `index.ts` в
-`~/.omp/agent/extensions/agent-workflow.ts`. Ставить нужно одним способом.
+`~/.omp/agent/extensions/agent-workflow.ts`. Это даёт только context guard
+0.3; для orchestrator нужны также `orchestrator.ts` и `lib/`, поэтому
+рекомендуется `omp plugin link`. Ставить нужно одним способом.
 После установки перезапустить OMP.
 
 ## Проверка
@@ -145,6 +177,9 @@ npm test
 npm run typecheck
 omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   -p 'Reply with exactly: OK'
+omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
+  --no-tools --mode json -p 'Reply with exactly: OK'
+npm run orchestrate -- status --json --dir <control-worktree>
 ```
 
 ## Ограничения
@@ -154,6 +189,9 @@ omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   пропускаются до следующего хода.
 - Пороги — эвристика, а не измеренная граница модели.
 - Не управляет native warming/compaction; только просит OMP сжать контекст.
+- Orchestrator: `task` subagent не получает `cwd`, изоляция задачи держится
+  на абсолютном пути worktree и проверках. Один `current`, без параллельных
+  задач. `baseRepo` должен быть чистым; иначе `stop: base-dirty`.
 
 ## Лицензия
 

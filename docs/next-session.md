@@ -6,7 +6,7 @@
 ## Состояние
 
 - Репозиторий: `/home/db1/projects/omp-agent-workflow`, `main` на `f79ad85`,
-  версия `0.3.0`.
+  версия `0.5.0`.
 - Текущая работа: worktree
   `~/orca/workspaces/omp-agent-workflow/orchestrator`, ветка
   `feat/orchestrator`.
@@ -16,21 +16,24 @@
 - Готово (docs): вики `docs/architecture.md`, `contracts.md`,
   `orchestrator.md`, `operations.md`, `decisions.md`,
   `AUTOPLAN.example.md`.
-- Готово (0.5, этапы A–C): `lib/orchestrator/*`, `orchestrator.ts`,
-  `bin/omp-orchestrate`; 64 теста всего; этап D впереди.
-- Проверки: `npm test` 64/64, `npm run typecheck`, загрузка extension,
+- Готово (0.5, этапы A–D): `lib/orchestrator/*`, `orchestrator.ts`,
+  `bin/omp-orchestrate`; 65 тестов всего; Orca backend проверен create/rm.
+- Проверки: `npm test` 65/65, `npm run typecheck`, загрузка extension,
   e2e supervisor в Orca.
 - `omp plugin link` указывает на `main`; изменения в worktree не влияют на
   живую сессию до merge.
 
 ## Следующий этап
 
-Реализация 0.5 по `docs/orchestrator.md`, этап D:
+Реализация 0.5 завершена. Осталось:
 
-1. D: E2E 3 задачи в Orca, handoff на границе, stop-gate; версия `0.5.0`;
-   финальные docs.
+1. Ручная проверка живого TUI-цикла: `/orchestrate` → subagents → merge →
+   handoff → новая сессия.
+2. Remote/GitHub, npm/marketplace, английский README — только по решению
+   владельца.
+3. P2: экономика handoff/компакции с `omp-cache-monitor`.
 
-Перед кодом прочитать `docs/decisions.md` — D1–D10 подтверждены.
+Перед изменениями прочитать `docs/decisions.md` — D1–D10 подтверждены.
 
 ## Границы
 

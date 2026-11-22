@@ -94,6 +94,13 @@ const T2 = {
 	acceptance: ["second works"],
 };
 
+const T3 = {
+	id: "T3",
+	title: "third",
+	deps: ["T2"],
+	acceptance: ["third works"],
+};
+
 function compile(plan = BASE_PLAN, tasks = [T1]) {
 	return parsePlan(planText(plan, tasks));
 }
@@ -534,6 +541,7 @@ async function scenario(options = {}) {
 		baseRepo: base,
 		worktreeRoot,
 		verify: [options.verify ?? 'node -e "process.exit(0)"'],
+		...(options.plan ?? {}),
 	};
 	const tasks = options.tasks ?? [T1];
 	writeFileSync(join(control, "AUTOPLAN.md"), planText(plan, tasks));
@@ -716,6 +724,51 @@ describe("actions on a real git repo", () => {
 		assert.equal(existsSync(join(s.control, STATE_FILE)), false);
 		assert.equal(nextAction(s.ctx).kind, "task");
 		assert.equal(existsSync(join(s.control, STATE_FILE)), false);
+	});
+
+	it("runs three tasks across a boundary handoff", async () => {
+		const s = await scenario({
+			tasks: [T1, T2, T3],
+			plan: { budgets: { maxTasksPerSession: 2 } },
+		});
+
+		async function runTask(id, ctx) {
+			const started = await start(ctx, id);
+			assert.equal(started.kind, "started");
+			await commitFile(started.worktree, `${id}.txt`, `${id}\n`);
+			const verified = await verify(ctx, id);
+			assert.equal(verified.ok, true);
+			return finish(ctx, id, verified.commit, "ok");
+		}
+
+		const first = await runTask("T1", s.ctx);
+		assert.equal(first.kind, "merged");
+		assert.equal(first.decision.kind, "continue");
+
+		const second = await runTask("T2", s.ctx);
+		assert.equal(second.kind, "merged");
+		assert.equal(second.decision.kind, "handoff");
+		let state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.current, null);
+		assert.equal(state.run.active, true);
+		assert.equal(state.budgets.tasksThisSession, 2);
+		assert.equal(state.completed.length, 2);
+
+		const secondSession = join(tempDir(), "session2.jsonl");
+		writeFileSync(secondSession, costLine(0.02));
+		const nextCtx = { ...s.ctx, sessionFile: secondSession };
+		const third = await runTask("T3", nextCtx);
+		assert.equal(third.kind, "merged");
+		assert.equal(third.decision.kind, "stop");
+		assert.equal(third.decision.reason, "plan-done");
+
+		state = readState(join(s.control, STATE_FILE));
+		assert.deepEqual(
+			state.completed.map((task) => task.id),
+			["T1", "T2", "T3"],
+		);
+		assert.equal(state.stop.reason, "plan-done");
+		assert.equal(state.budgets.tasksThisSession, 1);
 	});
 
 	it("runs the CLI status command", async () => {

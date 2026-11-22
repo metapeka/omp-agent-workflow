@@ -1,7 +1,7 @@
 # Архитектура и OMP API
 
-Статус: `[готово]` для 0.3, `[partial]` для 0.5 (этапы A–C).
-OMP: `19.1.0`. Orca CLI: локальная установка проекта.
+Статус: `[готово]` для 0.3 и 0.5. OMP: `19.1.0`. Orca CLI: локальная
+установка проекта.
 
 ## Компоненты
 
@@ -26,9 +26,9 @@ flowchart LR
 | Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, session info, marker при пороге |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new` |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
-| Orchestrator `[partial]` | `orchestrator.ts` + `lib/orchestrator/*` | A–C: state, cost, worktree, actions, CLI, extension; D — E2E/release |
+| Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Тесты 0.3 | `test/context-guard.test.mjs` | 19 детерминированных тестов guard/handoff |
-| Тесты 0.5 | `test/orchestrator.test.mjs` | 36 тестов plan/state/cost/worktree/actions/policy |
+| Тесты 0.5 | `test/orchestrator.test.mjs` | 37 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 9 тестов tool/commands/hooks |
 
 ## Что extension может и не может (OMP 19.1.0)
@@ -82,7 +82,7 @@ flowchart LR
 
 Детали схем — [contracts.md](contracts.md).
 
-## Поток 0.5 `[partial]`
+## Поток 0.5 `[готово]`
 
 1. `/orchestrate` → validation, `STATE.json`, первый worktree.
 2. Main спавнит implementer (`task`) с абсолютным путём worktree.
@@ -90,8 +90,9 @@ flowchart LR
    повторяет независимо.
 4. Reviewer смотрит diff; verdict фиксируется в `finish`.
 5. `finish` мержит `--ff-only`, удаляет worktree, обновляет state.
-6. Policy → continue / handoff / stop. Continue отправляет следующий
-   task-промпт; handoff пишет marker `task-boundary`; stop фиксирует причину.
+6. Policy → continue / handoff / stop. Continue ставит nudge
+   `action=start task=<next>`; handoff требует marker `task-boundary`; stop
+   фиксирует причину.
 
 Детали — [orchestrator.md](orchestrator.md).
 

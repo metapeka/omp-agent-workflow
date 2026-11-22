@@ -3,7 +3,7 @@
 Дата: 2026-11-22. Репозиторий: `~/projects/omp-agent-workflow`, ветка `main`,
 коммит `f79ad85`; текущая работа — worktree
 `~/orca/workspaces/omp-agent-workflow/orchestrator`, ветка `feat/orchestrator`.
-Версия `0.3.0`. Проект зарегистрирован в Orca; рабочие worktree —
+Версия `0.5.0`. Проект зарегистрирован в Orca; рабочие worktree —
 `~/orca/workspaces/omp-agent-workflow/<slug>`.
 
 Дизайн 0.5 утверждён 2026-11-22; вики проекта — `docs/README.md`.
@@ -21,7 +21,7 @@
 | E2E | supervisor → `/handoff-new` в реальном Orca-терминале; новая сессия прочитала `HANDOFF.md` |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` |
 | Вики | `docs/README.md`: архитектура, контракт, orchestrator 0.5, runbook, решения |
-| Orchestrator 0.5 | Этапы A–C: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate`; 64 теста; D впереди |
+| Orchestrator 0.5 | Этапы A–D: `lib/orchestrator/*`, `orchestrator.ts`, `bin/omp-orchestrate`; 65 тестов; Orca backend проверен create/rm |
 | CI | `.github/workflows/ci.yml` (Node 22: `npm ci`, test, typecheck) |
 
 ## Контракт
@@ -64,7 +64,7 @@
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                 # 64/64
+npm test                 # 65/65
 npm run typecheck
 omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   -p 'Reply with exactly: OK'        # exit 0, stderr пуст
@@ -79,14 +79,13 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
 
 ## Следующие шаги
 
-Дизайн 0.5 утверждён; решения D1–D10 — `docs/decisions.md`. Реализация в
-worktree `feat/orchestrator`, коммиты по этапам:
+Реализация 0.5 завершена в worktree `feat/orchestrator`; решения D1–D10 —
+`docs/decisions.md`. Осталось:
 
-1. Этап D: E2E 3 задачи в Orca, handoff на границе, stop-gate; версия
-   `0.5.0`; финальные docs.
-2. После merge: `HANDOFF.md`/`ROADMAP.md`/`README.md` отражают 0.5.
-3. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
-4. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
+1. Ручная проверка живого TUI-цикла: `/orchestrate` → implementer/verifier/
+   reviewer → merge → handoff → новая сессия.
+2. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
+3. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
 
 ## Риски
 
@@ -97,7 +96,8 @@ worktree `feat/orchestrator`, коммиты по этапам:
 - `task` subagent не имеет `cwd`/worktree; изоляция держится на абсолютных
   путях и проверках (см. `docs/architecture.md`).
 - Spend считается по session JSONL; формат зависит от версии OMP.
-- Orca worktree backend проверен unit-фикстурой; реальный цикл — в этапе D.
+- Orca worktree backend проверен реальным create/rm; полный цикл с моделью —
+  ручная проверка.
 - Retry после verify failure удаляет ветку с коммитами; для сохранения
   используй `stop` до повторного `start`.
 - Supervisor привязан к Orca terminal handle; вне Orca automatic handoff

@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "Context guard, automatic handoff and Yoda workflow for OMP",
   "keywords": [
@@ -14,7 +14,8 @@
   "scripts": {
     "test": "node --experimental-strip-types --test test/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "supervisor": "node bin/omp-handoff-supervisor.mjs"
+    "supervisor": "node bin/omp-handoff-supervisor.mjs",
+    "orchestrate": "node --experimental-strip-types bin/omp-orchestrate"
   },
   "bin": {
     "omp-handoff-supervisor": "./bin/omp-handoff-supervisor.mjs",

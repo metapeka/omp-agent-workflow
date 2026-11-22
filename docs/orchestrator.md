@@ -1,8 +1,9 @@
 # Orchestrator и subagent-петля (0.5)
 
-Статус: `[partial]`, дизайн утверждён 2026-11-22. Этапы A–C реализованы:
+Статус: `[готово]`, версия `0.5.0`. Этапы A–D реализованы:
 план/state/бюджеты/политика, cost, worktree backend, actions, CLI, extension
-(tool/commands/hooks); этап D — E2E и release.
+(tool/commands/hooks), acceptance-тест на 3 задачи. Живой TUI-цикл с моделью
+проверяется вручную.
 
 Цель: main-агент проходит `AUTOPLAN.md` до конца или stop-gate, детерминированно
 выбирает задачи, создаёт worktree, проверяет, мержит и делает handoff на
@@ -387,7 +388,7 @@ Extension (fake ctx, как в 0.3-тестах):
 - `manual` не продолжает;
 - `session_start` будит active run без `current`;
 - 19 тестов 0.3 остаются зелёными;
-- всего 64 теста (`npm test`).
+- всего 65 тестов (`npm test`).
 
 ## Этапы
 
@@ -396,7 +397,7 @@ Extension (fake ctx, как в 0.3-тестах):
 | A | `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts`, тесты | Unit зелёные, typecheck | `[готово]` |
 | B | `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate` | Integration на temp git repo | `[готово]` |
 | C | `orchestrator.ts`, tool, команды, hooks; spike второго entry | Fake-ctx тесты; extension грузится в OMP | `[готово]` |
-| D | docs/example, README/AGENTS/ROADMAP/HANDOFF, `0.5.0` | E2E 3 задачи, handoff, stop-gate | `[next]` |
+| D | docs/example, README/AGENTS/ROADMAP/HANDOFF, `0.5.0` | E2E 3 задачи, handoff, stop-gate | `[готово]` |
 
 Работа — в текущем worktree `feat/orchestrator`, коммиты по этапам, merge в
 `main` после зелёных проверок.
