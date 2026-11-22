@@ -84,7 +84,9 @@ function envOffNumber(
 	const raw = env[name]?.trim();
 	if (!raw) return undefined;
 	if (raw.toLowerCase() === "off") return null;
-	return numberIn(Number(raw), min, max);
+	const value = Number(raw);
+	if (value === 0) return null;
+	return numberIn(value, min, max);
 }
 
 /** 0 (или `off` в env) означает «выключено». */

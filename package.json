@@ -51,12 +51,11 @@
       },
       "handoffAtPercent": {
         "type": "number",
-        "default": 55,
         "min": 0,
         "max": 95,
         "step": 5,
         "env": "OMP_HANDOFF_AT",
-        "description": "Порог HANDOFF, % контекста; 0 = выключено"
+        "description": "Порог HANDOFF, %: yoda/yoda-supervised — 55, иначе off; 0 = выключено"
       },
       "handoffCooldownSeconds": {
         "type": "number",
@@ -87,18 +86,17 @@
       },
       "autoCompactPercent": {
         "type": "number",
-        "default": 60,
         "min": 0,
         "max": 100,
         "step": 5,
         "env": "OMP_CONTEXT_AUTO",
-        "description": "Порог авто-компакции, %; 0 = выключено"
+        "description": "Порог авто-компакции, %: assisted — 60, yoda* — 70, manual — off; 0 = выключено"
       },
       "orcaEnabled": {
         "type": "boolean",
         "default": true,
         "env": "OMP_ORCA_ENABLED",
-        "description": "Использовать Orca: terminal list/show и live-терминалы в /wrap; без Orca — git и /proc fallback"
+        "description": "Использовать Orca: terminal list/show, /wrap live-терминалы и automatic handoff; false отключает supervisor и даёт git и /proc fallback"
       },
       "orcaPreflight": {
         "type": "boolean",

@@ -36,7 +36,19 @@ const ENV_KEYS = [
 	"OMP_HANDOFF_AT",
 	"OMP_HANDOFF_COOLDOWN_SECONDS",
 	"OMP_WORKFLOW_MODE",
+	"OMP_ORCA_ENABLED",
+	"OMP_ORCA_PREFLIGHT",
+	"OMP_SUPERVISOR_ENABLED",
 ];
+
+// Supervisor gates читают ambient env; тесты стартуют от чистого состояния.
+for (const key of [
+	"OMP_ORCA_ENABLED",
+	"OMP_ORCA_PREFLIGHT",
+	"OMP_SUPERVISOR_ENABLED",
+]) {
+	delete process.env[key];
+}
 
 function install(env = {}) {
 	for (const key of ENV_KEYS) delete process.env[key];

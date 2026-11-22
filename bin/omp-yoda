@@ -23,10 +23,11 @@ if [ ! -f "$supervisor" ]; then
   exit 1
 fi
 
-# Значение настройки плагина; пусто, если не задано (или OMP недоступен).
+# Явные настройки плагина (без manifest-дефолтов); один вызов на запуск.
+settings_json="$("$omp_bin" plugin config list omp-agent-workflow --json 2>/dev/null)"
 plugin_setting() {
-  "$omp_bin" plugin config get omp-agent-workflow "$1" --json 2>/dev/null |
-    node -e 'let d="";process.stdin.on("data",(c)=>{d+=c});process.stdin.on("end",()=>{try{const o=JSON.parse(d);const v=o[Object.keys(o)[0]];if(v!==undefined&&v!==null)process.stdout.write(String(v))}catch{}})'
+  printf '%s' "$settings_json" |
+    node -e 'let d="";process.stdin.on("data",(c)=>{d+=c});process.stdin.on("end",()=>{try{const o=JSON.parse(d);const s=o.settings||{};const v=s[process.argv[1]];if(v!==undefined&&v!==null)process.stdout.write(String(v))}catch{}})' "$1"
 }
 
 supervisor_setting="$(plugin_setting supervisorEnabled)"
@@ -34,14 +35,25 @@ orca_enabled_setting="$(plugin_setting orcaEnabled)"
 orca_preflight_setting="$(plugin_setting orcaPreflight)"
 orca_cli_setting="$(plugin_setting orcaCli)"
 
+# Settings > env > default.
+supervisor_value="${supervisor_setting:-${OMP_SUPERVISOR_ENABLED:-true}}"
+orca_enabled_value="${orca_enabled_setting:-${OMP_ORCA_ENABLED:-true}}"
+orca_preflight_value="${orca_preflight_setting:-${OMP_ORCA_PREFLIGHT:-true}}"
+orca_cli="${orca_cli_setting:-${ORCA_CLI_COMMAND:-orca}}"
+
 if [ -n "$orca_cli_setting" ]; then
   export ORCA_CLI_COMMAND="$orca_cli_setting"
 fi
-orca_cli="${ORCA_CLI_COMMAND:-orca}"
+
+is_false() {
+  case "$1" in
+    0 | false | off | no) return 0 ;;
+  esac
+  return 1
+}
 
 start_supervisor=1
-if [ "${supervisor_setting:-true}" = "false" ] ||
-  [ "${orca_enabled_setting:-true}" = "false" ]; then
+if is_false "$supervisor_value" || is_false "$orca_enabled_value"; then
   start_supervisor=0
 fi
 
@@ -53,9 +65,9 @@ fi
 
 sup=""
 if [ "$start_supervisor" = "1" ]; then
-  OMP_ORCA_ENABLED="${orca_enabled_setting:-true}" \
-  OMP_ORCA_PREFLIGHT="${orca_preflight_setting:-true}" \
-  OMP_SUPERVISOR_ENABLED="${supervisor_setting:-true}" \
+  OMP_ORCA_ENABLED="$orca_enabled_value" \
+  OMP_ORCA_PREFLIGHT="$orca_preflight_value" \
+  OMP_SUPERVISOR_ENABLED="$supervisor_value" \
   node "$supervisor" --dir "$dir" >"$log" 2>&1 &
   sup=$!
   echo "Yoda: supervisor pid=$sup log=$log dir=$dir"

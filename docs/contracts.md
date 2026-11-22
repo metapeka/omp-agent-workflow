@@ -23,17 +23,19 @@
 
 `package.json#omp.settings` даёт 9 ключей; UI — Settings → Plugins. Приоритет:
 **Settings > env > режим/дефолт**. Значения читаются extension на
-`session_start`, launcher — при старте.
+`session_start` и `session_switch`, launcher — при старте. Для порогов `0`
+и `off` означают выключение; `handoffAtPercent`/`autoCompactPercent` без
+явного значения берутся из режима.
 
 | Ключ | Тип | Default |
 |---|---|---|
 | `workflowMode` | enum | `assisted` |
-| `handoffAtPercent` | number 0–95 | `55` (0 = off) |
+| `handoffAtPercent` | number 0–95 | режим: `55` / off |
 | `handoffCooldownSeconds` | number 0–86400 | `300` |
 | `contextWarnPercent` | number 1–99 | `35` |
 | `contextSuggestPercent` | number 1–99 | `50` |
-| `autoCompactPercent` | number 0–100 | `60` (0 = off) |
-| `orcaEnabled` | boolean | `true` |
+| `autoCompactPercent` | number 0–100 | режим: `60` / `70` / off |
+| `orcaEnabled` | boolean | `true` (false отключает supervisor/automatic handoff) |
 | `orcaPreflight` | boolean | `true` |
 | `supervisorEnabled` | boolean | `true` |
 

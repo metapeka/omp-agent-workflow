@@ -113,6 +113,14 @@ describe("workflow settings", () => {
 		assert.equal(off.autoCompactPercent, null);
 		assert.equal(off.handoffAtPercent, null);
 
+		const zero = resolveSettings(EMPTY, {
+			OMP_WORKFLOW_MODE: "yoda",
+			OMP_CONTEXT_AUTO: "0",
+			OMP_HANDOFF_AT: "0",
+		});
+		assert.equal(zero.autoCompactPercent, null);
+		assert.equal(zero.handoffAtPercent, null);
+
 		const invalid = resolveSettings(
 			{
 				workflowMode: "bogus",

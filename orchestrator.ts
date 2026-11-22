@@ -199,6 +199,20 @@ export default function orchestrator(pi: ExtensionAPI): void {
 	let pendingContinuation: string | null = null;
 	let pendingHandoff = false;
 
+	const syncSettingsEnv = async (ctx: ExtensionContext): Promise<void> => {
+		try {
+			const settings = await loadWorkflowSettings(ctx.cwd);
+			process.env.OMP_WORKFLOW_MODE = settings.workflowMode;
+			process.env.OMP_HANDOFF_AT =
+				settings.handoffAtPercent === null
+					? "off"
+					: String(settings.handoffAtPercent);
+			if (settings.orcaCli) process.env.ORCA_CLI_COMMAND = settings.orcaCli;
+		} catch {
+			// настройки недоступны — остаются env/defaults
+		}
+	};
+
 	async function runAction(
 		context: ActionContext,
 		params: OrchestratorParams,
@@ -504,17 +518,7 @@ export default function orchestrator(pi: ExtensionAPI): void {
 	pi.on("session_start", async (_event, ctx) => {
 		pendingContinuation = null;
 		pendingHandoff = false;
-		try {
-			const settings = await loadWorkflowSettings(ctx.cwd);
-			process.env.OMP_WORKFLOW_MODE = settings.workflowMode;
-			process.env.OMP_HANDOFF_AT =
-				settings.handoffAtPercent === null
-					? "off"
-					: String(settings.handoffAtPercent);
-			if (settings.orcaCli) process.env.ORCA_CLI_COMMAND = settings.orcaCli;
-		} catch {
-			// настройки недоступны — остаются env/defaults
-		}
+		await syncSettingsEnv(ctx);
 		if (!isMainTui(ctx)) return;
 		try {
 			const state = readState(join(ctx.cwd, STATE_FILE));
@@ -536,7 +540,8 @@ export default function orchestrator(pi: ExtensionAPI): void {
 		}
 	});
 
-	pi.on("session_switch", async () => {
+	pi.on("session_switch", async (_event, ctx) => {
+		await syncSettingsEnv(ctx);
 		pendingContinuation = null;
 		pendingHandoff = false;
 	});
