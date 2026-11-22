@@ -40,7 +40,7 @@ orchestrator/subagent-петля и `/wrap` готовы; release/remote — п�
   (auto 60%, без handoff).
 - Launcher `bin/omp-yoda`.
 
-## Этап 0.4 — standalone project (текущий)
+## Этап 0.4 — standalone project (готово, кроме remote)
 
 - [x] Отдельный git-репозиторий `~/projects/omp-agent-workflow`.
 - [x] Регистрация проекта в Orca.
@@ -48,7 +48,7 @@ orchestrator/subagent-петля и `/wrap` готовы; release/remote — п�
 - [x] `AGENTS.md`, `ROADMAP.md`, `HANDOFF.md`, CI.
 - [ ] Remote/GitHub и публикация — только по решению владельца.
 
-## Этап 0.5 — orchestrator и subagent-петля (дизайн утверждён)
+## Этап 0.5 — orchestrator и subagent-петля (готово)
 
 Дизайн и контракт: `docs/orchestrator.md`; решения — `docs/decisions.md`.
 

@@ -1,7 +1,7 @@
 # Передача: omp-agent-workflow
 
-Дата: 2026-11-22. Основной репозиторий: `~/projects/omp-agent-workflow`,
-`main` на `de03df9`; ветка `feat/wrap-wizard` слита ff-only, версия `0.5.1`.
+Дата: 2026-11-22. Основной репозиторий: `~/projects/omp-agent-workflow`.
+`main` содержит merge `feat/wrap-wizard` (ff-only), версия `0.5.1`.
 Worktree `~/orca/workspaces/omp-agent-workflow/wrap-wizard` ещё существует и
 совпадает с `main`; его можно удалить после выхода из сессии.
 
@@ -79,7 +79,7 @@ Safety cleanup:
 
 ```bash
 cd ~/orca/workspaces/omp-agent-workflow/wrap-wizard
-npm test                 # 97/97
+npm test                 # 103/103
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -93,7 +93,7 @@ TUI smoke: `/wrap` в temp git repo открывает карточки; Esc о�
 1. Проверить `/wrap` в реальном Orca worktree: cleanup merged-соседа,
    confirm/cancel, `branch retained` при безопасном отказе.
 2. После выхода из сессии удалить worktree `wrap-wizard` и ветку
-   `feat/wrap-wizard`; `main` уже `de03df9`.
+   `feat/wrap-wizard`; `main` уже содержит merge.
 3. Дальше — release/remote или 0.6 economics; публикация только по решению
    владельца.
 
