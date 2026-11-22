@@ -177,10 +177,6 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		await checkAuto(ctx);
 	});
 
-	pi.on("session_before_compact", async () => {
-		compacting = true;
-	});
-
 	pi.on("auto_compaction_start", async () => {
 		compacting = true;
 	});
