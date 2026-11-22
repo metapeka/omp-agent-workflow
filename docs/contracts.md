@@ -19,7 +19,25 @@
 необработанным. Clean-window handoff требует `yoda-supervised` или ручного
 `/handoff-new`.
 
-## Env
+## Settings
+
+`package.json#omp.settings` даёт 9 ключей; UI — Settings → Plugins. Приоритет:
+**Settings > env > режим/дефолт**. Значения читаются extension на
+`session_start`, launcher — при старте.
+
+| Ключ | Тип | Default |
+|---|---|---|
+| `workflowMode` | enum | `assisted` |
+| `handoffAtPercent` | number 0–95 | `55` (0 = off) |
+| `handoffCooldownSeconds` | number 0–86400 | `300` |
+| `contextWarnPercent` | number 1–99 | `35` |
+| `contextSuggestPercent` | number 1–99 | `50` |
+| `autoCompactPercent` | number 0–100 | `60` (0 = off) |
+| `orcaEnabled` | boolean | `true` |
+| `orcaPreflight` | boolean | `true` |
+| `supervisorEnabled` | boolean | `true` |
+
+## Env (fallback)
 
 | Переменная | Default | Смысл |
 |---|---|---|
@@ -29,6 +47,9 @@
 | `OMP_CONTEXT_AUTO` | режим: `60` / `70` / `off` | Авто-компакция; `off` выключает |
 | `OMP_HANDOFF_AT` | режим: `55` / `off` | Запрос handoff; `off` выключает |
 | `OMP_HANDOFF_COOLDOWN_SECONDS` | `300` | Пауза после handoff |
+| `OMP_ORCA_ENABLED` | `true` | Orca terminal list/show; `false` — fallback |
+| `OMP_ORCA_PREFLIGHT` | `true` | Проверять handle перед handoff |
+| `OMP_SUPERVISOR_ENABLED` | `true` | Запускать supervisor из launcher |
 | `OMP_YODA_DIR` | `$PWD` | Каталог supervisor/launcher |
 | `OMP_YODA_LOG` | `${TMPDIR:-/tmp}/omp-yoda-supervisor.log` | Лог supervisor |
 

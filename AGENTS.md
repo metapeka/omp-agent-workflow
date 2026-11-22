@@ -25,16 +25,16 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.3`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.4`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
-  Orca-интеграция (terminal list/show, status warning) с fallback.
+  Orca-интеграция; 0.5.4 — Settings → Plugins (`omp.settings`, 9 ключей).
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 119 тестов (33 context guard + 38 orchestrator + 19 extension +
-  29 wrap); `npm run typecheck`; CI в `.github/workflows/ci.yml`.
+- `npm test` — 127 тестов (35 context guard + 38 orchestrator + 19 extension +
+  29 wrap + 6 settings); `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
 
@@ -88,7 +88,8 @@ orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<s
 | `yoda-supervised` | 70% fallback | 55% + supervisor |
 
 `OMP_CONTEXT_WARN`, `OMP_CONTEXT_SUGGEST`, `OMP_CONTEXT_AUTO`,
-`OMP_HANDOFF_AT`, `OMP_HANDOFF_COOLDOWN_SECONDS` переопределяют пороги.
+`OMP_HANDOFF_AT`, `OMP_HANDOFF_COOLDOWN_SECONDS` — env fallback, если ключ
+не задан в Settings. Приоритет: Settings > env > режим/дефолт.
 `off` отключает соответствующее действие.
 
 ## Контекст и handoff

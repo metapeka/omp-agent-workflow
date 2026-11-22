@@ -55,6 +55,13 @@ let lockHeld = false;
 let lastHandoffAt = 0;
 let staleCandidate = null;
 const orca = process.env.ORCA_CLI_COMMAND || "orca";
+const envEnabled = (name) => {
+	const raw = process.env[name]?.trim().toLowerCase();
+	return raw !== "0" && raw !== "false" && raw !== "off";
+};
+const orcaEnabled = envEnabled("OMP_ORCA_ENABLED");
+const orcaPreflight = envEnabled("OMP_ORCA_PREFLIGHT");
+const supervisorEnabled = envEnabled("OMP_SUPERVISOR_ENABLED");
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
@@ -185,21 +192,23 @@ async function main() {
 
 		const previousSessionFile =
 			typeof session.sessionFile === "string" ? session.sessionFile : null;
-		const shown = runOrca([
-			"terminal",
-			"show",
-			"--terminal",
-			terminal,
-			"--json",
-		]);
-		if (shown.status !== 0) {
-			attempts += 1;
-			fail(
-				`terminal ${terminal} is not live (${attempts}/${maxAttempts}): ${(shown.stderr || shown.stdout || "").trim()}`,
-			);
-			if (values.once || attempts >= maxAttempts) return;
-			await sleep(intervalMs);
-			continue;
+		if (orcaPreflight) {
+			const shown = runOrca([
+				"terminal",
+				"show",
+				"--terminal",
+				terminal,
+				"--json",
+			]);
+			if (shown.status !== 0) {
+				attempts += 1;
+				fail(
+					`terminal ${terminal} is not live (${attempts}/${maxAttempts}): ${(shown.stderr || shown.stdout || "").trim()}`,
+				);
+				if (values.once || attempts >= maxAttempts) return;
+				await sleep(intervalMs);
+				continue;
+			}
 		}
 		const sent = runOrca([
 			"terminal",
@@ -268,6 +277,12 @@ async function main() {
 		attempts = 0;
 		await sleep(intervalMs);
 	}
+}
+
+if (!orcaEnabled || !supervisorEnabled) {
+	const reason = !orcaEnabled ? "OMP_ORCA_ENABLED" : "OMP_SUPERVISOR_ENABLED";
+	console.log(`[handoff-supervisor] disabled by ${reason}; exiting`);
+	process.exit(0);
 }
 
 let lock = null;

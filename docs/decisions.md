@@ -119,6 +119,20 @@ merge, бюджеты и handoff.
 - обязательный `orca` при старте `bin/omp-yoda` или `/handoff`;
 - параллельные задачи/multi-repo (D8).
 
+## D12. Settings — источник истины, env — fallback
+
+**Статус:** accepted (2026-11-23).
+**Решение:** пользовательские настройки живут в `package.json#omp.settings`
+(Settings → Plugins). Приоритет: **Settings > env > режим/дефолт**.
+Extension читает их на `session_start`; launcher — при старте и передаёт
+supervisor'у `OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED`. Отсутствие OMP-рантайма
+(unit-тесты, чужой запуск) откатывается на env.
+**Причина:** UI должен быть основным способом настройки; env нужен для
+CI/скриптов и обратной совместимости.
+**Следствие:** новый ключ добавляется в manifest, `workflow-settings.ts`,
+launcher/supervisor (если процесс отдельный), тесты и docs. `0`/`off`
+означает выключение для порогов.
+
 ## Отклонённые альтернативы
 
 | Альтернатива | Почему нет |

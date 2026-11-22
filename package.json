@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "type": "module",
   "description": "Context guard, automatic handoff and Yoda workflow for OMP",
   "keywords": [
@@ -35,7 +35,84 @@
     "extensions": [
       "./index.ts",
       "./orchestrator.ts"
-    ]
+    ],
+    "settings": {
+      "workflowMode": {
+        "type": "enum",
+        "values": [
+          "manual",
+          "assisted",
+          "yoda",
+          "yoda-supervised"
+        ],
+        "default": "assisted",
+        "env": "OMP_WORKFLOW_MODE",
+        "description": "Режим workflow: manual — без авто-действий; assisted — авто-компакция; yoda — handoff 55%; yoda-supervised — handoff + внешний supervisor"
+      },
+      "handoffAtPercent": {
+        "type": "number",
+        "default": 55,
+        "min": 0,
+        "max": 95,
+        "step": 5,
+        "env": "OMP_HANDOFF_AT",
+        "description": "Порог HANDOFF, % контекста; 0 = выключено"
+      },
+      "handoffCooldownSeconds": {
+        "type": "number",
+        "default": 300,
+        "min": 0,
+        "max": 86400,
+        "step": 30,
+        "env": "OMP_HANDOFF_COOLDOWN_SECONDS",
+        "description": "Пауза после handoff, секунды; защита от цикла"
+      },
+      "contextWarnPercent": {
+        "type": "number",
+        "default": 35,
+        "min": 1,
+        "max": 99,
+        "step": 5,
+        "env": "OMP_CONTEXT_WARN",
+        "description": "Порог предупреждения о контексте, %"
+      },
+      "contextSuggestPercent": {
+        "type": "number",
+        "default": 50,
+        "min": 1,
+        "max": 99,
+        "step": 5,
+        "env": "OMP_CONTEXT_SUGGEST",
+        "description": "Порог предложения HANDOFF, %"
+      },
+      "autoCompactPercent": {
+        "type": "number",
+        "default": 60,
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "env": "OMP_CONTEXT_AUTO",
+        "description": "Порог авто-компакции, %; 0 = выключено"
+      },
+      "orcaEnabled": {
+        "type": "boolean",
+        "default": true,
+        "env": "OMP_ORCA_ENABLED",
+        "description": "Использовать Orca: terminal list/show и live-терминалы в /wrap; без Orca — git и /proc fallback"
+      },
+      "orcaPreflight": {
+        "type": "boolean",
+        "default": true,
+        "env": "OMP_ORCA_PREFLIGHT",
+        "description": "Проверять terminal handle через orca terminal show перед handoff"
+      },
+      "supervisorEnabled": {
+        "type": "boolean",
+        "default": true,
+        "env": "OMP_SUPERVISOR_ENABLED",
+        "description": "Запускать supervisor в bin/omp-yoda для automatic handoff"
+      }
+    }
   },
   "devDependencies": {
     "@oh-my-pi/pi-coding-agent": "19.1.0",

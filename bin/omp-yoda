@@ -3,6 +3,7 @@
 #
 # Запускает supervisor на текущий каталог и OMP с режимом yoda-supervised.
 # Supervisor живёт столько же, сколько OMP: снимается по EXIT/INT/TERM.
+# Настройки — Settings > Plugins (omp.settings); env остаётся fallback.
 set -u
 
 script="$(readlink -f "${BASH_SOURCE[0]}")"
@@ -15,33 +16,65 @@ if ! command -v omp >/dev/null 2>&1; then
   echo "omp-yoda: omp not found in PATH" >&2
   exit 127
 fi
+omp_bin="$(command -v omp)"
 
 if [ ! -f "$supervisor" ]; then
   echo "omp-yoda: supervisor not found: $supervisor" >&2
   exit 1
 fi
 
+# Значение настройки плагина; пусто, если не задано (или OMP недоступен).
+plugin_setting() {
+  "$omp_bin" plugin config get omp-agent-workflow "$1" --json 2>/dev/null |
+    node -e 'let d="";process.stdin.on("data",(c)=>{d+=c});process.stdin.on("end",()=>{try{const o=JSON.parse(d);const v=o[Object.keys(o)[0]];if(v!==undefined&&v!==null)process.stdout.write(String(v))}catch{}})'
+}
+
+supervisor_setting="$(plugin_setting supervisorEnabled)"
+orca_enabled_setting="$(plugin_setting orcaEnabled)"
+orca_preflight_setting="$(plugin_setting orcaPreflight)"
+orca_cli_setting="$(plugin_setting orcaCli)"
+
+if [ -n "$orca_cli_setting" ]; then
+  export ORCA_CLI_COMMAND="$orca_cli_setting"
+fi
 orca_cli="${ORCA_CLI_COMMAND:-orca}"
-if command -v "$orca_cli" >/dev/null 2>&1; then
+
+start_supervisor=1
+if [ "${supervisor_setting:-true}" = "false" ] ||
+  [ "${orca_enabled_setting:-true}" = "false" ]; then
+  start_supervisor=0
+fi
+
+if [ "$start_supervisor" = "1" ] && command -v "$orca_cli" >/dev/null 2>&1; then
   if ! "$orca_cli" status >/dev/null 2>&1; then
     echo "Yoda: orca runtime недоступен — automatic handoff не сработает" >&2
   fi
 fi
 
-node "$supervisor" --dir "$dir" >"$log" 2>&1 &
-sup=$!
-echo "Yoda: supervisor pid=$sup log=$log dir=$dir"
+sup=""
+if [ "$start_supervisor" = "1" ]; then
+  OMP_ORCA_ENABLED="${orca_enabled_setting:-true}" \
+  OMP_ORCA_PREFLIGHT="${orca_preflight_setting:-true}" \
+  OMP_SUPERVISOR_ENABLED="${supervisor_setting:-true}" \
+  node "$supervisor" --dir "$dir" >"$log" 2>&1 &
+  sup=$!
+  echo "Yoda: supervisor pid=$sup log=$log dir=$dir"
+else
+  echo "Yoda: supervisor отключён настройками (supervisorEnabled/orcaEnabled)" >&2
+fi
 
 cleanup() {
-  kill "$sup" 2>/dev/null || true
-  wait "$sup" 2>/dev/null || true
+  if [ -n "$sup" ]; then
+    kill "$sup" 2>/dev/null || true
+    wait "$sup" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT INT TERM
 
 OMP_WORKFLOW_MODE="${OMP_WORKFLOW_MODE:-yoda-supervised}" \
 OMP_HANDOFF_AT="${OMP_HANDOFF_AT:-55}" \
 OMP_CONTEXT_AUTO="${OMP_CONTEXT_AUTO:-off}" \
-omp "$@"
+"$omp_bin" "$@"
 status=$?
 
 cleanup

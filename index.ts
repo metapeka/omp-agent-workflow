@@ -16,65 +16,21 @@ import { existsSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 
+import {
+	loadWorkflowSettings,
+	resolveSettings,
+	type WorkflowSettings,
+} from "./lib/workflow-settings.ts";
+
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
 const HANDOFF_INSTRUCTIONS =
 	"Сохрани цель задачи, текущее состояние, принятые решения, изменённые файлы, " +
 	"выполненные проверки, блокеры и следующие шаги. Сырые логи и длинные выводы " +
 	"инструментов отбрось.";
 
-const DEFAULT_WARN = 35;
-const DEFAULT_SUGGEST = 50;
-const DEFAULT_AUTO = 60;
-const DEFAULT_HANDOFF = 55;
-const DEFAULT_HANDOFF_COOLDOWN = 300;
-
-type WorkflowMode = "manual" | "assisted" | "yoda" | "yoda-supervised";
-
-/** Режим workflow: manual/assisted/yoda/yoda-supervised. */
-function workflowModeFromEnv(): WorkflowMode {
-	const raw = process.env.OMP_WORKFLOW_MODE?.trim();
-	return raw === "manual" || raw === "yoda" || raw === "yoda-supervised"
-		? raw
-		: "assisted";
-}
 const SESSION_INFO = ".omp-handoff-session.json";
 const HANDOFF_NEW_PROMPT =
 	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
-
-/** Процент из env; невалидное значение откатывается к дефолту. */
-function percentFromEnv(name: string, fallback: number): number {
-	const raw = process.env[name]?.trim();
-	if (!raw) return fallback;
-	const value = Number(raw);
-	return Number.isFinite(value) && value > 0 && value <= 100 ? value : fallback;
-}
-
-/** Авто-компакция: число или `off` (null). */
-function autoPercentFromEnv(fallback: number | null): number | null {
-	const raw = process.env.OMP_CONTEXT_AUTO?.trim();
-	if (!raw) return fallback;
-	if (raw.toLowerCase() === "off") return null;
-	const value = Number(raw);
-	return Number.isFinite(value) && value > 0 && value <= 100 ? value : fallback;
-}
-
-/** Порог автоматического запроса handoff: число или `off` (null). */
-function handoffPercentFromEnv(fallback: number | null): number | null {
-	const raw = process.env.OMP_HANDOFF_AT?.trim();
-	if (!raw) return fallback;
-	if (raw.toLowerCase() === "off") return null;
-	const value = Number(raw);
-	return Number.isFinite(value) && value > 0 && value <= 100 ? value : fallback;
-}
-
-/** Пауза между handoff, чтобы новая сессия не ушла в цикл. */
-function handoffCooldownMsFromEnv(): number {
-	const raw = process.env.OMP_HANDOFF_COOLDOWN_SECONDS?.trim();
-	if (!raw) return DEFAULT_HANDOFF_COOLDOWN * 1000;
-	const value = Number(raw);
-	if (!Number.isFinite(value) || value < 0) return DEFAULT_HANDOFF_COOLDOWN * 1000;
-	return value * 1000;
-}
 
 /** Краткий вид контекста: `42% (420k/1000k)`. */
 function usageText(usage: {
@@ -127,16 +83,17 @@ function notify(
 }
 
 export default function contextGuard(pi: ExtensionAPI): void {
-	const mode = workflowModeFromEnv();
-	const defaultAuto =
-		mode === "manual" ? null : mode === "assisted" ? DEFAULT_AUTO : 70;
-	const defaultHandoff =
-		mode === "yoda" || mode === "yoda-supervised" ? DEFAULT_HANDOFF : null;
-	const warnAt = percentFromEnv("OMP_CONTEXT_WARN", DEFAULT_WARN);
-	const suggestAt = percentFromEnv("OMP_CONTEXT_SUGGEST", DEFAULT_SUGGEST);
-	const autoAt = autoPercentFromEnv(defaultAuto);
-	const handoffAt = handoffPercentFromEnv(defaultHandoff);
-	const handoffCooldownMs = handoffCooldownMsFromEnv();
+	let settings: WorkflowSettings = resolveSettings({}, process.env);
+	let settingsCwd: string | null = null;
+
+	const refreshSettings = async (
+		ctx: ExtensionContext,
+		force = false,
+	): Promise<void> => {
+		if (!force && settingsCwd === ctx.cwd) return;
+		settings = await loadWorkflowSettings(ctx.cwd, process.env);
+		settingsCwd = ctx.cwd;
+	};
 
 	let warned = false;
 	let suggested = false;
@@ -147,7 +104,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 
 	/** После падения ниже warning пороги снова активны. */
 	const resetIfBelow = (percent: number): void => {
-		if (percent < warnAt) {
+		if (percent < settings.contextWarnPercent) {
 			warned = false;
 			suggested = false;
 			autoCompacted = false;
@@ -171,7 +128,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		if (!usage) return;
 		resetIfBelow(usage.percent);
 
-		if (usage.percent >= suggestAt && !suggested) {
+		if (usage.percent >= settings.contextSuggestPercent && !suggested) {
 			suggested = true;
 			warned = true;
 			notify(
@@ -181,7 +138,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 			);
 			return;
 		}
-		if (usage.percent >= warnAt && !warned) {
+		if (usage.percent >= settings.contextWarnPercent && !warned) {
 			warned = true;
 			notify(
 				ctx,
@@ -197,11 +154,11 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	 * supervisor через /handoff-new.
 	 */
 	const checkHandoff = async (ctx: ExtensionContext): Promise<void> => {
-		if (!isMainTui(ctx) || handoffAt === null) return;
+		if (!isMainTui(ctx) || settings.handoffAtPercent === null) return;
 		if (Date.now() < handoffCooldownUntil) return;
 		const usage = readUsage(ctx);
 		if (!usage) return;
-		if (usage.percent < handoffAt) {
+		if (usage.percent < settings.handoffAtPercent) {
 			handoffRequested = false;
 			handoffCooldownUntil = 0;
 			return;
@@ -209,7 +166,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		if (handoffRequested || !ctx.isIdle() || ctx.hasPendingMessages()) return;
 
 		handoffRequested = true;
-		handoffCooldownUntil = Date.now() + handoffCooldownMs;
+		handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;
 		const marker = JSON.stringify({
 			reason: "context",
 			sessionFile: ctx.sessionManager.getSessionFile() ?? null,
@@ -229,11 +186,11 @@ export default function contextGuard(pi: ExtensionAPI): void {
 
 	/** Авто-компакция на 60% только после завершения хода и без очереди. */
 	const checkAuto = async (ctx: ExtensionContext): Promise<void> => {
-		if (!isMainTui(ctx) || autoAt === null || handoffRequested) return;
+		if (!isMainTui(ctx) || settings.autoCompactPercent === null || handoffRequested) return;
 		const usage = readUsage(ctx);
 		if (!usage) return;
 		resetIfBelow(usage.percent);
-		if (usage.percent < autoAt || autoCompacted || compacting) return;
+		if (usage.percent < settings.autoCompactPercent || autoCompacted || compacting) return;
 		if (!ctx.isIdle() || ctx.hasPendingMessages()) return;
 
 		autoCompacted = true;
@@ -258,6 +215,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
+		await refreshSettings(ctx, true);
 		warned = false;
 		suggested = false;
 		autoCompacted = false;
@@ -266,7 +224,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		try {
 			// Дочерняя сессия после /handoff-new не должна сразу уйти в новый handoff.
 			if (ctx.sessionManager.getHeader()?.parentSession) {
-				handoffCooldownUntil = Date.now() + handoffCooldownMs;
+				handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;
 			}
 		} catch {
 			// старый runner без getHeader
@@ -276,6 +234,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	});
 
 	pi.on("turn_end", async (_event, ctx) => {
+		await refreshSettings(ctx);
 		checkWarnings(ctx);
 		await checkHandoff(ctx);
 		await checkAuto(ctx);
@@ -284,6 +243,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	pi.on("agent_end", async (event, ctx) => {
 		// Авто-продолжение или фоновая работа: это не финальная точка.
 		if (event.willContinue || event.awaitingAsyncWork) return;
+		await refreshSettings(ctx);
 		await checkHandoff(ctx);
 		await checkAuto(ctx);
 	});
@@ -311,6 +271,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	});
 
 	pi.on("session_switch", async (_event, ctx) => {
+		await refreshSettings(ctx, true);
 		warned = false;
 		suggested = false;
 		autoCompacted = false;

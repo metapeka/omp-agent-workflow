@@ -504,6 +504,70 @@ describe("supervisor", () => {
 		}
 	});
 
+	it("exits without taking the lock when disabled by settings", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once"],
+				{
+					encoding: "utf8",
+					env: { ...process.env, OMP_SUPERVISOR_ENABLED: "0" },
+				},
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stdout, /disabled by OMP_SUPERVISOR_ENABLED/);
+			assert.equal(
+				existsSync(join(dir, ".omp-handoff-supervisor.lock")),
+				false,
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("skips the handle preflight when orcaPreflight is off", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({ terminal: "term_test" }),
+			);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary" }),
+			);
+			const log = join(dir, "orca-calls.log");
+			const fake = join(dir, "orca-fake");
+			writeFileSync(
+				fake,
+				`#!/bin/sh\nprintf '%s\\n' "$*" >> "${log}"\nexit 1\n`,
+				{ mode: 0o755 },
+			);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once"],
+				{
+					encoding: "utf8",
+					env: {
+						...process.env,
+						ORCA_CLI_COMMAND: fake,
+						OMP_ORCA_PREFLIGHT: "0",
+					},
+				},
+			);
+
+			assert.equal(result.status, 1, result.stderr);
+			const calls = readFileSync(log, "utf8");
+			assert.match(calls, /terminal send/);
+			assert.doesNotMatch(calls, /terminal show/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	function writeSupervisorLock(dir, pid) {
 		const lock = join(dir, ".omp-handoff-supervisor.lock");
 		mkdirSync(lock);

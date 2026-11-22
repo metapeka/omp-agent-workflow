@@ -45,6 +45,15 @@ flowchart LR
 - путь к CLI: `ORCA_CLI_COMMAND` (default `orca`);
 - без Orca: git backend, `/proc`, ручной `/handoff-new`.
 
+### Settings `[готово]`
+
+`package.json#omp.settings` → Settings → Plugins. Extension читает явные
+значения через `getPluginSettings` (dynamic import OMP loader; вне OMP —
+fallback на env) и сводит их с env/режимом в `lib/workflow-settings.ts`.
+Launcher читает те же ключи через `omp plugin config get` и передаёт
+`OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED` supervisor'у. Приоритет:
+**Settings > env > режим/дефолт** (D12).
+
 ## Что extension может и не может (OMP 19.1.0)
 
 Факты проверены по типам и исходникам пакета

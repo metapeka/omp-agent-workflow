@@ -1,9 +1,9 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.3`. Статус: context guard, handoff, режимы,
-orchestrator/subagent-петля, `/wrap`, supervisor singleton и additive
-Orca-интеграция готовы; release/remote — по решению владельца. Оперативный
-список — `TODO.md`.
+Дата: 2026-11-23. Версия: `0.5.4`. Статус: context guard, handoff, режимы,
+orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
+Orca-интеграция и Settings готовы; release/remote — по решению владельца.
+Оперативный список — `TODO.md`.
 
 ## Принципы
 
@@ -101,6 +101,17 @@ Orca-интеграция готовы; release/remote — по решению �
 - [x] Launcher: warning, если Orca runtime недоступен; OMP всё равно стартует.
 - [x] `ORCA_CLI_COMMAND` учитывается в `/wrap` и launcher.
 - [x] D11: OMP first, Orca additive; anti-goals зафиксированы.
+
+## Этап 0.5.4 — Settings (готово)
+
+- [x] `omp.settings` в manifest: 9 ключей (mode, пороги, cooldown, Orca,
+      supervisor).
+- [x] `lib/workflow-settings.ts`: Settings > env > режим/дефолт; 0 = off.
+- [x] Extension читает на `session_start`; `/wrap` учитывает `orcaEnabled`.
+- [x] Launcher читает настройки, пропускает supervisor при выключении,
+      передаёт `OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED`.
+- [x] Supervisor: `orcaEnabled`/`supervisorEnabled` gate, `orcaPreflight`.
+- [x] D12, тесты settings (6) и supervisor (2); docs.
 
 ## Этап 0.6 — экономика handoff (P2)
 

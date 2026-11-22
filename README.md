@@ -18,6 +18,29 @@ OMP-расширение для работы агента: предупрежд�
 - `docs/operations.md` — runbook: запуск, supervisor, worktree, сбои;
 - `docs/decisions.md` — подтверждённые решения и отклонённые альтернативы.
 
+## Настройки
+
+Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > env >
+режим/дефолт**. Значения сохраняются в OMP plugin config и применяются на
+следующем `session_start`; launcher читает их при старте.
+
+| Ключ | Default | Смысл |
+|---|---|---|
+| `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `handoffAtPercent` | `55` | Порог HANDOFF, %; `0` = off |
+| `handoffCooldownSeconds` | `300` | Пауза после handoff |
+| `contextWarnPercent` | `35` | Warning о контексте |
+| `contextSuggestPercent` | `50` | Предложить HANDOFF |
+| `autoCompactPercent` | `60` | Авто-компакция, %; `0` = off |
+| `orcaEnabled` | `true` | Orca terminal list/show и live-терминалы в `/wrap`; иначе git/`/proc` fallback |
+| `orcaPreflight` | `true` | Проверять terminal handle перед handoff |
+| `supervisorEnabled` | `true` | Запускать supervisor из `bin/omp-yoda` |
+
+Env-переменные (`OMP_WORKFLOW_MODE`, `OMP_HANDOFF_AT`, `OMP_CONTEXT_*`,
+`OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`,
+`OMP_SUPERVISOR_ENABLED`, `ORCA_CLI_COMMAND`) остаются fallback, если ключ
+не задан в Settings.
+
 ## Режимы
 
 | `OMP_WORKFLOW_MODE` | Авто-компакция | Handoff |
@@ -27,7 +50,8 @@ OMP-расширение для работы агента: предупрежд�
 | `yoda` | 70% fallback | 55% |
 | `yoda-supervised` | 70% fallback | 55% + supervisor |
 
-Env-переменные `OMP_CONTEXT_AUTO` и `OMP_HANDOFF_AT` переопределяют режим.
+Env-переменные `OMP_CONTEXT_AUTO` и `OMP_HANDOFF_AT` — fallback, если
+соответствующий ключ не задан в Settings; Settings имеет приоритет.
 `yoda` без supervisor умеет только компакцию; `yoda-supervised` делает
 clean-window handoff.
 
@@ -40,7 +64,7 @@ clean-window handoff.
 | 60% | Авто-компакция после `agent_settled`, если агент idle и нет очереди |
 | ниже 35% | Флаги сбрасываются, предупреждения снова активны |
 
-Пороги можно переопределить:
+Пороги можно переопределить в Settings → Plugins или env (fallback):
 
 ```bash
 OMP_CONTEXT_WARN=30

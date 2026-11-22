@@ -23,6 +23,7 @@ import {
 	type StartResult,
 } from "./lib/orchestrator/actions.ts";
 import { handoffAtFromEnv, workflowModeFromEnv } from "./lib/orchestrator/config.ts";
+import { loadWorkflowSettings } from "./lib/workflow-settings.ts";
 import { PlanError } from "./lib/orchestrator/plan.ts";
 import {
 	STATE_FILE,
@@ -355,10 +356,15 @@ export default function orchestrator(pi: ExtensionAPI): void {
 			"Завершить работу: handoff, cleanup merged worktree, следующая задача",
 		handler: async (_args, ctx) => {
 			if (!isMainTui(ctx)) return;
+			const wrapSettings = await loadWorkflowSettings(ctx.cwd);
+			if (wrapSettings.orcaCli) {
+				process.env.ORCA_CLI_COMMAND = wrapSettings.orcaCli;
+			}
+			const orcaTerminals = wrapSettings.orcaEnabled ? undefined : [];
 			for (;;) {
 				let facts: WrapFacts;
 				try {
-					facts = await collectWrapFacts(ctx.cwd);
+					facts = await collectWrapFacts(ctx.cwd, { orcaTerminals });
 				} catch (error) {
 					notify(
 						ctx,
@@ -452,6 +458,7 @@ export default function orchestrator(pi: ExtensionAPI): void {
 							facts,
 							path: target.path,
 							backend: facts.plan?.config.backend ?? "orca",
+							orcaTerminals,
 						});
 						notify(
 							ctx,
@@ -497,6 +504,17 @@ export default function orchestrator(pi: ExtensionAPI): void {
 	pi.on("session_start", async (_event, ctx) => {
 		pendingContinuation = null;
 		pendingHandoff = false;
+		try {
+			const settings = await loadWorkflowSettings(ctx.cwd);
+			process.env.OMP_WORKFLOW_MODE = settings.workflowMode;
+			process.env.OMP_HANDOFF_AT =
+				settings.handoffAtPercent === null
+					? "off"
+					: String(settings.handoffAtPercent);
+			if (settings.orcaCli) process.env.ORCA_CLI_COMMAND = settings.orcaCli;
+		} catch {
+			// настройки недоступны — остаются env/defaults
+		}
 		if (!isMainTui(ctx)) return;
 		try {
 			const state = readState(join(ctx.cwd, STATE_FILE));

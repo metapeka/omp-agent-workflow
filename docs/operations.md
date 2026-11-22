@@ -37,14 +37,18 @@ OMP_WORKFLOW_MODE=yoda-supervised bin/omp-yoda
 
 Launcher:
 
-- запускает supervisor на `OMP_YODA_DIR` (default `$PWD`);
+- читает Settings → Plugins (`omp plugin config get`); env остаётся fallback;
+- запускает supervisor на `OMP_YODA_DIR` (default `$PWD`), если
+  `supervisorEnabled` и `orcaEnabled` включены;
+- при выключенном supervisor печатает причину и запускает OMP без него;
 - ставит `OMP_WORKFLOW_MODE=yoda-supervised`, `OMP_HANDOFF_AT=55`,
   `OMP_CONTEXT_AUTO=off`, если не переопределено;
 - снимает supervisor при выходе OMP;
 - лог: `${TMPDIR:-/tmp}/omp-yoda-supervisor.log`;
 - если `orca` доступен, но `orca status` возвращает ошибку — предупреждение
   «automatic handoff не сработает»; OMP всё равно запускается;
-- путь к Orca CLI — `ORCA_CLI_COMMAND` (default `orca`).
+- путь к Orca CLI — Settings `orcaCli` (нет в UI MVP) или `ORCA_CLI_COMMAND`
+  (default `orca`).
 
 Проверить, что supervisor жив:
 
@@ -67,9 +71,10 @@ Supervisor — один на каталог:
   конфигурационная ошибка, а не повод запускать два supervisor'а.
 
 Перед `orca terminal send` supervisor проверяет handle через
-`orca terminal show --terminal <handle> --json`. Если terminal больше не
-жив, handoff не отправляется, marker сохраняется, supervisor завершается
-с кодом 1 — обнови `.omp-handoff-session.json` или перезапусти OMP из Orca.
+`orca terminal show --terminal <handle> --json`, если `orcaPreflight` включён.
+Если terminal больше не жив, handoff не отправляется, marker сохраняется,
+supervisor завершается с кодом 1 — обнови `.omp-handoff-session.json` или
+перезапусти OMP из Orca.
 
 ## Worktree
 
