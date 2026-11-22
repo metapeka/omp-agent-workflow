@@ -14,14 +14,20 @@ hit rate, этот проект управляет контекстом и см�
 
 1. `HANDOFF.md` — текущее состояние, контракт, проверки, ограничения.
 2. `ROADMAP.md` — этапы, приоритеты, назначение агентов.
-3. `README.md` — пользовательский контракт и установка.
-4. `docs/yoda-workflow.md` — режимы, акторы, цикл, stop-gates.
-5. `docs/handoff-auto-plan.md` — протокол automatic handoff.
-6. `index.ts`, `bin/omp-handoff-supervisor.mjs`, `test/context-guard.test.mjs`.
+3. `docs/README.md` — вики проекта и порядок чтения.
+4. `docs/architecture.md` — компоненты и факты OMP API (что можно/нельзя).
+5. `docs/contracts.md` — стабильный контракт 0.3; что запрещено менять.
+6. `docs/orchestrator.md` — дизайн 0.5: `AUTOPLAN.md`, `STATE.json`, политика.
+7. `README.md` — пользовательский контракт и установка.
+8. `docs/yoda-workflow.md` — режимы, акторы, цикл, stop-gates.
+9. `docs/handoff-auto-plan.md` — протокол automatic handoff.
+10. `index.ts`, `bin/omp-handoff-supervisor.mjs`, `test/context-guard.test.mjs`.
 
 ## Текущее состояние
 
 - Версия `0.3.0`, локальный git-репозиторий, основная ветка `main`.
+- Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
+  (`docs/orchestrator.md`), реализация — этапы A–D.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
@@ -118,8 +124,10 @@ orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<s
 
 ## Ссылки
 
+- `docs/README.md` — вики проекта (архитектура, контракты, runbook, решения).
 - `README.md` — установка и пользовательский контракт.
 - `ROADMAP.md` — этапы и следующие задачи.
+- `docs/orchestrator.md` — дизайн 0.5: оркестратор и subagent-петля.
 - `docs/yoda-workflow.md` — режимы и оркестрация.
 - `docs/handoff-auto-plan.md` — протокол handoff.
 - `../omp-cache-monitor` — экономика кэша; только read-only интеграция.

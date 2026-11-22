@@ -1,8 +1,12 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-22. Репозиторий: `~/projects/omp-agent-workflow`, ветка `main`,
-коммит `9e63ca1`, версия `0.3.0`. Проект зарегистрирован в Orca; рабочие
-worktree — `~/orca/workspaces/omp-agent-workflow/<slug>`.
+коммит `f79ad85`; текущая работа — worktree
+`~/orca/workspaces/omp-agent-workflow/orchestrator`, ветка `feat/orchestrator`.
+Версия `0.3.0`. Проект зарегистрирован в Orca; рабочие worktree —
+`~/orca/workspaces/omp-agent-workflow/<slug>`.
+
+Дизайн 0.5 утверждён 2026-11-22; вики проекта — `docs/README.md`.
 
 ## Что готово
 
@@ -16,6 +20,8 @@ worktree — `~/orca/workspaces/omp-agent-workflow/<slug>`.
 | Проверки | `npm test` 19/19, `npm run typecheck`, загрузка extension в OMP |
 | E2E | supervisor → `/handoff-new` в реальном Orca-терминале; новая сессия прочитала `HANDOFF.md` |
 | Документы | `README.md`, `AGENTS.md`, `ROADMAP.md`, `docs/` |
+| Вики | `docs/README.md`: архитектура, контракт, orchestrator 0.5, runbook, решения |
+| Дизайн 0.5 | `docs/orchestrator.md` — утверждён, код не написан |
 | CI | `.github/workflows/ci.yml` (Node 22: `npm ci`, test, typecheck) |
 
 ## Контракт
@@ -47,6 +53,12 @@ worktree — `~/orca/workspaces/omp-agent-workflow/<slug>`.
 | Пользовательский контракт | `README.md` |
 | План | `ROADMAP.md` |
 | Инструкции агенту | `AGENTS.md` |
+| Вики | `docs/README.md` |
+| Архитектура и API | `docs/architecture.md` |
+| Контракт 0.3 | `docs/contracts.md` |
+| Дизайн 0.5 | `docs/orchestrator.md` |
+| Runbook | `docs/operations.md` |
+| Решения | `docs/decisions.md` |
 
 ## Проверки
 
@@ -64,12 +76,20 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
 
 ## Следующие шаги
 
-1. Реализовать orchestrator и subagent-петлю по `ROADMAP.md`, этап 0.5:
-   `AUTOPLAN.md`, `STATE.json`, бюджеты, stop-gates.
-2. Добавить тесты на orchestration state/handoff-решение.
-3. Проверить цикл N задач в Orca с реальными worktree.
-4. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
-5. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
+Дизайн 0.5 утверждён; решения D1–D10 — `docs/decisions.md`. Реализация в
+worktree `feat/orchestrator`, коммиты по этапам:
+
+1. Этап A: `lib/orchestrator/plan.ts`, `state.ts`, `budgets.ts`,
+   `policy.ts` + unit-тесты.
+2. Этап B: `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate`;
+   integration на temp git repo.
+3. Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry;
+   spike загрузки в OMP.
+4. Этап D: `docs/AUTOPLAN.example.md`, версия `0.5.0`, E2E 3 задачи в Orca,
+   handoff и stop-gate.
+5. После merge: `HANDOFF.md`/`ROADMAP.md`/`README.md` отражают 0.5.
+6. Решить с владельцем: remote/GitHub, npm, marketplace, английский README.
+7. P2: совместно с `omp-cache-monitor` измерить стоимость компакции/handoff.
 
 ## Риски
 
@@ -77,6 +97,9 @@ bin/omp-yoda --version               # supervisor стартует, OMP полу
   может начать новую сессию.
 - `getContextUsage()` может вернуть `null` сразу после компакции — проверки
   пропускаются до следующего хода.
+- `task` subagent не имеет `cwd`/worktree; изоляция держится на абсолютных
+  путях и проверках (см. `docs/architecture.md`).
+- Spend считается по session JSONL; формат зависит от версии OMP.
 - Supervisor привязан к Orca terminal handle; вне Orca automatic handoff
   недоступен.
 - Пороги — эвристика; стоимость компакции не измерена.

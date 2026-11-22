@@ -26,6 +26,9 @@ E2E пройден в реальном Orca-терминале: marker → super
 
 Осталось: оркестратор и subagent-петля Yoda; режимы и handoff готовы.
 
+Контракт marker/session info: `docs/contracts.md`. Дизайн 0.5 (marker
+`task-boundary`, handoff на границе): `docs/orchestrator.md`.
+
 ## Протокол
 
 1. Агент заканчивает задачу и обновляет `HANDOFF.md`.

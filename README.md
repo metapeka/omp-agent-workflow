@@ -6,6 +6,18 @@ OMP-расширение для работы агента: предупрежд�
 Не заменяет native `context_pct` и не добавляет свой сегмент статус-строки.
 Задача — предупредить заранее и дать детерминированное действие.
 
+## Документация
+
+Вики проекта — `docs/README.md`:
+
+- `docs/architecture.md` — компоненты и факты OMP API: что extension может
+  и не может;
+- `docs/contracts.md` — стабильный контракт 0.3: режимы, env, файлы, команды;
+- `docs/orchestrator.md` — дизайн 0.5: `AUTOPLAN.md`, `STATE.json`, бюджеты,
+  stop-gates, subagent-петля;
+- `docs/operations.md` — runbook: запуск, supervisor, worktree, сбои;
+- `docs/decisions.md` — подтверждённые решения и отклонённые альтернативы.
+
 ## Режимы
 
 | `OMP_WORKFLOW_MODE` | Авто-компакция | Handoff |

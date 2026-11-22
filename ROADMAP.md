@@ -47,16 +47,25 @@
 - [x] `AGENTS.md`, `ROADMAP.md`, `HANDOFF.md`, CI.
 - [ ] Remote/GitHub и публикация — только по решению владельца.
 
-## Этап 0.5 — orchestrator и subagent-петля (дизайн)
+## Этап 0.5 — orchestrator и subagent-петля (дизайн утверждён)
 
+Дизайн и контракт: `docs/orchestrator.md`; решения — `docs/decisions.md`.
+
+- [x] Дизайн: `AUTOPLAN.md` (JSON-блоки), `STATE.json`, действия, политика,
+      бюджеты, stop-gates, handoff на границе.
+- [x] Зафиксированы факты OMP API и ограничения — `docs/architecture.md`.
+- [ ] Этап A: `plan.ts`, `state.ts`, `budgets.ts`, `policy.ts` + unit-тесты.
+- [ ] Этап B: `cost.ts`, `worktrees.ts`, `actions.ts`, `bin/omp-orchestrate`.
+- [ ] Этап C: `orchestrator.ts` (tool, `/orchestrate`, hooks), второй entry.
+- [ ] Этап D: docs/example, версия `0.5.0`, E2E 3 задачи в Orca.
 - Orchestrator (main) читает `AUTOPLAN.md`/`HANDOFF.md`, выбирает задачу,
   спавнит implementer/verifier/reviewer/scout, мержит и обновляет state.
 - `STATE.json`: current task, branch, commit, status, context %, spend, last
-  handoff, stop reason.
+  handoff, stop reason; не коммитится.
 - Бюджеты: `maxTasksPerSession`, `maxSpendUsd`, `maxMinutes`.
-- Handoff на границе задачи; аварийная компакция на 70%.
-- Acceptance: N задач подряд с тестами/CI; handoff не теряет state; stop-gate
-  останавливает работу с причиной.
+- Handoff на границе задачи; аварийная компакция на 70% (0.3).
+- Acceptance: N задач подряд с тестами/typecheck; handoff не теряет state;
+  stop-gate останавливает работу с причиной.
 
 ## Этап 0.6 — экономика handoff (P2)
 
