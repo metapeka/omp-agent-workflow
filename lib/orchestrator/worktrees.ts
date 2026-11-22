@@ -307,19 +307,23 @@ export async function removeWorktree(input: RemoveWorktreeInput): Promise<void> 
 	}
 	let removal: CommandResult;
 	if (input.backend === "orca") {
-		removal = await runCommand(
-			orcaCli(),
-			[
-				"worktree",
-				"rm",
-				"--worktree",
-				`path:${input.path}`,
-				"--delete-branch",
-				"--force",
-				"--json",
-			],
-			{ timeoutMs: 300_000 },
-		);
+		try {
+			removal = await runCommand(
+				orcaCli(),
+				[
+					"worktree",
+					"rm",
+					"--worktree",
+					`path:${input.path}`,
+					"--delete-branch",
+					"--force",
+					"--json",
+				],
+				{ timeoutMs: 300_000 },
+			);
+		} catch {
+			removal = { code: 1, stdout: "", stderr: "orca CLI unavailable" };
+		}
 		if (removal.code !== 0) {
 			removal = await git(
 				input.baseRepo,

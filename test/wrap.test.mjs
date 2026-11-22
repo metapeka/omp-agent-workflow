@@ -21,6 +21,7 @@ import { acquireLock, createInitialState, writeState } from "../lib/orchestrator
 import {
 	branchExists,
 	createWorktree,
+	removeWorktree,
 	runCommand,
 	worktreePath,
 } from "../lib/orchestrator/worktrees.ts";
@@ -39,6 +40,8 @@ import {
 } from "../lib/orchestrator/wrap.ts";
 
 /** Тесты не зависят от живого Orca: терминалы задаются явно. */
+process.env.ORCA_CLI_COMMAND = "orca";
+
 const collectWrapFacts = (cwd, options = {}) =>
 	collectWrapFactsImpl(cwd, { orcaTerminals: [], ...options });
 const removeMergedWorktreeSafe = (options) =>
@@ -714,5 +717,26 @@ describe("orca cli override", () => {
 			if (previous === undefined) delete process.env.ORCA_CLI_COMMAND;
 			else process.env.ORCA_CLI_COMMAND = previous;
 		}
+	});
+
+	it("falls back to git when the Orca CLI cannot spawn", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		const merged = await addWorktree(base, root, "feat/merged");
+		const previous = process.env.ORCA_CLI_COMMAND;
+		process.env.ORCA_CLI_COMMAND = join(tempDir(), "missing-orca");
+		try {
+			await removeWorktree({
+				backend: "orca",
+				baseRepo: base,
+				path: merged,
+				branch: "feat/merged",
+			});
+		} finally {
+			if (previous === undefined) delete process.env.ORCA_CLI_COMMAND;
+			else process.env.ORCA_CLI_COMMAND = previous;
+		}
+		assert.equal(existsSync(merged), false);
+		assert.equal(await branchExists(base, "feat/merged"), false);
 	});
 });
