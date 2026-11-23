@@ -932,7 +932,7 @@ function preflightRepo(files) {
 		assert.equal(result.status, 0, result.stderr);
 		return result.stdout.trim();
 	};
-	run("init", "-q");
+	run("init", "-q", "-b", "main");
 	for (const [name, content] of Object.entries(files)) {
 		writeFileSync(join(dir, name), content);
 	}
@@ -1066,6 +1066,128 @@ describe("/handoff-preflight", () => {
 
 			assert.equal(v.notes[0].level, "info");
 			assert.match(v.notes[0].text, /git: не репозиторий/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("blocks a repository without commits", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-preflight-empty-"));
+		try {
+			spawnSync("git", ["init", "-q"], { cwd: dir });
+			writeFileSync(join(dir, "HANDOFF.md"), "# state\n");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "warning");
+			assert.match(v.notes[0].text, /нет коммитов/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("blocks detached HEAD", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			run("checkout", "-q", "--detach");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "warning");
+			assert.match(v.notes[0].text, /detached HEAD/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("passes a synced upstream and blocks an unpushed commit", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			const branch = run("rev-parse", "--abbrev-ref", "HEAD");
+			run("branch", "base");
+			run("branch", "--set-upstream-to=base", branch);
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(v.notes[0].text, /upstream base: синхронизирован/);
+			assert.equal(v.notes[0].level, "info");
+
+			writeFileSync(join(dir, "later.txt"), "later\n");
+			run("add", "-A");
+			run("commit", "-q", "-m", "later");
+			const ahead = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", ahead.ctx);
+			assert.equal(ahead.notes[0].level, "warning");
+			assert.match(ahead.notes[0].text, /не запушено 1 коммит/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("warns when upstream is ahead", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			const branch = run("rev-parse", "--abbrev-ref", "HEAD");
+			run("branch", "base");
+			run("branch", "--set-upstream-to=base", branch);
+			run("checkout", "-q", "-b", "other");
+			writeFileSync(join(dir, "other.txt"), "other\n");
+			run("add", "-A");
+			run("commit", "-q", "-m", "other");
+			run("checkout", "-q", branch);
+			run("branch", "-f", "base", "other");
+
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "info");
+			assert.match(v.notes[0].text, /отстаёт на 1 коммит/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("warns until the branch is merged into main", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			const mainBranch = run("rev-parse", "--abbrev-ref", "HEAD");
+			run("checkout", "-q", "-b", "feat");
+			writeFileSync(join(dir, "feat.txt"), "feat\n");
+			run("add", "-A");
+			run("commit", "-q", "-m", "feat");
+
+			const { commands } = install();
+			const before = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", before.ctx);
+			assert.match(before.notes[0].text, /не влита в main/);
+			assert.equal(before.notes[0].level, "info");
+
+			run("checkout", "-q", mainBranch);
+			run("merge", "--ff-only", "-q", "feat");
+			run("checkout", "-q", "feat");
+			const after = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", after.ctx);
+			assert.match(after.notes[0].text, /влита в main/);
+			assert.equal(after.notes[0].level, "info");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("checks a custom state file argument", async () => {
+		const { dir } = preflightRepo({ "ALT.md": "# alt\n" });
+		try {
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx, "ALT.md");
+
+			assert.equal(v.notes[0].level, "info");
+			assert.match(v.notes[0].text, /ALT\.md: закоммичен в HEAD/);
+			assert.doesNotMatch(v.notes[0].text, /HANDOFF\.md: нет/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

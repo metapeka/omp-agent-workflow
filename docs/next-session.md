@@ -1,30 +1,29 @@
-# Next session: omp-agent-workflow 0.5.5
+# Next session: omp-agent-workflow 0.5.7
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `/home/db1/projects/omp-agent-workflow`, `main`, HEAD
-  `d1c4d63`, версия `0.5.5`.
-- `feat/settings-supervisor` слита ff-only; worktree и ветка удалены.
+- Репозиторий: `/home/db1/projects/omp-agent-workflow`, `main`, версия
+  `0.5.7`.
+- `feat/handoff-preflight` и `feat/preflight-fixes` слиты ff-only; worktrees
+  и ветки удалены.
 - Готово: 0.3 (guard/handoff/Yoda), 0.5 (orchestrator), 0.5.1 (`/wrap`),
   0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4–0.5.5
-  (Settings, 12 ключей).
-- Settings: `continuePrompt`, `supervisorRetries`, `supervisorLogLevel`
-  добавлены; launcher передаёт их supervisor'у через env.
-- Проверки: `npm test` 130/130, typecheck, extension load exit 0,
-  schema 12 ключей, dry-run JSON чистый, log level quiet/info проверены.
-- Reviewer `SettingsSupervisorReview`: ok; dry-run stdout и count исправлены.
+  (Settings, 12 ключей), 0.5.6–0.5.7 (`/handoff-preflight`).
+- `/handoff-preflight [файл]` — read-only, блокеры advisory; проверяет
+  state, git (чистота, detached, нет коммитов), upstream, merged, marker.
+- Проверки: `npm test` 144/144, typecheck, extension load exit 0,
+  schema 12 ключей.
 - Текущая сессия могла стартовать до merge: перезапустить `bin/omp-yoda`.
 
 ## Следующий этап
 
-1. **0.6 economics отложено**: нужен машиночитаемый контракт cache-monitor
-   (`/cache-monitor costs --json` или tool). Без него не начинать.
+1. **0.6 economics отложено**: нужен машиночитаемый API cache-monitor
+   (`/cache-monitor costs --json` или tool). Не начинать без него.
 2. Решение владельца: remote/GitHub, CI, английский README, tarball, npm.
-3. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов
-   (`reviewRequired`, `maxTasksPerSession`, `maxSpendUsd`, `maxMinutes`).
+3. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов.
 
 ## Границы
 
@@ -52,8 +51,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.5.5. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.5.7. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11/D12).
 > Settings → Plugins — основной способ настройки, env — fallback.
-> 0.6 economics отложено до машиночитаемого API cache-monitor; не трогать
-> cache-monitor. Не менять контракт 0.3 и публикацию без решения владельца.
+> `/handoff-preflight` advisory. 0.6 economics отложено до API cache-monitor;
+> не трогать cache-monitor. Публикация — только по решению владельца.

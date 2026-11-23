@@ -45,16 +45,24 @@ export interface PreflightReport {
 	checks: PreflightCheck[];
 }
 
-/** Запуск git best-effort: ошибка бинаря — `ok: false`, не исключение. */
-function git(cwd: string, args: string[]): { ok: boolean; out: string } {
-	try {
-		const result = spawnSync("git", args, { cwd, encoding: "utf8" });
-		if (result.error || result.status !== 0) return { ok: false, out: "" };
-		const out = typeof result.stdout === "string" ? result.stdout : "";
-		return { ok: true, out: out.trimEnd() };
-	} catch {
-		return { ok: false, out: "" };
-	}
+/** Запуск git best-effort: ошибка бинаря/репозитория — `ok: false`, не исключение. */
+function git(
+	cwd: string,
+	args: string[],
+): { ok: boolean; out: string; error: string } {
+	const result = spawnSync("git", args, {
+		cwd,
+		encoding: "utf8",
+		timeout: 10_000,
+	});
+	const stdout = typeof result.stdout === "string" ? result.stdout : "";
+	const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
+	const error = result.error ? result.error.message : stderr;
+	return {
+		ok: !result.error && result.status === 0,
+		out: stdout.trimEnd(),
+		error,
+	};
 }
 
 function commits(n: number): string {
@@ -69,19 +77,33 @@ function commits(n: number): string {
 export function runPreflight(
 	cwd: string,
 	sessionFile: string | null,
+	stateFile = STATE_FILE,
 ): PreflightReport {
 	const checks: PreflightCheck[] = [];
 	const add = (status: PreflightStatus, text: string): void => {
 		checks.push({ status, text });
 	};
 
-	if (existsSync(resolve(cwd, STATE_FILE))) add("pass", `${STATE_FILE}: есть`);
-	else add("fail", `${STATE_FILE}: нет — сначала обнови state`);
+	if (existsSync(resolve(cwd, stateFile))) add("pass", `${stateFile}: есть`);
+	else add("fail", `${stateFile}: нет — сначала обнови state`);
 
 	const repo = git(cwd, ["rev-parse", "--is-inside-work-tree"]);
 	if (!repo.ok || repo.out !== "true") {
-		add("warn", "git: не репозиторий — git-проверки пропущены");
-		return { ready: !checks.some((c) => c.status === "fail"), checks };
+		if (/not a git repository/i.test(repo.error)) {
+			add("warn", "git: не репозиторий — git-проверки пропущены");
+			return { ready: !checks.some((c) => c.status === "fail"), checks };
+		}
+		add(
+			"fail",
+			`git: не удалось проверить репозиторий${repo.error ? ` — ${repo.error}` : ""}`,
+		);
+		return { ready: false, checks };
+	}
+
+	const hasCommit = git(cwd, ["rev-parse", "--verify", "--quiet", "HEAD"]);
+	if (!hasCommit.ok) {
+		add("fail", "git: нет коммитов — сделай первый коммит");
+		return { ready: false, checks };
 	}
 
 	const dirty = git(cwd, ["status", "--porcelain"]);
@@ -118,16 +140,25 @@ export function runPreflight(
 			"--count",
 			"@{u}...HEAD",
 		]);
-		const [behindRaw, aheadRaw] = counts.out.split(/\s+/);
-		const behind = Number(behindRaw);
-		const ahead = Number(aheadRaw);
-		if (Number.isFinite(ahead) && Number.isFinite(behind) && ahead === 0 && behind === 0) {
-			add("pass", `upstream ${upstream.out}: синхронизирован`);
+		if (!counts.ok) {
+			add("warn", `upstream ${upstream.out}: не удалось сравнить`);
 		} else {
-			if (Number.isFinite(ahead) && ahead > 0)
-				add("fail", `upstream ${upstream.out}: не запушено ${commits(ahead)}`);
-			if (Number.isFinite(behind) && behind > 0)
-				add("warn", `upstream ${upstream.out}: отстаёт на ${commits(behind)} — сделай pull`);
+			const [behindRaw, aheadRaw] = counts.out.split(/\s+/);
+			const behind = Number(behindRaw);
+			const ahead = Number(aheadRaw);
+			if (!Number.isFinite(ahead) || !Number.isFinite(behind)) {
+				add("warn", `upstream ${upstream.out}: не удалось разобрать счётчики`);
+			} else if (ahead === 0 && behind === 0) {
+				add("pass", `upstream ${upstream.out}: синхронизирован`);
+			} else {
+				if (ahead > 0)
+					add("fail", `upstream ${upstream.out}: не запушено ${commits(ahead)}`);
+				if (behind > 0)
+					add(
+						"warn",
+						`upstream ${upstream.out}: отстаёт на ${commits(behind)} — сделай pull`,
+					);
+			}
 		}
 	} else {
 		add("warn", "upstream: нет — пуш проверить нечем");
@@ -144,13 +175,13 @@ export function runPreflight(
 		}
 	}
 
-	const stateStatus = git(cwd, ["status", "--porcelain", "--", STATE_FILE]);
+	const stateStatus = git(cwd, ["status", "--porcelain", "--", stateFile]);
 	if (stateStatus.ok && stateStatus.out) {
-		add("fail", `${STATE_FILE}: изменён, не закоммичен`);
+		add("fail", `${stateFile}: изменён, не закоммичен`);
 	} else {
-		const stateCommit = git(cwd, ["log", "-1", "--format=%h", "--", STATE_FILE]);
+		const stateCommit = git(cwd, ["log", "-1", "--format=%h", "--", stateFile]);
 		if (!stateCommit.ok || !stateCommit.out) {
-			add("warn", `${STATE_FILE}: не закоммичен — state не в git`);
+			add("warn", `${stateFile}: не закоммичен — state не в git`);
 		} else {
 			const after = git(cwd, [
 				"rev-list",
@@ -159,9 +190,9 @@ export function runPreflight(
 			]);
 			const n = Number(after.out);
 			if (after.ok && Number.isFinite(n) && n > 0) {
-				add("warn", `${STATE_FILE}: старше HEAD на ${commits(n)} — проверь актуальность`);
+				add("warn", `${stateFile}: старше HEAD на ${commits(n)} — проверь актуальность`);
 			} else {
-				add("pass", `${STATE_FILE}: закоммичен в HEAD`);
+				add("pass", `${stateFile}: закоммичен в HEAD`);
 			}
 		}
 	}
@@ -456,12 +487,14 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand("handoff-preflight", {
-		description: "Проверить готовность к /handoff-new: git, HANDOFF.md, marker",
-		handler: async (_args, ctx) => {
+		description: "Проверить готовность к /handoff-new: git, state, marker",
+		handler: async (args, ctx) => {
 			if (!isMainTui(ctx)) return;
+			const stateFile = args.trim() || STATE_FILE;
 			const report = runPreflight(
 				ctx.cwd,
 				ctx.sessionManager.getSessionFile() ?? null,
+				stateFile,
 			);
 			notify(
 				ctx,

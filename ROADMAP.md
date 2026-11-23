@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.5`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-23. Версия: `0.5.7`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция и Settings готовы; release/remote — по решению владельца.
 Оперативный список — `TODO.md`.
@@ -130,6 +130,15 @@ Orca-интеграция и Settings готовы; release/remote — по ре
 - [x] Блокеры и warnings разделены; ничего не пишет и не чинит.
 - [x] Тесты на временных git-репозиториях; docs (README, contracts,
       operations, architecture).
+
+## Этап 0.5.7 — preflight hardening (готово)
+
+- [x] Ошибка git-репозитория отличается от «не репозиторий»; нет коммитов —
+      отдельный блокер.
+- [x] Ошибка `rev-list` upstream даёт warning, а не тихо пропадает.
+- [x] `/handoff-preflight [файл]` учитывает аргумент, как `/handoff-new`.
+- [x] git-вызовы с timeout 10 с; блокеры advisory (явно в docs).
+- [x] Тесты: upstream ahead/behind/synced, detached, merged, custom state.
 
 ## Этап 0.6 — экономика handoff (P2)
 

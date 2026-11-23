@@ -25,17 +25,17 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.6`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.7`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
   Orca-интеграция; 0.5.4 — Settings (9 ключей); 0.5.5 — Settings для
-  supervisor (`continuePrompt`, retries, log level); 0.5.6 —
+  supervisor (`continuePrompt`, retries, log level); 0.5.6–0.5.7 —
   `/handoff-preflight` (read-only проверка перед `/handoff-new`).
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 138 тестов (45 context guard + 38 orchestrator + 19 extension +
+- `npm test` — 144 теста (51 context guard + 38 orchestrator + 19 extension +
   29 wrap + 7 settings); `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
@@ -105,8 +105,8 @@ orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<s
 | больше 600k | Форсировать handoff/compact |
 
 - `HANDOFF` — триггер: обнови `HANDOFF.md`, затем `/handoff`.
-- `/handoff-preflight` — read-only проверка state/git/marker перед
-  `/handoff-new`; блокеры не дают переключать сессию.
+- `/handoff-preflight [файл]` — read-only проверка state/git/marker перед
+  `/handoff-new`; блокеры advisory: команда ничего не запрещает.
 - `/handoff-new` — новая сессия; сначала должен существовать `HANDOFF.md`.
 - Automatic handoff: агент пишет `.omp-handoff-request.json`, supervisor
   отправляет `/handoff-new` в terminal handle из `.omp-handoff-session.json`.

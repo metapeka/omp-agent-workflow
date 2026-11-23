@@ -92,11 +92,13 @@ OMP_HANDOFF_AT=55        # или off; просить handoff на пороге
 Команда ждёт idle, проверяет state и вызывает `ctx.newSession`, добавляя
 custom message «прочитай HANDOFF.md и продолжай». Без `HANDOFF.md` отказывает.
 
-`/handoff-preflight` — read-only проверка перед `/handoff-new`: `HANDOFF.md`
-на месте и не старше HEAD, дерево чистое, ветка не detached, коммиты
-запушены, ветка влита в `main`, marker отсутствует или от текущей сессии.
+`/handoff-preflight [файл]` — read-only проверка перед `/handoff-new`:
+`HANDOFF.md` (или указанный файл) на месте и не старше HEAD, дерево чистое,
+ветка не detached, коммиты запушены, ветка влита в `main`, marker
+отсутствует или от текущей сессии.
 Блокеры перечисляются одной строкой каждый; ничего не пишет и не чинит.
-Локальный репозиторий без upstream даёт warning, а не блокер.
+Локальный репозиторий без upstream даёт warning, а не блокер. Блокеры
+advisory: `/handoff-new` их не проверяет.
 
 Обе handoff-команды не пишут `HANDOFF.md` сами: сначала обнови файл.
 
