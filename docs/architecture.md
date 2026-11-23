@@ -23,13 +23,13 @@ flowchart LR
 
 | Часть | Путь | Роль |
 |---|---|---|
-| Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, session info, marker при пороге |
+| Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, `/handoff-preflight`, session info, marker при пороге |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new`; singleton lock на `--dir` |
 | Supervisor lock | `lib/supervisor-lock.mjs` | acquire/reclaim/release; identity guard после rename |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Wrap `[готово]` | `lib/orchestrator/wrap.ts` + `/wrap` в `orchestrator.ts` | 0.5.1: facts, cards, safe cleanup, next worktree |
-| Тесты 0.3 | `test/context-guard.test.mjs` | 33 теста guard/handoff/supervisor/lock/preflight/session info |
+| Тесты 0.3 | `test/context-guard.test.mjs` | 45 тестов guard/handoff/preflight/supervisor/lock/session info |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
 | Тесты wrap core | `test/wrap.test.mjs` | 29 тестов facts/cards/guards/cleanup/next worktree/orca |

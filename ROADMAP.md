@@ -123,6 +123,14 @@ Orca-интеграция и Settings готовы; release/remote — по ре
       `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`.
 - [x] Тесты settings/supervisor; docs.
 
+## Этап 0.5.6 — `/handoff-preflight` (готово)
+
+- [x] Read-only команда: `HANDOFF.md`, чистое дерево, ветка/upstream,
+      влитие в `main`, stale marker.
+- [x] Блокеры и warnings разделены; ничего не пишет и не чинит.
+- [x] Тесты на временных git-репозиториях; docs (README, contracts,
+      operations, architecture).
+
 ## Этап 0.6 — экономика handoff (P2)
 
 - Совместно с `omp-cache-monitor`: стоимость компакции/handoff и эффект на

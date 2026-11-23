@@ -107,6 +107,8 @@ orca worktree rm --worktree path:<path> --delete-branch --json
 
 ## Handoff вручную
 
+0. `/handoff-preflight` — read-only проверка: `HANDOFF.md`, git, ветка,
+   upstream, marker.
 1. Обновить `HANDOFF.md`: цель, состояние, решения, файлы, проверки,
    следующие шаги.
 2. `/handoff` — сжать контекст (не пишет `HANDOFF.md`).
@@ -197,7 +199,7 @@ worktree, ретро-review. Destructive/spend действия требуют c
 | Что | Как |
 |---|---|
 | Загрузка extension | `omp --no-extensions -e ./index.ts ... -p '...'`; для 0.5 — `-e ./orchestrator.ts` |
-| Команды TUI | `/handoff`, `/handoff-new`; 0.5 — `/orchestrate`, `/orchestrate-stop`; 0.5.1 — `/wrap` |
+| Команды TUI | `/handoff`, `/handoff-new`, `/handoff-preflight`; 0.5 — `/orchestrate`, `/orchestrate-stop`; 0.5.1 — `/wrap` |
 | Supervisor e2e | Marker → `/handoff-new` → новая сессия ответила `OK` |
 | Worktree | `git -C <path> status`, `git -C <path> log -1` |
 | Merge | `git -C <base> log --oneline -3`; ff-only, без merge-коммита |

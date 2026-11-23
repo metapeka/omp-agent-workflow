@@ -12,7 +12,8 @@
  * Установка: `omp plugin link <каталог>` или копия в
  * `~/.omp/agent/extensions/context-guard.ts` (одно из двух).
  */
-import { existsSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 
@@ -29,6 +30,180 @@ const HANDOFF_INSTRUCTIONS =
 	"инструментов отбрось.";
 
 const SESSION_INFO = ".omp-handoff-session.json";
+const STATE_FILE = "HANDOFF.md";
+const REQUEST_MARKER = ".omp-handoff-request.json";
+
+export type PreflightStatus = "pass" | "warn" | "fail";
+
+export interface PreflightCheck {
+	status: PreflightStatus;
+	text: string;
+}
+
+export interface PreflightReport {
+	ready: boolean;
+	checks: PreflightCheck[];
+}
+
+/** Запуск git best-effort: ошибка бинаря — `ok: false`, не исключение. */
+function git(cwd: string, args: string[]): { ok: boolean; out: string } {
+	try {
+		const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+		if (result.error || result.status !== 0) return { ok: false, out: "" };
+		const out = typeof result.stdout === "string" ? result.stdout : "";
+		return { ok: true, out: out.trimEnd() };
+	} catch {
+		return { ok: false, out: "" };
+	}
+}
+
+function commits(n: number): string {
+	const mod10 = n % 10;
+	const mod100 = n % 100;
+	if (mod10 === 1 && mod100 !== 11) return `${n} коммит`;
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} коммита`;
+	return `${n} коммитов`;
+}
+
+/** Read-only проверка перед `/handoff-new`: ничего не пишет и не чинит. */
+export function runPreflight(
+	cwd: string,
+	sessionFile: string | null,
+): PreflightReport {
+	const checks: PreflightCheck[] = [];
+	const add = (status: PreflightStatus, text: string): void => {
+		checks.push({ status, text });
+	};
+
+	if (existsSync(resolve(cwd, STATE_FILE))) add("pass", `${STATE_FILE}: есть`);
+	else add("fail", `${STATE_FILE}: нет — сначала обнови state`);
+
+	const repo = git(cwd, ["rev-parse", "--is-inside-work-tree"]);
+	if (!repo.ok || repo.out !== "true") {
+		add("warn", "git: не репозиторий — git-проверки пропущены");
+		return { ready: !checks.some((c) => c.status === "fail"), checks };
+	}
+
+	const dirty = git(cwd, ["status", "--porcelain"]);
+	if (!dirty.ok) {
+		add("warn", "git status: не удалось прочитать");
+	} else if (!dirty.out) {
+		add("pass", "git: чисто");
+	} else {
+		const lines = dirty.out.split("\n");
+		const names = lines.slice(0, 3).map((line) => line.slice(3).trim()).join(", ");
+		const rest = lines.length > 3 ? ` и ещё ${lines.length - 3}` : "";
+		add("fail", `git: изменено файлов ${lines.length} — ${names}${rest}`);
+	}
+
+	const branch = git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
+	const branchName = branch.ok ? branch.out : "";
+	if (!branchName || branchName === "HEAD") {
+		add("fail", "git: detached HEAD — переключись на ветку");
+	} else {
+		const head = git(cwd, ["rev-parse", "--short", "HEAD"]);
+		add("pass", `ветка: ${branchName}${head.ok ? ` @ ${head.out}` : ""}`);
+	}
+
+	const upstream = git(cwd, [
+		"rev-parse",
+		"--abbrev-ref",
+		"--symbolic-full-name",
+		"@{u}",
+	]);
+	if (upstream.ok && upstream.out) {
+		const counts = git(cwd, [
+			"rev-list",
+			"--left-right",
+			"--count",
+			"@{u}...HEAD",
+		]);
+		const [behindRaw, aheadRaw] = counts.out.split(/\s+/);
+		const behind = Number(behindRaw);
+		const ahead = Number(aheadRaw);
+		if (Number.isFinite(ahead) && Number.isFinite(behind) && ahead === 0 && behind === 0) {
+			add("pass", `upstream ${upstream.out}: синхронизирован`);
+		} else {
+			if (Number.isFinite(ahead) && ahead > 0)
+				add("fail", `upstream ${upstream.out}: не запушено ${commits(ahead)}`);
+			if (Number.isFinite(behind) && behind > 0)
+				add("warn", `upstream ${upstream.out}: отстаёт на ${commits(behind)} — сделай pull`);
+		}
+	} else {
+		add("warn", "upstream: нет — пуш проверить нечем");
+	}
+
+	if (branchName && branchName !== "HEAD" && branchName !== "main") {
+		const dest = git(cwd, ["rev-parse", "--verify", "--quiet", "origin/main"]).ok
+			? "origin/main"
+			: "main";
+		if (git(cwd, ["rev-parse", "--verify", "--quiet", dest]).ok) {
+			if (git(cwd, ["merge-base", "--is-ancestor", "HEAD", dest]).ok)
+				add("pass", `ветка влита в ${dest}`);
+			else add("warn", `ветка не влита в ${dest} — смерджи до handoff`);
+		}
+	}
+
+	const stateStatus = git(cwd, ["status", "--porcelain", "--", STATE_FILE]);
+	if (stateStatus.ok && stateStatus.out) {
+		add("fail", `${STATE_FILE}: изменён, не закоммичен`);
+	} else {
+		const stateCommit = git(cwd, ["log", "-1", "--format=%h", "--", STATE_FILE]);
+		if (!stateCommit.ok || !stateCommit.out) {
+			add("warn", `${STATE_FILE}: не закоммичен — state не в git`);
+		} else {
+			const after = git(cwd, [
+				"rev-list",
+				"--count",
+				`${stateCommit.out}..HEAD`,
+			]);
+			const n = Number(after.out);
+			if (after.ok && Number.isFinite(n) && n > 0) {
+				add("warn", `${STATE_FILE}: старше HEAD на ${commits(n)} — проверь актуальность`);
+			} else {
+				add("pass", `${STATE_FILE}: закоммичен в HEAD`);
+			}
+		}
+	}
+
+	const markerPath = resolve(cwd, REQUEST_MARKER);
+	if (!existsSync(markerPath)) {
+		add("pass", "marker: нет");
+	} else {
+		let markerSession: string | null = null;
+		try {
+			const parsed: unknown = JSON.parse(readFileSync(markerPath, "utf8"));
+			if (parsed && typeof parsed === "object" && "sessionFile" in parsed) {
+				const value = parsed.sessionFile;
+				if (typeof value === "string") markerSession = value;
+			}
+		} catch {
+			// битый marker считаем чужим
+		}
+		if (markerSession && sessionFile && markerSession === sessionFile) {
+			add("warn", "marker: стоит — supervisor сам запустит /handoff-new");
+		} else {
+			add("warn", `marker: от другой сессии — удали ${REQUEST_MARKER}`);
+		}
+	}
+
+	return { ready: !checks.some((c) => c.status === "fail"), checks };
+}
+
+export function formatPreflight(report: PreflightReport): string {
+	const verdict = report.ready
+		? "preflight: OK — можно /handoff-new"
+		: "preflight: блокеры — /handoff-new рано";
+	const icons: Record<PreflightStatus, string> = {
+		pass: "✓",
+		warn: "⚠",
+		fail: "✗",
+	};
+	return [
+		verdict,
+		...report.checks.map((c) => `${icons[c.status]} ${c.text}`),
+	].join("\n");
+}
 
 /** Краткий вид контекста: `42% (420k/1000k)`. */
 function usageText(usage: {
@@ -278,6 +453,22 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		handoffCooldownUntil = 0;
 		writeSessionInfo(ctx);
 		checkWarnings(ctx);
+	});
+
+	pi.registerCommand("handoff-preflight", {
+		description: "Проверить готовность к /handoff-new: git, HANDOFF.md, marker",
+		handler: async (_args, ctx) => {
+			if (!isMainTui(ctx)) return;
+			const report = runPreflight(
+				ctx.cwd,
+				ctx.sessionManager.getSessionFile() ?? null,
+			);
+			notify(
+				ctx,
+				formatPreflight(report),
+				report.ready ? "info" : "warning",
+			);
+		},
 	});
 
 	pi.registerCommand("handoff-new", {

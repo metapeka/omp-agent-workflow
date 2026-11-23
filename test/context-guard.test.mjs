@@ -911,3 +911,177 @@ describe("/handoff", () => {
 		await first;
 	});
 });
+
+/** Временный git-репозиторий: все файлы в одном коммите. */
+function preflightRepo(files) {
+	const dir = mkdtempSync(join(tmpdir(), "cg-preflight-"));
+	const run = (...args) => {
+		const result = spawnSync(
+			"git",
+			[
+				"-c",
+				"user.name=Test",
+				"-c",
+				"user.email=test@example.com",
+				"-c",
+				"commit.gpgsign=false",
+				...args,
+			],
+			{ cwd: dir, encoding: "utf8" },
+		);
+		assert.equal(result.status, 0, result.stderr);
+		return result.stdout.trim();
+	};
+	run("init", "-q");
+	for (const [name, content] of Object.entries(files)) {
+		writeFileSync(join(dir, name), content);
+	}
+	run("add", "-A");
+	run("commit", "-q", "-m", "init");
+	return { dir, run };
+}
+
+describe("/handoff-preflight", () => {
+	it("passes a clean committed repo", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes.length, 1);
+			assert.equal(v.notes[0].level, "info");
+			assert.match(v.notes[0].text, /preflight: OK/);
+			assert.match(v.notes[0].text, /HANDOFF\.md: закоммичен в HEAD/);
+			assert.match(v.notes[0].text, /git: чисто/);
+			assert.match(v.notes[0].text, /marker: нет/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("blocks on uncommitted changes", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "warning");
+			assert.match(v.notes[0].text, /блокеры/);
+			assert.match(v.notes[0].text, /изменено файлов 1 — code\.ts/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("blocks when HANDOFF.md is modified but not committed", async () => {
+		const { dir } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			writeFileSync(join(dir, "HANDOFF.md"), "# changed\n");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "warning");
+			assert.match(v.notes[0].text, /HANDOFF\.md: изменён, не закоммичен/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("blocks when HANDOFF.md is missing", async () => {
+		const { dir } = preflightRepo({ "code.ts": "export {};\n" });
+		try {
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "warning");
+			assert.match(v.notes[0].text, /HANDOFF\.md: нет/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("warns when HANDOFF.md is older than HEAD", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			writeFileSync(join(dir, "code.ts"), "export {};\n");
+			run("add", "-A");
+			run("commit", "-q", "-m", "code");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "info");
+			assert.match(v.notes[0].text, /старше HEAD на 1 коммит/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("flags a marker from another session", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			".gitignore": ".omp-handoff-request.json\n",
+		});
+		try {
+			const marker = join(dir, ".omp-handoff-request.json");
+			writeFileSync(
+				marker,
+				JSON.stringify({ reason: "context", sessionFile: "/tmp/old.jsonl" }),
+			);
+			const { commands } = install();
+			const v = view(40, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
+			await command(commands, "handoff-preflight", v.ctx);
+			assert.match(v.notes[0].text, /marker: от другой сессии/);
+
+			writeFileSync(
+				marker,
+				JSON.stringify({ reason: "context", sessionFile: "/tmp/session.jsonl" }),
+			);
+			const current = view(40, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
+			await command(commands, "handoff-preflight", current.ctx);
+			assert.match(current.notes[0].text, /supervisor сам запустит/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("skips git checks outside a repository", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-preflight-nogit-"));
+		try {
+			writeFileSync(join(dir, "HANDOFF.md"), "# state\n");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "info");
+			assert.match(v.notes[0].text, /git: не репозиторий/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("stays silent for sub-agents and non-TUI modes", async () => {
+		const { dir } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			const { commands } = install();
+			for (const options of [{ kind: "sub" }, { mode: "print" }]) {
+				const v = view(40, { cwd: dir, ...options });
+				await command(commands, "handoff-preflight", v.ctx);
+				assert.equal(v.notes.length, 0);
+			}
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});

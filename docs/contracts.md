@@ -82,6 +82,18 @@
   custom message «прочитай HANDOFF.md и продолжи».
 - Сообщает об отмене, если `newSession` вернул `cancelled`.
 
+### `/handoff-preflight`
+
+- Только main TUI; read-only, ничего не пишет и не чинит.
+- Блокеры (`fail`): нет `HANDOFF.md`; грязное дерево; detached HEAD;
+  незапушенные коммиты при наличии upstream.
+- Warnings: нет upstream; ветка не влита в `main`/`origin/main`; `HANDOFF.md`
+  старше HEAD; `upstream` впереди; stale marker от другой сессии; marker
+  текущей сессии (supervisor сработает сам).
+- Проверка `HANDOFF.md` старше HEAD — эвристика по последнему коммиту,
+  затрагивающему файл; она не доказывает, что state устарел.
+- Не путать с настройкой `orcaPreflight` (terminal show перед supervisor send).
+
 ## Файлы
 
 ### `.omp-handoff-session.json`

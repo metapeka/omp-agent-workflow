@@ -1,14 +1,14 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main` HEAD `d1c4d63`, версия `0.5.5`. Ветка `feat/settings-supervisor`
-слита ff-only; worktree удалён. Вики — `docs/README.md`; backlog — `TODO.md`.
+`main`, версия `0.5.6`; ветка `feat/handoff-preflight` слита ff-only,
+worktree удалён. Вики — `docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
 | Что | Состояние |
 |---|---|
-| Context guard | warning 35%, HANDOFF 50%, `/handoff`, `/handoff-new` |
+| Context guard | warning 35%, HANDOFF 50%, `/handoff`, `/handoff-new`, `/handoff-preflight` |
 | Workflow modes | `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | Automatic handoff | session info, marker, supervisor, continuation prompt |
 | Supervisor singleton | lock, stale reclaim, identity guard, release на сигналах |
@@ -17,7 +17,8 @@
 | Wrap 0.5.1 | `/wrap`, safe cleanup, next worktree, review |
 | Orca additive 0.5.3 | terminal list/show, `status`, `ORCA_CLI_COMMAND` |
 | Settings 0.5.4–0.5.5 | 12 ключей в Settings → Plugins |
-| Проверки | `npm test` 130/130, `npm run typecheck`, extension load exit 0 |
+| Preflight 0.5.6 | `/handoff-preflight`: read-only git/state/marker, блокеры и warnings |
+| Проверки | `npm test` 138/138, `npm run typecheck`, extension load exit 0 |
 
 ## Settings 0.5.5
 
@@ -51,6 +52,16 @@
 Проверено вживую: schema 12 ключей; Settings `supervisorLogLevel=quiet` →
 лог supervisor 0 байт, default — `started dir=...`; env fallback
 `OMP_SUPERVISOR_LOG_LEVEL=quiet` работает; dry-run JSON парсится `jq`.
+
+## 0.5.6 — `/handoff-preflight`
+
+Read-only проверка перед `/handoff-new` в `ctx.cwd`: `HANDOFF.md` есть и
+закоммичен, дерево чистое, ветка не detached, upstream ahead/behind, ветка
+влита в `main`/`origin/main`, marker отсутствует или от текущей сессии.
+Блокеры (грязное дерево, нет state, unpushed, detached HEAD) дают warning;
+warnings (нет upstream, state старше HEAD, чужой marker) не блокируют.
+Ничего не пишет, не коммитит и не переключает сессию. 8 тестов на временных
+git-репозиториях.
 
 ## D11/D12
 
