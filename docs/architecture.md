@@ -23,13 +23,13 @@ flowchart LR
 
 | Часть | Путь | Роль |
 |---|---|---|
-| Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, `/handoff-preflight` (меню действий + проверки), session info, marker при пороге |
+| Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, `/handoff-preflight` (меню действий + проверки), session info, marker при пороге, ключ `workflow` в статус-строке |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new`; singleton lock на `--dir` |
 | Supervisor lock | `lib/supervisor-lock.mjs` | acquire/reclaim/release; identity guard после rename |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Wrap `[готово]` | `lib/orchestrator/wrap.ts` + `/wrap` в `orchestrator.ts` | 0.5.1: facts, cards, safe cleanup, next worktree |
-| Тесты 0.3 | `test/context-guard.test.mjs` | 67 тестов guard/handoff/preflight/supervisor/lock/session info |
+| Тесты 0.3 | `test/context-guard.test.mjs` | guard/handoff/preflight/supervisor/lock/session info/status |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
 | Тесты wrap core | `test/wrap.test.mjs` | 29 тестов facts/cards/guards/cleanup/next worktree/orca |
@@ -95,8 +95,8 @@ Launcher читает те же ключи через `omp plugin config list` �
 
 ## Поток 0.3
 
-1. `session_start` (main) → session info с terminal handle, session file, cwd, pid.
-2. `turn_end`/`agent_end` → warning/suggest/auto/handoff по порогам.
+1. `session_start` (main) → session info с terminal handle, session file, cwd, pid; ключ `workflow` в статус-строке.
+2. `turn_end`/`agent_end` → warning/suggest/auto/handoff по порогам и пересчёт `workflow`.
 3. На `OMP_HANDOFF_AT` extension просит агента завершить задачу, обновить
    `HANDOFF.md` и записать marker.
 4. Supervisor видит marker + session info, ждёт idle, отправляет

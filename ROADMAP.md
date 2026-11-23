@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.11`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-23. Версия: `0.5.12`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция и Settings готовы; release/remote — по решению владельца.
 Оперативный список — `TODO.md`.
@@ -21,7 +21,8 @@ Orca-интеграция и Settings готовы; release/remote — по ре
 - Warning 35%, предложение HANDOFF 50%.
 - `/handoff` — компакция с инструкциями сохранить цель, решения, файлы,
   проверки, блокеры и следующие шаги.
-- Не добавляет свой сегмент status line.
+- Свой статус — только ключ `workflow` (0.5.12); native `context_pct` не
+  дублируется.
 
 ## Этап 0.2 — automatic handoff (готово)
 
@@ -186,6 +187,17 @@ Orca-интеграция и Settings готовы; release/remote — по ре
       таблицей и вердиктом.
 - [x] Runtime-файлы `.omp-handoff-*` игнорируются в статусе и коммите.
 - [x] Тесты: порядок, динамическое меню, runtime-файлы, итоговый формат.
+
+## Этап 0.5.12 — ключ `workflow` в статус-строке (готово)
+
+- [x] `statusEnabled` — 13-й ключ Settings, env `OMP_STATUS_ENABLED`.
+- [x] Ключ `workflow`: `YODA`/`YODA-SUP` по режиму, `⚠ HANDOFF` по порогу
+      или marker текущей сессии.
+- [x] Stale marker другой сессии игнорируется; статус пересчитывается на
+      `session_start`/`session_switch`, `turn_end`/`agent_end`,
+      `session_compact`.
+- [x] `statusEnabled=false` очищает ключ; native `context_pct` не дублируется.
+- [x] Тесты, typecheck, README/вики/runbook.
 
 ## Этап 0.6 — экономика handoff (P2)
 

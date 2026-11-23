@@ -1,11 +1,11 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.11`; ветки `feat/handoff-preflight`,
+`main`, версия `0.5.12`; ветки `feat/handoff-preflight`,
 `feat/preflight-fixes`, `feat/handoff-state-embed`,
-`feat/preflight-checklist`, `feat/preflight-actions` и `feat/preflight-flow`
-слиты ff-only, worktrees удалены. Вики — `docs/README.md`; backlog —
-`TODO.md`.
+`feat/preflight-checklist`, `feat/preflight-actions`,
+`feat/preflight-flow` и `feat/workflow-status-key` слиты ff-only, worktrees
+удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -19,13 +19,14 @@
 | Orchestrator 0.5 | `AUTOPLAN.md`, `STATE.json`, actions, policy, budgets |
 | Wrap 0.5.1 | `/wrap`, safe cleanup, next worktree, review |
 | Orca additive 0.5.3 | terminal list/show, `status`, `ORCA_CLI_COMMAND` |
-| Settings 0.5.4–0.5.5 | 12 ключей в Settings → Plugins |
+| Settings 0.5.4–0.5.5 | 13 ключей в Settings → Plugins |
 | Preflight 0.5.6–0.5.7 | read-only проверка перед `/handoff-new` |
 | State 0.5.8 | `/handoff-new` встраивает state-файл в новую сессию |
 | Checklist 0.5.9 | `/handoff-preflight`: чек-лист, затем таблица проверок |
 | Actions 0.5.10 | `/handoff-preflight`: проверки, commit, ff-merge; остальное вручную |
 | Flow 0.5.11 | preflight: состояние → меню незакрытых действий → итог |
-| Проверки | `npm test` 160/160, `npm run typecheck`, extension load exit 0 |
+| Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
+| Проверки | `npm test` 168/168, `npm run typecheck`, extension load exit 0 |
 
 ## `/handoff-preflight [файл]`
 
@@ -74,13 +75,20 @@ state-файла; prompt без состояния больше не перед�
   сессии «продолжай». Supervisor при automatic handoff отправляет
   continuation prompt сам.
 
+## Статус-строка 0.5.12
+
+Один ключ `workflow`, только main TUI. Текст: `YODA` / `YODA-SUP` по
+`workflowMode`; `⚠ HANDOFF` — при `usage >= handoffAtPercent` или marker
+текущей сессии. Stale marker другой сессии игнорируется.
+`statusEnabled=false` очищает ключ; native `context_pct` не дублируется.
+
 ## Settings 0.5.5
 
 `package.json#omp.settings` → Settings → Plugins. Приоритет:
-**Settings > env > режим/дефолт** (D12). 12 ключей: `workflowMode`,
-`handoffAtPercent`, `handoffCooldownSeconds`, `contextWarnPercent`,
-`contextSuggestPercent`, `autoCompactPercent`, `orcaEnabled`,
-`orcaPreflight`, `supervisorEnabled`, `continuePrompt`,
+**Settings > env > режим/дефолт** (D12). 13 ключей: `workflowMode`,
+`statusEnabled`, `handoffAtPercent`, `handoffCooldownSeconds`,
+`contextWarnPercent`, `contextSuggestPercent`, `autoCompactPercent`,
+`orcaEnabled`, `orcaPreflight`, `supervisorEnabled`, `continuePrompt`,
 `supervisorRetries`, `supervisorLogLevel`.
 
 Launcher читает `omp plugin config list` при старте и передаёт supervisor'у
@@ -117,7 +125,7 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 160/160
+npm test                                  # 168/168
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -128,8 +136,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ## Следующие шаги
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.11; новый порядок `/handoff-preflight` (проверка → меню → итог)
-   появится в новой сессии.
+   0.5.12; ключ `workflow` появится в новой сессии. Заодно проверить новый
+   порядок `/handoff-preflight` из 0.5.11.
 2. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
 3. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.

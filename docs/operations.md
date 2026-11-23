@@ -105,6 +105,17 @@ orca worktree rm --worktree path:<path> --delete-branch --json
   worktree;
 - после merge удалить worktree и ветку.
 
+## Статус-строка
+
+Ключ `workflow`: `YODA`/`YODA-SUP` по режиму и `⚠ HANDOFF` при пороге или
+marker текущей сессии. В `manual`/`assisted` ключ пуст; `statusEnabled=false`
+очищает его. Stale marker другой сессии warning не показывает.
+`context_pct` и cache не дублируются.
+
+Если OMP рисует hook-статус дважды, оставить один путь: `status` в
+`statusLine.rightSegments` + `statusLine.showHookStatus=false`, либо убрать
+`status` из сегментов.
+
 ## Handoff вручную
 
 1. Обновить `HANDOFF.md`: цель, состояние, решения, файлы, проверки,

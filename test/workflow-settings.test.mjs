@@ -17,6 +17,7 @@ describe("workflow settings", () => {
 	it("uses assisted defaults with an empty environment", () => {
 		const s = resolveSettings(EMPTY, EMPTY);
 		assert.equal(s.workflowMode, "assisted");
+		assert.equal(s.statusEnabled, true);
 		assert.equal(s.contextWarnPercent, 35);
 		assert.equal(s.contextSuggestPercent, 50);
 		assert.equal(s.autoCompactPercent, 60);
@@ -49,6 +50,7 @@ describe("workflow settings", () => {
 	it("falls back to environment values", () => {
 		const s = resolveSettings(EMPTY, {
 			OMP_WORKFLOW_MODE: "yoda-supervised",
+			OMP_STATUS_ENABLED: "0",
 			OMP_CONTEXT_WARN: "30",
 			OMP_CONTEXT_SUGGEST: "45",
 			OMP_CONTEXT_AUTO: "75",
@@ -60,6 +62,7 @@ describe("workflow settings", () => {
 			ORCA_CLI_COMMAND: "/opt/orca/bin/orca",
 		});
 		assert.equal(s.workflowMode, "yoda-supervised");
+		assert.equal(s.statusEnabled, false);
 		assert.equal(s.contextWarnPercent, 30);
 		assert.equal(s.contextSuggestPercent, 45);
 		assert.equal(s.autoCompactPercent, 75);
@@ -75,6 +78,7 @@ describe("workflow settings", () => {
 		const s = resolveSettings(
 			{
 				workflowMode: "manual",
+				statusEnabled: true,
 				contextWarnPercent: 20,
 				contextSuggestPercent: 40,
 				autoCompactPercent: 0,
@@ -87,6 +91,7 @@ describe("workflow settings", () => {
 			},
 			{
 				OMP_WORKFLOW_MODE: "yoda",
+				OMP_STATUS_ENABLED: "0",
 				OMP_CONTEXT_WARN: "30",
 				OMP_CONTEXT_SUGGEST: "50",
 				OMP_CONTEXT_AUTO: "80",
@@ -97,6 +102,7 @@ describe("workflow settings", () => {
 			},
 		);
 		assert.equal(s.workflowMode, "manual");
+		assert.equal(s.statusEnabled, true);
 		assert.equal(s.contextWarnPercent, 20);
 		assert.equal(s.contextSuggestPercent, 40);
 		assert.equal(s.autoCompactPercent, null);

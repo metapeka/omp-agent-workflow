@@ -36,6 +36,7 @@ const ENV_KEYS = [
 	"OMP_HANDOFF_AT",
 	"OMP_HANDOFF_COOLDOWN_SECONDS",
 	"OMP_WORKFLOW_MODE",
+	"OMP_STATUS_ENABLED",
 	"OMP_ORCA_ENABLED",
 	"OMP_ORCA_PREFLIGHT",
 	"OMP_SUPERVISOR_ENABLED",
@@ -95,6 +96,7 @@ function view(percent, options = {}) {
 		input = null,
 	} = options;
 	const notes = [];
+	const statuses = [];
 	const compactions = [];
 	const newSessions = [];
 	const customMessages = [];
@@ -115,6 +117,9 @@ function view(percent, options = {}) {
 		ui: {
 			notify(text, level) {
 				notes.push({ text, level });
+			},
+			setStatus(key, text) {
+				statuses.push({ key, text });
 			},
 			...(askDialog ? { askDialog } : {}),
 			...(input ? { input } : {}),
@@ -155,6 +160,7 @@ function view(percent, options = {}) {
 	return {
 		ctx,
 		notes,
+		statuses,
 		compactions,
 		newSessions,
 		customMessages,
@@ -490,6 +496,138 @@ describe("/handoff-new", () => {
 			assert.match(message, /Не удалось прочитать STATE/);
 			assert.match(message, /Прочитай state-файл сам/);
 			assert.match(message, /Прочитай HANDOFF\.md/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("workflow status key", () => {
+	const temp = () => mkdtempSync(join(tmpdir(), "cg-status-"));
+
+	it("publishes YODA-SUP on session_start", async () => {
+		const dir = temp();
+		try {
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.deepEqual(v.statuses.at(-1), {
+				key: "workflow",
+				text: "YODA-SUP",
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("stays empty in assisted mode", async () => {
+		const dir = temp();
+		try {
+			const { handlers } = install();
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.deepEqual(v.statuses.at(-1), {
+				key: "workflow",
+				text: undefined,
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("adds the handoff warning at the threshold", async () => {
+		const dir = temp();
+		try {
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda" });
+			const v = view(60, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA · ⚠ HANDOFF");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("honors a marker for the current session", async () => {
+		const dir = temp();
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/session.jsonl" }),
+			);
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
+			const v = view(10, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA-SUP · ⚠ HANDOFF");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("ignores a marker from another session", async () => {
+		const dir = temp();
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/old.jsonl" }),
+			);
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
+			const v = view(10, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA-SUP");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("clears the key when statusEnabled is false", async () => {
+		const dir = temp();
+		try {
+			const { handlers } = install({
+				OMP_WORKFLOW_MODE: "yoda",
+				OMP_STATUS_ENABLED: "0",
+			});
+			const v = view(60, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.deepEqual(v.statuses.at(-1), {
+				key: "workflow",
+				text: undefined,
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("clears the handoff warning after the marker is removed", async () => {
+		const dir = temp();
+		try {
+			const marker = join(dir, ".omp-handoff-request.json");
+			writeFileSync(
+				marker,
+				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/session.jsonl" }),
+			);
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda" });
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA · ⚠ HANDOFF");
+			rmSync(marker, { force: true });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("updates on turn_end", async () => {
+		const dir = temp();
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/session.jsonl" }),
+			);
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda" });
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA · ⚠ HANDOFF");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

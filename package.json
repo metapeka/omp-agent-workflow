@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.5.11",
+  "version": "0.5.12",
   "type": "module",
   "description": "Context guard, automatic handoff and Yoda workflow for OMP",
   "keywords": [
@@ -48,6 +48,12 @@
         "default": "assisted",
         "env": "OMP_WORKFLOW_MODE",
         "description": "Режим workflow: manual — без авто-действий; assisted — авто-компакция; yoda — handoff 55%; yoda-supervised — handoff + внешний supervisor"
+      },
+      "statusEnabled": {
+        "type": "boolean",
+        "default": true,
+        "env": "OMP_STATUS_ENABLED",
+        "description": "Показывать ключ workflow в статус-строке: YODA/YODA-SUP и ⚠ HANDOFF; false — не публиковать"
       },
       "handoffAtPercent": {
         "type": "number",

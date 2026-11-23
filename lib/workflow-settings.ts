@@ -13,6 +13,8 @@ export const DEFAULT_CONTINUE_PROMPT =
 
 export interface WorkflowSettings {
 	workflowMode: WorkflowMode;
+	/** Показывать ключ `workflow` в статус-строке. */
+	statusEnabled: boolean;
 	/** null — handoff выключен. */
 	handoffAtPercent: number | null;
 	handoffCooldownSeconds: number;
@@ -173,6 +175,10 @@ export function resolveSettings(
 
 	return {
 		workflowMode,
+		statusEnabled:
+			(typeof raw.statusEnabled === "boolean" ? raw.statusEnabled : undefined) ??
+			boolFromEnv(env, "OMP_STATUS_ENABLED") ??
+			true,
 		handoffAtPercent,
 		handoffCooldownSeconds,
 		contextWarnPercent,

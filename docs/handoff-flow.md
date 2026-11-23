@@ -1,6 +1,6 @@
 # Handoff: два пути
 
-Дата: 2026-11-23. Версия: `0.5.11`. Стабильные схемы — [contracts.md](contracts.md),
+Дата: 2026-11-23. Версия: `0.5.12`. Стабильные схемы — [contracts.md](contracts.md),
 диагностика — [operations.md](operations.md), автоматический протокол —
 [handoff-auto-plan.md](handoff-auto-plan.md).
 

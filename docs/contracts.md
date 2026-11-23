@@ -21,7 +21,7 @@
 
 ## Settings
 
-`package.json#omp.settings` даёт 12 ключей; UI — Settings → Plugins. Приоритет:
+`package.json#omp.settings` даёт 13 ключей; UI — Settings → Plugins. Приоритет:
 **Settings > env > режим/дефолт**. Значения читаются extension на
 `session_start` и `session_switch`, launcher — при старте. Для порогов `0`
 и `off` означают выключение; `handoffAtPercent`/`autoCompactPercent` без
@@ -30,6 +30,7 @@
 | Ключ | Тип | Default |
 |---|---|---|
 | `workflowMode` | enum | `assisted` |
+| `statusEnabled` | boolean | `true` (false очищает ключ `workflow`) |
 | `handoffAtPercent` | number 0–95 | режим: `55` / off |
 | `handoffCooldownSeconds` | number 0–86400 | `300` |
 | `contextWarnPercent` | number 1–99 | `35` |
@@ -42,11 +43,22 @@
 | `supervisorRetries` | number 1–10 | `3` |
 | `supervisorLogLevel` | enum | `info` |
 
+## Статус-строка (0.5.12)
+
+- Один ключ `workflow`, только main TUI.
+- Текст: `YODA` / `YODA-SUP` по `workflowMode`; `⚠ HANDOFF` — при
+  `usage >= handoffAtPercent` или marker с текущим `sessionFile`.
+- Stale marker другой сессии игнорируется.
+- `statusEnabled=false` вызывает `setStatus(key, undefined)`.
+- `context_pct`, cache и другие native/чужие метрики не дублируются;
+  ключ не зависит от `omp-cache-monitor`.
+
 ## Env (fallback)
 
 | Переменная | Default | Смысл |
 |---|---|---|
 | `OMP_WORKFLOW_MODE` | `assisted` | Режим |
+| `OMP_STATUS_ENABLED` | `true` | Публиковать ключ `workflow` |
 | `OMP_CONTEXT_WARN` | `35` | Warning «планируй HANDOFF» |
 | `OMP_CONTEXT_SUGGEST` | `50` | Warning «пора HANDOFF» |
 | `OMP_CONTEXT_AUTO` | режим: `60` / `70` / `off` | Авто-компакция; `off` выключает |

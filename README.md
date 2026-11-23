@@ -3,8 +3,9 @@
 OMP-расширение для работы агента: предупреждает о заполнении контекста и даёт
 команду `/handoff` для сжатия с сохранением решений и следующих шагов.
 
-Не заменяет native `context_pct` и не добавляет свой сегмент статус-строки.
-Задача — предупредить заранее и дать детерминированное действие.
+Не заменяет native `context_pct`; в статус-строке публикует только свой ключ
+`workflow` — режим Yoda и ожидаемый handoff. Задача — предупредить заранее
+и дать детерминированное действие.
 
 ## Документация
 
@@ -27,6 +28,7 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 | Ключ | Default | Смысл |
 |---|---|---|
 | `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `statusEnabled` | `true` | Ключ `workflow` в статус-строке: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | `handoffAtPercent` | режим: `55` / off | Порог HANDOFF, %; `0` = off |
 | `handoffCooldownSeconds` | `300` | Пауза после handoff |
 | `contextWarnPercent` | `35` | Warning о контексте |
@@ -39,12 +41,27 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 | `supervisorRetries` | `3` | Попытки supervisor при send/preflight |
 | `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
 
-Env-переменные (`OMP_WORKFLOW_MODE`, `OMP_HANDOFF_AT`, `OMP_CONTEXT_*`,
-`OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`,
-`OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`,
-`OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`) остаются fallback, если ключ
-не задан в Settings. Для порогов `0` и `off` означают выключение; значения
-`handoffAtPercent`/`autoCompactPercent` по умолчанию зависят от режима.
+Env-переменные (`OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`,
+`OMP_CONTEXT_*`, `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`,
+`OMP_ORCA_PREFLIGHT`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`,
+`OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`)
+остаются fallback, если ключ не задан в Settings. Для порогов `0` и `off`
+означают выключение; значения `handoffAtPercent`/`autoCompactPercent` по
+умолчанию зависят от режима.
+
+## Статус-строка
+
+Один ключ `workflow`; `context_pct` и прочие native-метрики не дублируются.
+
+```text
+yoda:              YODA
+yoda-supervised:   YODA-SUP
+порог/marker:      YODA-SUP · ⚠ HANDOFF
+```
+
+`⚠ HANDOFF` появляется при `usage >= handoffAtPercent` или marker текущей
+сессии, исчезает после handoff. `statusEnabled=false` очищает ключ.
+`manual`/`assisted` режим не показывают.
 
 ## Режимы
 

@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-23. Версия: `0.5.11`.
+Дата: 2026-11-23. Версия: `0.5.12`.
 
 ## Сейчас
 
@@ -21,7 +21,8 @@
 - [ ] Интеграция с Orca orchestration Runs/gates — `[future]` 0.6+.
 - [ ] Параллельные задачи и multi-repo — `[future]`.
 - [ ] Свои agent definitions (`implementer`/`verifier`) через `.omp/agents`.
-- [ ] Метрики/status: spend, handoff, пороги, стоимость компакции.
+- [ ] Метрики/status: spend и стоимость компакции; handoff-индикатор и режим
+      сделаны в 0.5.12.
 - [ ] Кроссплатформенная проверка live-процессов (сейчас `/proc`,
       Linux-only).
 
@@ -60,6 +61,9 @@
       проверки, commit, ff-merge; падение проверок блокирует commit/merge.
 - [x] 0.5.11 — preflight: проверка → вердикт → меню только незакрытых
       действий → итог; runtime-файлы игнорируются.
+- [x] 0.5.12 — ключ `workflow` в статус-строке: `YODA`/`YODA-SUP`,
+      `⚠ HANDOFF` по порогу/marker; `statusEnabled` (13-й ключ), stale
+      marker игнорируется, `context_pct` не дублируется; тесты и docs.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

@@ -14,12 +14,12 @@ handoff, но не выходит за рамки, которые требуют
 
 ## Режимы
 
-| Режим | Что делает | Авто-компакция | Авто-новая сессия |
-|---|---|---|---|
-| `manual` | warnings, `/handoff` вручную | нет | нет |
-| `assisted` | warnings + авто-компакция | 60% | нет |
-| `yoda` | цикл по плану, handoff на границе задачи | fallback 70% | через supervisor |
-| `yoda-supervised` | то же + supervisor сам меняет сессию | fallback 70% | да |
+| Режим | Что делает | Авто-компакция | Авто-новая сессия | Статус |
+|---|---|---|---|---|
+| `manual` | warnings, `/handoff` вручную | нет | нет | — |
+| `assisted` | warnings + авто-компакция | 60% | нет | — |
+| `yoda` | цикл по плану, handoff на границе задачи | fallback 70% | через supervisor | `YODA` |
+| `yoda-supervised` | то же + supervisor сам меняет сессию | fallback 70% | да | `YODA-SUP` |
 
 `yoda` без supervisor может работать только на компакции. Новую сессию
 из event-handler начать нельзя: OMP 19.1 даёт `ctx.newSession()` только в
@@ -29,6 +29,9 @@ supervisor или команда `/handoff-new`.
 `/handoff-new` внедряет state, но не запускает ход. В Orca supervisor после
 команды отправляет continuation prompt сам. Без Orca после ручного
 `/handoff-new` отправь в новой сессии «продолжай» — иначе агент не начнёт.
+
+Ключ `workflow` показывает режим и `⚠ HANDOFF`; `statusEnabled=false`
+отключает его. `context_pct` не дублируется.
 
 ## Акторы
 

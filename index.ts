@@ -1,9 +1,9 @@
 /**
  * context-guard — предупреждения о заполнении контекста и команда `/handoff`.
  *
- * Не добавляет свой сегмент в status line: native `context_pct` уже показывает
- * процент. Задача расширения — предупредить заранее и дать детерминированную
- * команду сжатия с инструкциями сохранить решения и следующие шаги.
+ * Status line: один ключ `workflow` — режим Yoda и ожидаемый handoff. Процент
+ * контекста не дублируем: native `context_pct` уже показывает его. Задача
+ * расширения — предупредить заранее и дать детерминированную команду сжатия.
  *
  * Пороги по умолчанию: 35% warning, 50% предложение HANDOFF, 60% авто-компакция
  * после завершения хода. Переопределяются через OMP_CONTEXT_WARN,
@@ -36,6 +36,8 @@ const HANDOFF_INSTRUCTIONS =
 const SESSION_INFO = ".omp-handoff-session.json";
 const STATE_FILE = "HANDOFF.md";
 const REQUEST_MARKER = ".omp-handoff-request.json";
+/** Ключ статус-строки: режим Yoda и ожидаемый handoff, без context_pct. */
+const STATUS_KEY = "workflow";
 const RUNTIME_PATHS = [
 	SESSION_INFO,
 	REQUEST_MARKER,
@@ -683,6 +685,40 @@ function writeSessionInfo(ctx: ExtensionContext): void {
 	}
 }
 
+/** Marker относится к текущей сессии? Без sessionFile — считаем pending. */
+function handoffMarkerPending(cwd: string, sessionFile: string | null): boolean {
+	const path = resolve(cwd, REQUEST_MARKER);
+	if (!existsSync(path)) return false;
+	try {
+		const raw = JSON.parse(readFileSync(path, "utf8")) as {
+			sessionFile?: unknown;
+		};
+		if (
+			typeof raw.sessionFile === "string" &&
+			sessionFile &&
+			raw.sessionFile !== sessionFile
+		) {
+			return false;
+		}
+		return true;
+	} catch {
+		return true;
+	}
+}
+
+/** Текст ключа `workflow`: режим и ожидаемый handoff; процент не дублируем. */
+function workflowStatusText(
+	settings: WorkflowSettings,
+	handoffPending: boolean,
+): string | undefined {
+	if (!settings.statusEnabled) return undefined;
+	const parts: string[] = [];
+	if (settings.workflowMode === "yoda") parts.push("YODA");
+	else if (settings.workflowMode === "yoda-supervised") parts.push("YODA-SUP");
+	if (handoffPending) parts.push("⚠ HANDOFF");
+	return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
 /** UI-вызовы не должны ронять обработчик. */
 function notify(
 	ctx: ExtensionContext,
@@ -732,6 +768,27 @@ export default function contextGuard(pi: ExtensionAPI): void {
 			return usage;
 		} catch {
 			return null;
+		}
+	};
+
+	/** Обновить ключ `workflow`: режим + ожидаемый handoff. */
+	const updateStatus = (ctx: ExtensionContext): void => {
+		if (!isMainTui(ctx)) return;
+		const usage = readUsage(ctx);
+		const pending =
+			(settings.handoffAtPercent !== null &&
+				usage !== null &&
+				usage.percent !== null &&
+				usage.percent >= settings.handoffAtPercent) ||
+			handoffMarkerPending(
+				ctx.cwd,
+				ctx.sessionManager.getSessionFile() ?? null,
+			);
+		const text = workflowStatusText(settings, pending);
+		try {
+			ctx.ui.setStatus(STATUS_KEY, text);
+		} catch {
+			// старый хост без статус-строки
 		}
 	};
 
@@ -845,6 +902,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		}
 		writeSessionInfo(ctx);
 		checkWarnings(ctx);
+		updateStatus(ctx);
 	});
 
 	pi.on("turn_end", async (_event, ctx) => {
@@ -852,6 +910,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		checkWarnings(ctx);
 		await checkHandoff(ctx);
 		await checkAuto(ctx);
+		updateStatus(ctx);
 	});
 
 	pi.on("agent_end", async (event, ctx) => {
@@ -860,6 +919,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		await refreshSettings(ctx);
 		await checkHandoff(ctx);
 		await checkAuto(ctx);
+		updateStatus(ctx);
 	});
 
 	pi.on("auto_compaction_start", async () => {
@@ -882,6 +942,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		handoffRequested = false;
 		handoffCooldownUntil = 0;
 		notify(ctx, "Контекст сжат.", "info");
+		updateStatus(ctx);
 	});
 
 	pi.on("session_switch", async (_event, ctx) => {
@@ -894,6 +955,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		handoffCooldownUntil = 0;
 		writeSessionInfo(ctx);
 		checkWarnings(ctx);
+		updateStatus(ctx);
 	});
 
 	pi.registerCommand("handoff-preflight", {
