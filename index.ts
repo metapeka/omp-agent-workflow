@@ -15,7 +15,11 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionAskDialogResult,
+	ExtensionContext,
+} from "@oh-my-pi/pi-coding-agent";
 
 import {
 	loadWorkflowSettings,
@@ -274,6 +278,90 @@ export function formatPreflight(report: PreflightReport): string {
 	].join("\n");
 }
 
+/** Пункты, которые человек отмечает перед handoff; проверки ниже остаются автоматическими. */
+const HANDOFF_CHECKLIST: ReadonlyArray<{
+	id: string;
+	label: string;
+	question: string;
+}> = [
+	{
+		id: "task",
+		label: "задача завершена",
+		question: "Текущая задача завершена — сессию можно закрывать?",
+	},
+	{
+		id: "commits",
+		label: "изменения закоммичены",
+		question: "Все изменения закоммичены?",
+	},
+	{
+		id: "merge",
+		label: "ветка влита в main",
+		question: "Ветка влита в main?",
+	},
+	{
+		id: "worktree",
+		label: "worktree убран",
+		question: "Worktree и временные файлы убраны?",
+	},
+	{
+		id: "state",
+		label: "HANDOFF.md обновлён",
+		question: "HANDOFF.md обновлён под следующую сессию?",
+	},
+	{
+		id: "checks",
+		label: "тесты и typecheck прошли",
+		question: "npm test и typecheck прошли?",
+	},
+];
+
+type ChecklistOutcome =
+	| { status: "skipped" }
+	| { status: "cancelled" }
+	| { status: "answered"; pending: readonly string[] };
+
+/**
+ * Чек-лист перед handoff: один диалог с вопросами Да/Нет.
+ * Без `askDialog` (старый хост, headless) меню пропускается: проверки не
+ * блокируются, таблица выводится как раньше.
+ */
+async function askHandoffChecklist(
+	ctx: ExtensionContext,
+): Promise<ChecklistOutcome> {
+	const askDialog = ctx.ui.askDialog;
+	if (!askDialog) return { status: "skipped" };
+	let result: ExtensionAskDialogResult | undefined;
+	try {
+		result = await askDialog(
+			HANDOFF_CHECKLIST.map((item, index) => ({
+				id: item.id,
+				header: `handoff ${index + 1}/${HANDOFF_CHECKLIST.length}`,
+				question: item.question,
+				options: [
+					{ label: "Да", description: "Пункт выполнен" },
+					{ label: "Нет", description: "Пункт остаётся в чек-листе" },
+				],
+				recommended: 0,
+			})),
+		);
+	} catch {
+		return { status: "skipped" };
+	}
+	if (!result || result.kind !== "submit") return { status: "cancelled" };
+	const done = new Set(
+		result.results
+			.filter((item) => !item.timedOut && item.selectedOptions[0] === "Да")
+			.map((item) => item.id),
+	);
+	return {
+		status: "answered",
+		pending: HANDOFF_CHECKLIST.filter((item) => !done.has(item.id)).map(
+			(item) => item.label,
+		),
+	};
+}
+
 /** Краткий вид контекста: `42% (420k/1000k)`. */
 function usageText(usage: {
 	tokens: number | null;
@@ -525,19 +613,37 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand("handoff-preflight", {
-		description: "Проверить готовность к /handoff-new: git, state, marker",
+		description: "Чек-лист и проверка готовности к /handoff-new: git, state, marker",
 		handler: async (args, ctx) => {
 			if (!isMainTui(ctx)) return;
 			const stateFile = args.trim() || STATE_FILE;
+			const checklist = await askHandoffChecklist(ctx);
+			if (checklist.status === "cancelled") {
+				notify(ctx, "PREFLIGHT отменён: чек-лист не заполнен.", "info");
+				return;
+			}
 			const report = runPreflight(
 				ctx.cwd,
 				ctx.sessionManager.getSessionFile() ?? null,
 				stateFile,
 			);
+			const table = formatPreflight(report);
+			const pending = checklist.status === "answered" ? checklist.pending : null;
+			let prefix: string | null = null;
+			if (pending !== null) {
+				prefix =
+					pending.length === 0
+						? "чек-лист: всё отмечено"
+						: `чек-лист: не отмечено — ${pending.join(", ")}`;
+			}
 			notify(
 				ctx,
-				formatPreflight(report),
-				report.ready ? "info" : "warning",
+				prefix ? `${prefix}\n${table}` : table,
+				pending && pending.length > 0
+					? "warning"
+					: report.ready
+						? "info"
+						: "warning",
 			);
 		},
 	});

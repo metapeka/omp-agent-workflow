@@ -1,9 +1,10 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.8`; ветки `feat/handoff-preflight`,
-`feat/preflight-fixes` и `feat/handoff-state-embed` слиты ff-only, worktrees
-удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
+`main`, версия `0.5.9`; ветки `feat/handoff-preflight`,
+`feat/preflight-fixes`, `feat/handoff-state-embed` и
+`feat/preflight-checklist` слиты ff-only, worktrees удалены. Вики —
+`docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -20,13 +21,21 @@
 | Settings 0.5.4–0.5.5 | 12 ключей в Settings → Plugins |
 | Preflight 0.5.6–0.5.7 | read-only проверка перед `/handoff-new` |
 | State 0.5.8 | `/handoff-new` встраивает state-файл в новую сессию |
-| Проверки | `npm test` 149/149, `npm run typecheck`, extension load exit 0 |
+| Checklist 0.5.9 | `/handoff-preflight`: чек-лист, затем таблица проверок |
+| Проверки | `npm test` 152/152, `npm run typecheck`, extension load exit 0 |
 
 ## `/handoff-preflight [файл]`
 
-Read-only, ничего не пишет и не чинит. Блокеры **advisory**: `/handoff-new`
-их не проверяет.
+Сначала интерактивный чек-лист (`askDialog`), затем read-only проверка.
+Ничего не пишет и не чинит. Блокеры **advisory**: `/handoff-new` их не
+проверяет.
 
+- Чек-лист: задача завершена; изменения закоммичены; ветка влита в `main`;
+  worktree убран; `HANDOFF.md` обновлён; тесты и typecheck прошли.
+- Неотмеченные пункты — строкой «не отмечено» перед таблицей, уровень
+  warning. Отмена диалога останавливает команду.
+- Без `askDialog` (старый хост, headless) меню пропускается, таблица
+  выводится сразу.
 - Блокеры: нет state-файла (default `HANDOFF.md`); грязное дерево; detached
   HEAD; нет коммитов; git-репозиторий не читается; незапушенные коммиты при
   наличии upstream.
@@ -91,7 +100,7 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 149/149
+npm test                                  # 152/152
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -102,8 +111,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ## Следующие шаги
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.8; новое поведение `/handoff-new`, Settings UI и
-   `/handoff-preflight` появятся в новой сессии.
+   0.5.9; чек-лист `/handoff-preflight`, новое поведение `/handoff-new`,
+   Settings UI появятся в новой сессии.
 2. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
 3. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.

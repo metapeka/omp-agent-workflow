@@ -111,8 +111,9 @@ orca worktree rm --worktree path:<path> --delete-branch --json
    следующие шаги.
 2. Закоммитить state (`HANDOFF.md`), если политика проекта это требует;
    иначе preflight покажет грязное дерево.
-3. `/handoff-preflight [файл]` — read-only проверка: state, git, ветка,
-   upstream, marker. Блокеры advisory: команда ничего не запрещает.
+3. `/handoff-preflight [файл]` — чек-лист, затем read-only проверка: state,
+   git, ветка, upstream, marker. Блокеры advisory: команда ничего не
+   запрещает.
 4. `/handoff` — сжать контекст (не пишет `HANDOFF.md`).
 5. `/handoff-new` — новая сессия; без `HANDOFF.md` отказывает.
 

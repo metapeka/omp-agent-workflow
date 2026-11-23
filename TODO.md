@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-23. Версия: `0.5.8`.
+Дата: 2026-11-23. Версия: `0.5.9`.
 
 ## Сейчас
 
@@ -54,6 +54,8 @@
       timeout, нет коммитов; тесты upstream/detached/merged.
 - [x] 0.5.8 — `/handoff-new` встраивает state-файл в custom message:
       64k-лимит, маркер обрезки, fallback при ошибке чтения; тесты и docs.
+- [x] 0.5.9 — `/handoff-preflight`: интерактивный чек-лист перед таблицей,
+      неотмеченные пункты, отмена; тесты и docs.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

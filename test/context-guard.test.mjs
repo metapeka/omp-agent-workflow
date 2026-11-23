@@ -91,6 +91,7 @@ function view(percent, options = {}) {
 		sessionFile = "/tmp/session.jsonl",
 		parentSession = null,
 		newSessionResult = { cancelled: false },
+		askDialog = null,
 	} = options;
 	const notes = [];
 	const compactions = [];
@@ -114,6 +115,7 @@ function view(percent, options = {}) {
 			notify(text, level) {
 				notes.push({ text, level });
 			},
+			...(askDialog ? { askDialog } : {}),
 		},
 		getContextUsage() {
 			return {
@@ -1023,6 +1025,24 @@ function preflightRepo(files) {
 	return { dir, run };
 }
 
+function checklistDialog(noIds = []) {
+	const asked = [];
+	const askDialog = async (questions) => {
+		asked.push(questions);
+		return {
+			kind: "submit",
+			results: questions.map((question) => ({
+				id: question.id,
+				question: question.question,
+				options: ["Да", "Нет"],
+				multi: false,
+				selectedOptions: [noIds.includes(question.id) ? "Нет" : "Да"],
+			})),
+		};
+	};
+	return { asked, askDialog };
+}
+
 describe("/handoff-preflight", () => {
 	it("passes a clean committed repo", async () => {
 		const { dir } = preflightRepo({
@@ -1040,6 +1060,65 @@ describe("/handoff-preflight", () => {
 			assert.match(v.notes[0].text, /HANDOFF\.md: закоммичен в HEAD/);
 			assert.match(v.notes[0].text, /git: чисто/);
 			assert.match(v.notes[0].text, /marker: нет/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("shows the checklist and reports items not marked", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const { asked, askDialog } = checklistDialog(["state"]);
+			const v = view(40, { cwd: dir, askDialog });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(asked.length, 1);
+			assert.equal(asked[0].length, 6);
+			assert.match(asked[0][0].question, /задача завершена/);
+			assert.match(v.notes[0].text, /чек-лист: не отмечено — HANDOFF\.md обновлён/);
+			assert.match(v.notes[0].text, /preflight: OK/);
+			assert.equal(v.notes[0].level, "warning");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps the preflight verdict when every checklist item is marked", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const { askDialog } = checklistDialog();
+			const v = view(40, { cwd: dir, askDialog });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(v.notes[0].text, /чек-лист: всё отмечено/);
+			assert.match(v.notes[0].text, /preflight: OK/);
+			assert.equal(v.notes[0].level, "info");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("stops when the checklist is cancelled", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const v = view(40, { cwd: dir, askDialog: async () => undefined });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes.length, 1);
+			assert.match(v.notes[0].text, /PREFLIGHT отменён/);
+			assert.doesNotMatch(v.notes[0].text, /preflight: OK/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

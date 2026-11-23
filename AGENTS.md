@@ -25,17 +25,18 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.8`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.9`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
   Orca-интеграция; 0.5.4 — Settings (9 ключей); 0.5.5 — Settings для
   supervisor (`continuePrompt`, retries, log level); 0.5.6–0.5.7 —
-  `/handoff-preflight`; 0.5.8 — state-файл встраивается в новую сессию.
+  `/handoff-preflight`; 0.5.8 — state-файл встраивается в новую сессию;
+  0.5.9 — чек-лист перед таблицей `/handoff-preflight`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 149 тестов; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
+- `npm test` — 152 теста; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
 
