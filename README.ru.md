@@ -1,21 +1,56 @@
-# omp-agent-workflow
+<p align="center">
+  <img src="docs/assets/logo.svg" width="96" height="96" alt="omp-agent-workflow logo">
+</p>
 
-**Детерминированный страж контекста, настоящий handoff в новую сессию и оркестрация worktree для [OMP](https://github.com/oh-my-pi/pi-coding-agent).**
+<h1 align="center">omp-agent-workflow</h1>
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [Русский](README.ru.md)
+<p align="center">
+  Детерминированный страж контекста · настоящий handoff<br>
+  оркестрация worktree для <a href="https://github.com/oh-my-pi/pi-coding-agent">OMP</a>
+</p>
 
-[![tests](https://img.shields.io/badge/tests-182%2F182-brightgreen)](test)
-[![CI](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-0.5.14-blue)](package.json)
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![OMP](https://img.shields.io/badge/OMP-plugin-8a2be2)](package.json)
+<p align="center">
+  182 теста · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md">简体中文</a> ·
+  <b>Русский</b>
+</p>
+
+<p align="center">
+  <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-182%2F182-brightgreen"></a>
+  <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
+  <a href="#install"><img alt="Node.js 22+" src="https://img.shields.io/badge/node-%E2%89%A522-339933"></a>
+  <a href="#install"><img alt="OMP plugin" src="https://img.shields.io/badge/OMP-plugin-8a2be2"></a>
+</p>
+
+<details>
+<summary>📑 Содержание</summary>
+
+**Начать здесь** · [Что это даёт](#what) · [Установка](#install) · [Как работает](#how)
+
+**Понять** · [Чем отличается](#why) · [Сравнение](#compare) · [Безопасность](#safety)
+
+**Работать** · [Команды](#commands) · [Настройки](#config) · [Скриншоты](#screens)
+
+**Справочник** · [Документация](#docs) · [FAQ](#faq) · [Разработка](#dev)
+
+</details>
+
+---
+
+Долгие сессии агента ломаются на стыках: контекст кончается, решения теряются, cleanup уничтожает работу. Этот плагин делает стыки явными и обратимыми.
 
 ![Демо цикла оркестратора](docs/assets/demo.gif)
 
 *Реальная 13-секундная запись: `status → start → commit → verify → finish` на одноразовом git-репозитории. Worktree удалён, ветка сохранена.*
 
----
-
+<a id="what"></a>
 ## 🧠 Что это
 
 `omp-agent-workflow` — **не ещё один кодирующий агент**. Это слой непрерывности и дисциплины вокруг агента, которым ты уже пользуешься:
@@ -31,6 +66,7 @@
 
 ---
 
+<a id="why"></a>
 ## ✨ Чем отличается
 
 Большинство инструментов оптимизируют **вызов модели**. Этот проект оптимизирует **границу сессии** — место, где агенты обычно теряют решения, жгут контекст или уничтожают работу.
@@ -48,6 +84,7 @@
 
 ---
 
+<a id="compare"></a>
 ## 📊 Сравнение
 
 | Возможность | **omp-agent-workflow** | Claude Code | Codex CLI | Aider | OpenCode | Cline | Orca |
@@ -79,6 +116,7 @@
 
 ---
 
+<a id="how"></a>
 ## 🔁 Как это работает
 
 ![Жизненный цикл контекста](docs/assets/lifecycle.svg)
@@ -119,6 +157,7 @@ bin/omp-orchestrate finish T1 --commit <sha> --review ok
 
 ---
 
+<a id="install"></a>
 ## 🚀 Быстрый старт
 
 **Требования:** Node.js 22+, OMP 19+, git. Orca опциональна.
@@ -154,6 +193,7 @@ OMP_WORKFLOW_MODE=yoda omp
 
 ---
 
+<a id="config"></a>
 ## ⚙️ Настройки
 
 Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > env > режим/дефолт**.
@@ -201,6 +241,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ---
 
+<a id="safety"></a>
 ## 🛡️ Модель безопасности
 
 - **Никакой компакции посреди хода.** Плагин ждёт `turn_end` и `ctx.isIdle()`.
@@ -215,6 +256,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ---
 
+<a id="commands"></a>
 ## 🧩 Команды
 
 | Команда | Что делает |
@@ -230,6 +272,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ---
 
+<a id="screens"></a>
 ## 🖼️ Скриншоты
 
 ### `/wrap` — завершить задачу
@@ -256,6 +299,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ---
 
+<a id="docs"></a>
 ## 📚 Документация и структура
 
 | Путь | Содержимое |
@@ -272,6 +316,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ---
 
+<a id="faq"></a>
 ## ❓ FAQ и ограничения
 
 **Это кодирующий агент?** Нет. Это workflow-слой для OMP. Модель и агент остаются твоими.
@@ -290,6 +335,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ---
 
+<a id="dev"></a>
 ## 🧪 Разработка
 
 ```bash

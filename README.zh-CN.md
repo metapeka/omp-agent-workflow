@@ -1,21 +1,56 @@
-# omp-agent-workflow
+<p align="center">
+  <img src="docs/assets/logo.svg" width="96" height="96" alt="omp-agent-workflow logo">
+</p>
 
-**面向 [OMP](https://github.com/oh-my-pi/pi-coding-agent) 的确定性上下文守卫、真正的会话交接与 worktree 编排。**
+<h1 align="center">omp-agent-workflow</h1>
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [Русский](README.ru.md)
+<p align="center">
+  确定性上下文守卫 · 真正的会话交接<br>
+  面向 <a href="https://github.com/oh-my-pi/pi-coding-agent">OMP</a> 的 worktree 编排
+</p>
 
-[![tests](https://img.shields.io/badge/tests-182%2F182-brightgreen)](test)
-[![CI](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-0.5.14-blue)](package.json)
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![OMP](https://img.shields.io/badge/OMP-plugin-8a2be2)](package.json)
+<p align="center">
+  182 个测试 · 0 运行时依赖 · 4 种模式 · 13 项设置 · MIT
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> ·
+  <b>简体中文</b> ·
+  <a href="README.ru.md">Русский</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-182%2F182-brightgreen"></a>
+  <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
+  <a href="#install"><img alt="Node.js 22+" src="https://img.shields.io/badge/node-%E2%89%A522-339933"></a>
+  <a href="#install"><img alt="OMP plugin" src="https://img.shields.io/badge/OMP-plugin-8a2be2"></a>
+</p>
+
+<details>
+<summary>📑 目录</summary>
+
+**从这里开始** · [你将获得什么](#what) · [安装](#install) · [工作方式](#how)
+
+**理解它** · [与众不同之处](#why) · [与同类工具对比](#compare) · [安全模型](#safety)
+
+**使用它** · [命令](#commands) · [配置](#config) · [截图](#screens)
+
+**参考** · [文档](#docs) · [FAQ](#faq) · [开发](#dev)
+
+</details>
+
+---
+
+长时间代理工作往往死在接缝处：上下文耗尽、决策丢失、清理毁掉成果。这个插件把这些接缝变成显式且可回滚的步骤。
 
 ![Orchestrator 循环演示](docs/assets/demo.gif)
 
 *真实 13 秒录屏：在一次性 git 仓库中执行 `status → start → commit → verify → finish`。worktree 被删除，分支被保留。*
 
----
-
+<a id="what"></a>
 ## 🧠 这是什么
 
 `omp-agent-workflow` **不是另一个编码代理**。它是你已经使用的代理之外的“连续性与纪律层”：
@@ -31,6 +66,7 @@
 
 ---
 
+<a id="why"></a>
 ## ✨ 与众不同之处
 
 大多数工具优化**模型调用**。这个项目优化**会话边界**——代理最容易丢失决策、浪费上下文或毁掉工作的地方。
@@ -48,6 +84,7 @@
 
 ---
 
+<a id="compare"></a>
 ## 📊 与同类工具对比
 
 | 能力 | **omp-agent-workflow** | Claude Code | Codex CLI | Aider | OpenCode | Cline | Orca |
@@ -79,6 +116,7 @@
 
 ---
 
+<a id="how"></a>
 ## 🔁 工作方式
 
 ![上下文生命周期](docs/assets/lifecycle.svg)
@@ -119,6 +157,7 @@ bin/omp-orchestrate finish T1 --commit <sha> --review ok
 
 ---
 
+<a id="install"></a>
 ## 🚀 快速开始
 
 **要求：** Node.js 22+、OMP 19+、git。Orca 可选。
@@ -154,6 +193,7 @@ OMP_WORKFLOW_MODE=yoda omp
 
 ---
 
+<a id="config"></a>
 ## ⚙️ 配置
 
 Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境变量 > 模式默认值**。
@@ -201,6 +241,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ---
 
+<a id="safety"></a>
 ## 🛡️ 安全模型
 
 - **不在回合中间压缩。** 插件等待 `turn_end` 和 `ctx.isIdle()`。
@@ -215,6 +256,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ---
 
+<a id="commands"></a>
 ## 🧩 命令
 
 | 命令 | 作用 |
@@ -230,6 +272,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ---
 
+<a id="screens"></a>
 ## 🖼️ 截图
 
 ### `/wrap` — 收尾任务
@@ -256,6 +299,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ---
 
+<a id="docs"></a>
 ## 📚 文档与目录
 
 | 路径 | 内容 |
@@ -272,6 +316,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ---
 
+<a id="faq"></a>
 ## ❓ FAQ 与限制
 
 **它是编码代理吗？** 不是。它是 OMP 的工作流层。你仍然使用自己的模型和代理。
@@ -290,6 +335,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ---
 
+<a id="dev"></a>
 ## 🧪 开发
 
 ```bash

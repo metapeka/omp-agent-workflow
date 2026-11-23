@@ -1,21 +1,56 @@
-# omp-agent-workflow
+<p align="center">
+  <img src="docs/assets/logo.svg" width="96" height="96" alt="omp-agent-workflow logo">
+</p>
 
-**Deterministic context guard, true session handoff, and worktree orchestration for [OMP](https://github.com/oh-my-pi/pi-coding-agent).**
+<h1 align="center">omp-agent-workflow</h1>
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [Русский](README.ru.md)
+<p align="center">
+  Deterministic context guard · true session handoff<br>
+  worktree orchestration for <a href="https://github.com/oh-my-pi/pi-coding-agent">OMP</a>
+</p>
 
-[![tests](https://img.shields.io/badge/tests-182%2F182-brightgreen)](test)
-[![CI](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-0.5.14-blue)](package.json)
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![OMP](https://img.shields.io/badge/OMP-plugin-8a2be2)](package.json)
+<p align="center">
+  182 tests · 0 runtime deps · 4 modes · 13 settings · MIT
+</p>
+
+<p align="center">
+  <b>English</b> ·
+  <a href="README.zh-CN.md">简体中文</a> ·
+  <a href="README.ru.md">Русский</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-182%2F182-brightgreen"></a>
+  <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
+  <a href="#install"><img alt="Node.js 22+" src="https://img.shields.io/badge/node-%E2%89%A522-339933"></a>
+  <a href="#install"><img alt="OMP plugin" src="https://img.shields.io/badge/OMP-plugin-8a2be2"></a>
+</p>
+
+<details>
+<summary>📑 Contents</summary>
+
+**Start here** · [What you get](#what) · [Install](#install) · [How it works](#how)
+
+**Understand it** · [Why it is different](#why) · [Comparison](#compare) · [Safety](#safety)
+
+**Operate it** · [Commands](#commands) · [Configuration](#config) · [Screenshots](#screens)
+
+**Reference** · [Docs](#docs) · [FAQ](#faq) · [Development](#dev)
+
+</details>
+
+---
+
+Long agent sessions fail at the seams: context runs out, decisions get lost, cleanup destroys work. This plugin makes those seams explicit and reversible.
 
 ![Orchestrator loop demo](docs/assets/demo.gif)
 
 *Real 13-second recording: `status → start → commit → verify → finish` on a throwaway git repo. The worktree is removed, the branch is kept.*
 
----
-
+<a id="what"></a>
 ## 🧠 What it is
 
 `omp-agent-workflow` is **not another coding agent**. It is the continuity and discipline layer around the agent you already use:
@@ -31,6 +66,7 @@ It works with plain OMP. Orca is optional and additive.
 
 ---
 
+<a id="why"></a>
 ## ✨ Why it is different
 
 Most tools optimize **the model call**. This project optimizes **the session boundary** — the moment where agents usually lose decisions, waste context, or destroy work.
@@ -48,6 +84,7 @@ Most tools optimize **the model call**. This project optimizes **the session bou
 
 ---
 
+<a id="compare"></a>
 ## 📊 How it compares
 
 | Capability | **omp-agent-workflow** | Claude Code | Codex CLI | Aider | OpenCode | Cline | Orca |
@@ -79,6 +116,7 @@ Each item exists somewhere. The product is the **glue and the guarantees**.
 
 ---
 
+<a id="how"></a>
 ## 🔁 How it works
 
 ![Context lifecycle](docs/assets/lifecycle.svg)
@@ -119,6 +157,7 @@ The wizard shows the facts first, then offers only actions that make sense. Clea
 
 ---
 
+<a id="install"></a>
 ## 🚀 Quick start
 
 **Requirements:** Node.js 22+, OMP 19+, git. Orca is optional.
@@ -154,6 +193,7 @@ Then use:
 
 ---
 
+<a id="config"></a>
 ## ⚙️ Configuration
 
 Settings → Plugins → `omp-agent-workflow`. Priority: **Settings > env > mode default**.
@@ -201,6 +241,7 @@ YODA · ⚠ HANDOFF      handoff threshold reached
 
 ---
 
+<a id="safety"></a>
 ## 🛡️ Safety model
 
 - **No compaction mid-turn.** The plugin waits for `turn_end` and `ctx.isIdle()`.
@@ -215,6 +256,7 @@ Detailed engineering notes: [`docs/operations.md`](docs/operations.md), [`docs/d
 
 ---
 
+<a id="commands"></a>
 ## 🧩 Commands
 
 | Command | What it does |
@@ -230,6 +272,7 @@ Detailed engineering notes: [`docs/operations.md`](docs/operations.md), [`docs/d
 
 ---
 
+<a id="screens"></a>
 ## 🖼️ Screenshots
 
 ### `/wrap` — finish the task
@@ -256,6 +299,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 ---
 
+<a id="docs"></a>
 ## 📚 Documentation and layout
 
 | Path | Contents |
@@ -272,6 +316,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 ---
 
+<a id="faq"></a>
 ## ❓ FAQ and limitations
 
 **Is it a coding agent?** No. It is a workflow layer for OMP. You still use your model and agent.
@@ -290,6 +335,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 ---
 
+<a id="dev"></a>
 ## 🧪 Development
 
 ```bash
