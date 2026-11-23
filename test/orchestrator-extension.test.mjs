@@ -620,7 +620,7 @@ describe("wrap command", () => {
 		assert.equal(v.confirms.length, 1);
 		assert.match(v.confirms[0].message, new RegExp(merged.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 		assert.equal(existsSync(merged), false);
-		assert.equal(await branchExists(s.base, "feat/merged"), false);
+		assert.equal(await branchExists(s.base, "feat/merged"), true);
 	});
 
 	it("keeps the worktree when cleanup confirmation is denied", async () => {

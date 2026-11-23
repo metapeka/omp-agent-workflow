@@ -20,7 +20,10 @@ import { readPlan } from "../lib/orchestrator/plan.ts";
 import { acquireLock, createInitialState, writeState } from "../lib/orchestrator/state.ts";
 import {
 	branchExists,
+	countLiveTerminals,
 	createWorktree,
+	parseOrcaTerminals,
+	processesInPath,
 	removeWorktree,
 	runCommand,
 	worktreePath,
@@ -29,13 +32,10 @@ import {
 	buildWrapCards,
 	cleanupCandidates,
 	collectWrapFacts as collectWrapFactsImpl,
-	countLiveTerminals,
 	createNextWorktree,
 	formatWrapSummary,
 	guardCleanup,
-	parseOrcaTerminals,
 	parseWorktreeList,
-	processesInPath,
 	removeMergedWorktreeSafe as removeMergedWorktreeSafeImpl,
 } from "../lib/orchestrator/wrap.ts";
 
@@ -455,7 +455,7 @@ describe("wrap cleanup guards", () => {
 });
 
 describe("wrap cleanup execution", () => {
-	it("removes a merged clean worktree and its branch", async () => {
+	it("removes a merged clean worktree and keeps its branch", async () => {
 		const base = await gitRepo();
 		const root = tempDir();
 		writePlan(base, root);
@@ -466,6 +466,26 @@ describe("wrap cleanup execution", () => {
 			facts,
 			path: merged,
 			backend: "git",
+		});
+		assert.equal(result.ok, true, result.message);
+		assert.equal(result.branchDeleted, false);
+		assert.equal(result.branchRetained, true);
+		assert.equal(existsSync(merged), false);
+		assert.equal(await branchExists(base, "feat/merged"), true);
+	});
+
+	it("deletes the branch only on explicit request with git branch -d", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		writePlan(base, root);
+		const merged = await addWorktree(base, root, "feat/merged");
+		const facts = await collectWrapFacts(base);
+
+		const result = await removeMergedWorktreeSafe({
+			facts,
+			path: merged,
+			backend: "git",
+			deleteBranch: true,
 		});
 		assert.equal(result.ok, true, result.message);
 		assert.equal(result.branchDeleted, true);
@@ -528,23 +548,29 @@ describe("wrap cleanup execution", () => {
 		assert.equal(existsSync(merged), true);
 	});
 
-	it("keeps a branch Orca retained and reports it without force", async () => {
+	it("removes through Orca without --delete-branch or --force", async () => {
 		const base = await gitRepo();
 		const root = tempDir();
 		writePlan(base, root);
 		const merged = await addWorktree(base, root, "feat/merged");
 		const facts = await collectWrapFacts(base);
+		const orcaCalls = [];
 		const fakeRun = async (command, args, options) => {
 			if (command === "orca") {
+				orcaCalls.push(args);
+				if (args[0] === "terminal") {
+					return {
+						code: 0,
+						stdout: JSON.stringify({ result: { terminals: [] } }),
+						stderr: "",
+					};
+				}
 				const result = await runCommand(
 					"git",
 					["-C", base, "worktree", "remove", merged],
 					options,
 				);
 				return { ...result, code: 0 };
-			}
-			if (command === "git" && args.includes("-d")) {
-				return { code: 1, stdout: "", stderr: "not merged" };
 			}
 			return runCommand(command, args, options);
 		};
@@ -555,13 +581,19 @@ describe("wrap cleanup execution", () => {
 			backend: "orca",
 			run: fakeRun,
 		});
-		assert.equal(result.ok, true);
+		assert.equal(result.ok, true, result.message);
 		assert.equal(result.branchRetained, true);
 		assert.equal(existsSync(merged), false);
 		assert.equal(await branchExists(base, "feat/merged"), true);
+		const removalCall = orcaCalls.find(
+			(args) => args[0] === "worktree" && args[1] === "rm",
+		);
+		assert.ok(removalCall);
+		assert.equal(removalCall.includes("--delete-branch"), false);
+		assert.equal(removalCall.includes("--force"), false);
 	});
 
-	it("falls back to git when orca is unavailable", async () => {
+	it("falls back to git when orca is unavailable and keeps the branch", async () => {
 		const base = await gitRepo();
 		const root = tempDir();
 		writePlan(base, root);
@@ -580,7 +612,8 @@ describe("wrap cleanup execution", () => {
 		});
 		assert.equal(result.ok, true, result.message);
 		assert.equal(existsSync(merged), false);
-		assert.equal(await branchExists(base, "feat/merged"), false);
+		assert.equal(await branchExists(base, "feat/merged"), true);
+		assert.equal(result.branchRetained, true);
 	});
 
 	it("refuses when a live process has cwd in the worktree", async () => {
@@ -737,6 +770,6 @@ describe("orca cli override", () => {
 			else process.env.ORCA_CLI_COMMAND = previous;
 		}
 		assert.equal(existsSync(merged), false);
-		assert.equal(await branchExists(base, "feat/merged"), false);
+		assert.equal(await branchExists(base, "feat/merged"), true);
 	});
 });

@@ -93,8 +93,10 @@ orca worktree create --repo name:omp-agent-workflow --name <slug> \
 orca worktree list --json
 orca worktree show --worktree path:<path> --json
 
-# удалить
-orca worktree rm --worktree path:<path> --delete-branch --json
+# удалить: без --delete-branch/--force, не изнутри worktree
+orca worktree rm --worktree path:<path> --json
+# ветка остаётся; удалить только после проверки merged
+git -C /home/db1/projects/omp-agent-workflow branch -d feat/<slug>
 ```
 
 Правила:
@@ -103,7 +105,11 @@ orca worktree rm --worktree path:<path> --delete-branch --json
 - `main` (`~/projects/omp-agent-workflow`) — известное хорошее состояние;
 - коммит — через `commit` namespace, не `git add`/`git commit` в общем
   worktree;
-- после merge удалить worktree и ветку.
+- cleanup запускать только снаружи удаляемого worktree: `orca worktree rm`
+  останавливает PTY этого worktree (SIGTERM), поэтому живая сессия внутри
+  него не должна дожидаться команды; `--delete-branch` не использовать.
+- после merge удалить worktree; ветку — только явно и `git branch -d`;
+  `removeWorktree` сохраняет tip в `refs/omp-worktree-backup/*`.
 
 ## Статус-строка
 

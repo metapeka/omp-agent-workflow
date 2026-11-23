@@ -463,7 +463,7 @@ export default function orchestrator(pi: ExtensionAPI): void {
 								`Ветка: ${target.branch ?? "?"}`,
 								`HEAD: ${target.head ?? "?"}`,
 								`Ветка merged в ${facts.baseBranch}; worktree чистый.`,
-								"Каталог worktree будет удалён без --force; локальная ветка — только если safe delete разрешит.",
+								"Каталог worktree будет удалён без --force; локальная ветка останется.",
 							].join("\n"),
 						);
 						if (!ok) continue;

@@ -5,12 +5,7 @@
  * Ни одна функция не удаляет и не создаёт worktree без явных предусловий:
  * merged в base, чистый worktree, не текущий и не base repo, без force.
  */
-import {
-	existsSync,
-	readdirSync,
-	readlinkSync,
-	realpathSync,
-} from "node:fs";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import {
 	dirname,
@@ -25,12 +20,18 @@ import { acquireLock, readState, STATE_FILE } from "./state.ts";
 import type { Autoplan, OrchestratorState } from "./types.ts";
 import {
 	branchExists,
+	countLiveTerminals,
 	createWorktree,
-	orcaCli,
+	isInside,
+	processesInPath,
+	queryOrcaTerminals,
+	removeWorktree,
 	resolveWorktreeRoot,
 	runCommand,
+	samePath,
 	worktreePath,
 	type CommandResult,
+	type OrcaTerminalRecord,
 	type RunOptions,
 	type WorktreeBackend,
 } from "./worktrees.ts";
@@ -140,24 +141,6 @@ function git(
 	return run("git", ["-C", repo, ...args], { timeoutMs });
 }
 
-function canonicalPath(path: string): string {
-	try {
-		return realpathSync(path);
-	} catch {
-		return resolve(path);
-	}
-}
-
-function samePath(left: string | null, right: string | null): boolean {
-	if (!left || !right) return false;
-	return canonicalPath(left) === canonicalPath(right);
-}
-
-function isInside(root: string, path: string): boolean {
-	const rel = relative(canonicalPath(root), canonicalPath(path));
-	return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
-}
-
 function expandHome(path: string): string {
 	if (path === "~") return homedir();
 	if (path.startsWith("~/")) return join(homedir(), path.slice(2));
@@ -221,107 +204,14 @@ export function parseWorktreeList(output: string): WorktreeRecord[] {
 }
 
 /**
- * Best-effort: pid-ы процессов, чей cwd — target или его подкаталог.
- * `/proc` может отсутствовать; тогда пустой список.
+ * Best-effort `orca terminal list --json`; Orca недоступен → пустой список.
+ * Строгая проверка с отказом живёт в `removeWorktree`.
  */
-export function processesInPath(target: string, procRoot = "/proc"): number[] {
-	const wanted = canonicalPath(target);
-	const pids: number[] = [];
-	let entries: string[];
-	try {
-		entries = readdirSync(procRoot);
-	} catch {
-		return pids;
-	}
-	for (const entry of entries) {
-		if (!/^\d+$/.test(entry)) continue;
-		const pid = Number(entry);
-		if (pid === process.pid) continue;
-		try {
-			const cwd = canonicalPath(readlinkSync(join(procRoot, entry, "cwd")));
-			if (cwd === wanted || isInside(wanted, cwd)) pids.push(pid);
-		} catch {
-			// процесс завершился или cwd недоступен
-		}
-	}
-	return pids;
-}
-
-export interface OrcaTerminalRecord {
-	handle: string;
-	worktreePath: string | null;
-	connected: boolean;
-	orphaned: boolean;
-}
-
-function orcaTerminalListFromPayload(payload: unknown): unknown[] {
-	if (typeof payload !== "object" || payload === null) return [];
-	if ("result" in payload) {
-		const result = payload.result;
-		if (
-			typeof result === "object" &&
-			result !== null &&
-			"terminals" in result &&
-			Array.isArray(result.terminals)
-		) {
-			return result.terminals;
-		}
-	}
-	if ("terminals" in payload && Array.isArray(payload.terminals)) {
-		return payload.terminals;
-	}
-	return [];
-}
-
-/** Разобрать `orca terminal list --json`; мусор → пустой список. */
-export function parseOrcaTerminals(stdout: string): OrcaTerminalRecord[] {
-	let payload: unknown;
-	try {
-		payload = JSON.parse(stdout);
-	} catch {
-		return [];
-	}
-	const records: OrcaTerminalRecord[] = [];
-	for (const raw of orcaTerminalListFromPayload(payload)) {
-		if (typeof raw !== "object" || raw === null) continue;
-		records.push({
-			handle: "handle" in raw && typeof raw.handle === "string" ? raw.handle : "",
-			worktreePath:
-				"worktreePath" in raw && typeof raw.worktreePath === "string"
-					? raw.worktreePath
-					: null,
-			connected: !("connected" in raw) || raw.connected !== false,
-			orphaned: "orphaned" in raw && raw.orphaned === true,
-		});
-	}
-	return records;
-}
-
-/** Сколько живых (connected, не orphaned) терминалов Orca в каталоге. */
-export function countLiveTerminals(
-	terminals: readonly OrcaTerminalRecord[],
-	target: string,
-): number {
-	return terminals.filter(
-		(terminal) =>
-			terminal.connected &&
-			!terminal.orphaned &&
-			terminal.worktreePath !== null &&
-			samePath(terminal.worktreePath, target),
-	).length;
-}
-
-/** `orca terminal list --json`; Orca недоступен → пустой список. */
 async function listOrcaTerminals(
 	run: CommandRunner,
 ): Promise<OrcaTerminalRecord[]> {
 	try {
-		const result = await run(
-			orcaCli(),
-			["terminal", "list", "--json"],
-			{ timeoutMs: 15_000 },
-		);
-		return result.code === 0 ? parseOrcaTerminals(result.stdout) : [];
+		return (await queryOrcaTerminals(run)) ?? [];
 	} catch {
 		return [];
 	}
@@ -909,12 +799,14 @@ async function recheckCleanup(
  * Удалить merged+clean worktree и локальную ветку.
  *
  * Повторно проверяет предусловия под lock, не использует `--force` и
- * `git branch -D`. Если ветку не удалось удалить безопасно — сообщает retained.
+ * `git branch -D`. Ветка по умолчанию остаётся; tip — в backup-ref.
  */
 export async function removeMergedWorktreeSafe(options: {
 	facts: WrapFacts;
 	path: string;
 	backend?: WorktreeBackend;
+	/** Явно удалить merged-ветку через `git branch -d`; по умолчанию ветка остаётся. */
+	deleteBranch?: boolean;
 	run?: CommandRunner;
 	procRoot?: string;
 	orcaTerminals?: readonly OrcaTerminalRecord[];
@@ -946,71 +838,36 @@ export async function removeMergedWorktreeSafe(options: {
 		);
 		if (problem) return failed(problem);
 
-		let removal: CommandResult | null = null;
-		if (backend === "orca") {
-			try {
-				const orca = await run(
-					orcaCli(),
-					[
-						"worktree",
-						"rm",
-						"--worktree",
-						`path:${guard.path}`,
-						"--delete-branch",
-						"--json",
-					],
-					{ timeoutMs: 300_000 },
-				);
-				if (orca.code === 0) removal = orca;
-			} catch {
-				// orca недоступен: пробуем git fallback без force
-			}
-		}
-		if (!removal) {
-			removal = await git(
+		try {
+			const result = await removeWorktree({
+				backend,
+				baseRepo: facts.baseRepo,
+				baseBranch: facts.baseBranch,
+				path: guard.path,
+				branch: guard.branch,
+				currentWorktree: facts.toplevel ?? facts.cwd,
+				deleteBranch: options.deleteBranch === true,
+				terminals: options.orcaTerminals,
+				procRoot: options.procRoot,
 				run,
-				facts.baseRepo,
-				["worktree", "remove", guard.path],
-				120_000,
-			);
+			});
+			return {
+				ok: true,
+				message: result.branchDeleted
+					? `worktree удалён; ветка ${guard.branch} удалена (git branch -d)`
+					: `worktree удалён; ветка ${guard.branch} сохранена (tip ${result.tip.slice(
+							0,
+							7,
+						)}, backup ${result.backupRef})${
+							result.warning ? `; ${result.warning}` : ""
+						}`,
+				branch: guard.branch,
+				branchDeleted: result.branchDeleted,
+				branchRetained: result.branchRetained,
+			};
+		} catch (error) {
+			return failed(error instanceof Error ? error.message : String(error));
 		}
-		if (removal.code !== 0 && existsSync(guard.path)) {
-			return failed(
-				(removal.stderr || removal.stdout).trim() ||
-					`не удалось удалить ${guard.path}`,
-			);
-		}
-		if (existsSync(guard.path)) {
-			return failed(`worktree всё ещё существует: ${guard.path}`);
-		}
-
-		let branchDeleted = false;
-		const branchRef = await git(run, facts.baseRepo, [
-			"rev-parse",
-			"--verify",
-			"--quiet",
-			`refs/heads/${guard.branch}`,
-		]);
-		if (branchRef.code !== 0) {
-			branchDeleted = true;
-		} else {
-			const del = await git(
-				run,
-				facts.baseRepo,
-				["branch", "-d", guard.branch],
-				60_000,
-			);
-			branchDeleted = del.code === 0;
-		}
-		return {
-			ok: true,
-			message: branchDeleted
-				? `worktree и ветка ${guard.branch} удалены`
-				: `worktree удалён; ветка ${guard.branch} сохранена (safe delete не удался)`,
-			branch: guard.branch,
-			branchDeleted,
-			branchRetained: !branchDeleted,
-		};
 	} finally {
 		release();
 	}

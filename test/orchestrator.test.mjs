@@ -639,7 +639,7 @@ describe("actions on a real git repo", () => {
 		assert.equal(merged.decision.reason, "plan-done");
 		assert.equal(merged.nextTask, null);
 		assert.equal(existsSync(started.worktree), false);
-		assert.equal(await branchExists(s.base, "feat/T1"), false);
+		assert.equal(await branchExists(s.base, "feat/T1"), true);
 
 		state = readState(join(s.control, STATE_FILE));
 		assert.equal(state.current, null);
@@ -670,6 +670,41 @@ describe("actions on a real git repo", () => {
 		const blocked = await start(s.ctx, "T1");
 		assert.equal(blocked.kind, "stop");
 		assert.equal(blocked.reason, "attempts-exceeded");
+	});
+
+	it("preserves an unmerged failed branch and retries on a fresh branch", async () => {
+		const s = await scenario({ verify: 'node -e "process.exit(1)"' });
+		const first = await start(s.ctx, "T1");
+		await commitFile(first.worktree, "work.txt", "wip\n");
+		const failed = await verify(s.ctx, "T1");
+		assert.equal(failed.ok, false);
+		assert.equal(readState(join(s.control, STATE_FILE)).current.status, "failed");
+
+		const second = await start(s.ctx, "T1");
+		assert.equal(second.kind, "started");
+		assert.equal(second.branch, "feat/T1");
+		assert.equal(second.worktree, first.worktree);
+		const branches = await mustRun("git", [
+			"-C",
+			s.base,
+			"branch",
+			"--format=%(refname:short)",
+			"--list",
+			"feat/T1*",
+		]);
+		assert.match(branches.stdout, /feat\/T1-failed-/);
+		assert.match(branches.stdout, /feat\/T1$/m);
+		const preserved = branches.stdout
+			.split("\n")
+			.find((name) => name.startsWith("feat/T1-failed-"));
+		assert.ok(preserved);
+		const preservedTip = (
+			await mustRun("git", ["-C", s.base, "rev-parse", preserved])
+		).stdout.trim();
+		const baseTip = (
+			await mustRun("git", ["-C", s.base, "rev-parse", "main"])
+		).stdout.trim();
+		assert.notEqual(preservedTip, baseTip);
 	});
 
 	it("merges review:false without a reviewer verdict", async () => {

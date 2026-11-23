@@ -32,7 +32,8 @@ flowchart LR
 | Тесты 0.3 | `test/context-guard.test.mjs` | guard/handoff/preflight/supervisor/lock/session info/status |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
-| Тесты wrap core | `test/wrap.test.mjs` | 29 тестов facts/cards/guards/cleanup/next worktree/orca |
+| Тесты wrap core | `test/wrap.test.mjs` | facts/cards/guards/cleanup/next worktree/orca |
+| Тесты safe remove | `test/worktree-remove.test.mjs` | merged/dirty/current/live-процесс/терминал/backup-ref/`-d` |
 
 ### Orca-интеграция `[готово, additive]` (D11)
 

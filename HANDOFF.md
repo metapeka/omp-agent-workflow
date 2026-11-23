@@ -1,12 +1,12 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.13`; ветки `feat/handoff-preflight`,
+`main`, версия `0.5.14`; ветки `feat/handoff-preflight`,
 `feat/preflight-fixes`, `feat/handoff-state-embed`,
 `feat/preflight-checklist`, `feat/preflight-actions`,
-`feat/preflight-flow`, `feat/workflow-status-key` и
-`feat/workflow-status-p2` слиты ff-only, worktrees удалены. Вики —
-`docs/README.md`; backlog — `TODO.md`.
+`feat/preflight-flow`, `feat/workflow-status-key`,
+`feat/workflow-status-p2` и `feat/safe-worktree-remove` слиты ff-only,
+worktrees удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -28,7 +28,59 @@
 | Flow 0.5.11 | preflight: состояние → меню незакрытых действий → итог |
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
-| Проверки | `npm test` 172/172, `npm run typecheck`, extension load exit 0 |
+| Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
+| Проверки | `npm test` 181/181, `npm run typecheck`, extension load exit 0 |
+
+## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
+
+**Факты.** В `omp-cache-monitor` после merge `feat/ui-presets` команда
+`orca worktree rm --worktree path:.../ui-presets --delete-branch` убила
+SIGTERM живую OMP-сессию `01a206db` через 0.1 с; ранее то же случилось с
+`.../coelacanth --force --delete-branch`. Orca довела удаление до конца.
+Обе ветки были влиты, refs восстановлены вручную.
+
+**Причина (проверено на одноразовых worktree).** Orca на `worktrees:remove`
+вызывает `stopPtys(worktreeId)` / `stopTerminalsForWorktree` до удаления:
+останавливаются все PTY удаляемого worktree, включая терминал, в котором
+работает OMP. `worktreeMeta.cliProvenance.callerTerminalHandle` — только
+lineage при create; на удаление не влияет: caller в другом worktree выжил,
+а PTY target получил SIGTERM (trap записал `TERM`).
+
+**setsid/другой терминал.** Detached-процесс под `setsid` переживает
+остановку PTY (проверено), но терминал/сессия всё равно умирает, а cwd
+исчезает под процессом. Запуск из другого терминала безопасен только если
+живая сессия не привязана к target; поэтому guard запрещает target ==
+текущий cwd и любые процессы/терминалы внутри.
+
+**git без Orca.** `git worktree remove <path>` убирает каталог и git-запись,
+но Orca сохраняет metadata: `orca worktree list/show` продолжают показывать
+worktree. Запись убирается повторным `orca worktree rm --worktree
+path:<path> --json` (проверено). Поэтому Orca-путь предпочтителен;
+git-fallback возвращает warning с этой командой.
+
+**Ветка.** Orca 1.4.269 и без `--delete-branch` сохраняет локальную ветку
+(help: newer hosts keep branch; `--delete-branch` = safe delete). Workflow
+теперь не передаёт `--delete-branch`, tip пишет в
+`refs/omp-worktree-backup/*`.
+
+**Воспроизведение (только disposable worktree).**
+
+```bash
+orca worktree create --repo path:<base> --name probe \
+  --branch tmp/probe --base-branch main --no-parent --json
+orca terminal create --worktree path:<wt> \
+  --command 'trap "echo TERM; exit 143" TERM; sleep 300' --json
+orca worktree rm --worktree path:<wt> --json    # PTY target получает SIGTERM
+# безопасно: закрыть терминал, затем removeWorktree/guard, ветка остаётся
+```
+
+**Recovery.** `git branch <branch> <tip>` или
+`git update-ref refs/heads/<branch> <backupRef>`.
+
+**Осталось.** Поведение Orca документировано («stops its sessions»), но
+опасно для caller внутри target: кандидат в issue — отказывать в удалении
+при живом терминале или не убивать caller; workflow-фикс (guard) остаётся
+обходом.
 
 ## `/handoff-preflight [файл]`
 
@@ -122,14 +174,15 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 | Launcher | `bin/omp-yoda` |
 | Тесты guard/preflight | `test/context-guard.test.mjs` |
 | Тесты settings | `test/workflow-settings.test.mjs` |
-| Решения | `docs/decisions.md` (D11, D12) |
+| Тесты safe remove | `test/worktree-remove.test.mjs` |
+| Решения | `docs/decisions.md` (D11, D12, D13) |
 | Runbook | `docs/operations.md` |
 
 ## Проверки
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 172/172
+npm test                                  # 181/181
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -140,11 +193,14 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ## Следующие шаги
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.13; ключ `workflow` (`SUP OFF`, `T2 verify`) появится в новой сессии.
-2. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
+   0.5.14; безопасный cleanup появится в новой сессии.
+2. Решить, заводить ли issue в Orca: `orca worktree rm` штатно останавливает
+   PTY удаляемого worktree и убивает caller, если он внутри; workflow-guard —
+   обход, не замена решения Orca.
+3. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
-3. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
-4. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов.
+4. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
+5. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов.
 
 ## Риски
 
@@ -161,4 +217,10 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
   `session_start`/`session_switch`.
 - `orcaEnabled=false` отключает automatic handoff.
 - Supervisor advisory lock: PID reuse и узкая тройная гонка reclaim.
+- Cleanup отказывает при dirty/current/live — это защита: `finish` вернёт
+  warning, worktree останется; повтор после выхода из сессии/закрытия PTY.
+- `refs/omp-worktree-backup/*` накапливаются; удалять вручную, когда tip
+  больше не нужен.
+- git-fallback при недоступном Orca оставляет stale-запись в Orca; убрать —
+  `orca worktree rm --worktree path:<path> --json`.
 - Remote отсутствует: push/publish — только по решению владельца.

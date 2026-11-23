@@ -31,6 +31,7 @@ import {
 	type WorkflowMode,
 } from "./types.ts";
 import {
+	branchExists,
 	createWorktree,
 	currentBranch,
 	headCommit,
@@ -286,12 +287,44 @@ export async function start(
 					`current task ${state.current.id} is ${state.current.status}; finish or stop it first`,
 				);
 			}
-			await removeWorktree({
-				backend,
-				baseRepo,
-				path: state.current.worktree,
-				branch: state.current.branch,
-			});
+			const failed = state.current;
+			try {
+				await removeWorktree({
+					backend,
+					baseRepo,
+					baseBranch: plan.config.baseBranch,
+					path: failed.worktree,
+					branch: failed.branch,
+					// Failed attempt may be dirty and unmerged. Never force-delete
+					// its branch: keep the commits, then rename the branch aside
+					// so the retry can create a fresh one.
+					force: true,
+					requireMerged: false,
+				});
+			} catch (error) {
+				throw new ActionError(
+					`cannot reset failed task ${failed.id}: ${
+						error instanceof Error ? error.message : String(error)
+					}; закрой терминал/процесс worktree и повтори start`,
+				);
+			}
+			if (await branchExists(baseRepo, failed.branch)) {
+				const preserved = `${failed.branch}-failed-${now
+					.toISOString()
+					.replace(/[:.]/g, "-")}`;
+				const rename = await runCommand(
+					"git",
+					["-C", baseRepo, "branch", "-m", failed.branch, preserved],
+					{ timeoutMs: 60_000 },
+				);
+				if (rename.code !== 0) {
+					throw new ActionError(
+						`cannot preserve failed branch ${failed.branch}: ${
+							(rename.stderr || rename.stdout).trim()
+						}`,
+					);
+				}
+			}
 			state.current = null;
 		}
 
@@ -545,6 +578,7 @@ export async function finish(
 			await removeWorktree({
 				backend: ctx.backend ?? plan.config.backend,
 				baseRepo,
+				baseBranch: plan.config.baseBranch,
 				path: merged.worktree,
 				branch: merged.branch,
 			});

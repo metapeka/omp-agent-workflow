@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.13`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-23. Версия: `0.5.14`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция и Settings готовы; release/remote — по решению владельца.
 Оперативный список — `TODO.md`.
@@ -206,6 +206,18 @@ Orca-интеграция и Settings готовы; release/remote — по ре
       `run`/`verify`/`review`/`fail`.
 - [x] Порядок: режим → `SUP OFF` → задача → `⚠ HANDOFF`; один ключ.
 - [x] Тесты на live/dead supervisor, active/inactive run; docs.
+
+## Этап 0.5.14 — безопасный cleanup worktree (готово)
+
+- [x] `removeWorktree`: merged, clean (или явный `force`), не base/current,
+      нет процессов с cwd внутри и живых терминалов Orca.
+- [x] Без `--delete-branch`/`--force` по умолчанию; ветка остаётся, tip —
+      `refs/omp-worktree-backup/*`; явное удаление — только `git branch -d`.
+- [x] Retry failed-задачи: `force` + `requireMerged: false`; старая ветка
+      переименовывается в `<branch>-failed-<timestamp>`, retry — с чистой.
+- [x] Причина: `orca worktree rm` останавливает PTY target (SIGTERM живой
+      сессии); зафиксировано в HANDOFF и D13.
+- [x] Тесты (`test/worktree-remove.test.mjs`), typecheck, AGENTS/README/docs.
 
 ## Этап 0.6 — экономика handoff (P2)
 

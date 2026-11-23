@@ -305,16 +305,31 @@ Spend:
   текущий worktree не считается base.
 - `backend: "orca"`: `orca worktree create --repo ... --name ... --branch ...
   --base-branch ... --no-parent --json`; удаление — `orca worktree rm
-  --worktree path:<path> --delete-branch`.
+  --worktree path:<path> --json` без `--delete-branch`/`--force`.
 - `backend: "git"`: `git worktree add -b <branch> <path> <base>`; удаление —
-  `git worktree remove --force` + `git branch -D`.
+  `git worktree remove <path>` без `--force`.
+- `removeWorktree` (0.5.14) — жёсткие предусловия: target не base и не
+  текущий worktree/cwd, HEAD == branch, ветка merged в base
+  (`merge-base --is-ancestor`), `status --porcelain` пуст (или явный
+  `force`), нет процессов с cwd внутри и живых терминалов Orca. Tip
+  сохраняется в `refs/omp-worktree-backup/*`. Ветка по умолчанию остаётся;
+  явное `deleteBranch` — только `git branch -d` после merged-проверки.
+  `--delete-branch`/`-D` не используются.
+- Orca при удалении останавливает PTY удаляемого worktree (SIGTERM), поэтому
+  cleanup из живой сессии внутри него запрещён; git-fallback оставляет
+  stale-запись Orca — её убирает `orca worktree rm --worktree path:<path>`.
 - Перед `finish`: base на `baseBranch`, `git status --porcelain` пуст,
   worktree HEAD == `--commit`, нет незакоммиченных изменений.
 - Merge только `git merge --ff-only <branch>`.
 - Non-ff → `rebase` action: rebase на base в worktree, повторный verify,
   новый commit, затем `finish`.
 - Конфликт → stop `merge-conflict`, worktree сохраняется.
-- После merge — удалить worktree и ветку, записать commit в `completed`.
+- После merge — удалить worktree (ветка остаётся, tip в backup-ref),
+  записать commit в `completed`. Отказ cleanup (dirty/live/current) —
+  warning, merge и `completed` не откатываются.
+- Retry failed-задачи: worktree удаляется с `force`+`requireMerged:false`;
+  старая ветка переименовывается в `<branch>-failed-<timestamp>`, retry
+  создаёт свежую ветку. Unmerged-коммиты не удаляются.
 - Параллельные задачи в 0.5 запрещены: один `current`.
 
 ## Wrap 0.5.1
@@ -324,9 +339,11 @@ Spend:
 
 - Карточки: handoff-инструкция, обновление `HANDOFF.md`, cleanup merged
   worktree, следующий worktree, ретро-review, publish-disabled, exit.
-- Cleanup использует отдельную safe-операцию: merged через
+- Cleanup использует `removeWorktree`: merged через
   `merge-base --is-ancestor`, чистый worktree, не текущий/base, без live
-  процесса, повторная проверка под lock; без `--force` и `-D`.
+  процесса/терминала, повторная проверка под lock; без `--force`, ветка
+  по умолчанию остаётся, tip — в backup-ref. Явное удаление ветки — только
+  `git branch -d`.
 - Текущий worktree не удаляется из процесса: только инструкция после выхода.
 - Handoff-карточка не вызывает `newSession`; после проверки `HANDOFF.md`
   пользователь выполняет `/handoff-new`.

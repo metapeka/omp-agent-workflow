@@ -133,6 +133,26 @@ CI/скриптов и обратной совместимости.
 launcher/supervisor (если процесс отдельный), тесты и docs. `0`/`off`
 означает выключение для порогов.
 
+## D13. Cleanup worktree — безопасный по умолчанию, ветка остаётся
+
+**Статус:** accepted (2026-11-23).
+**Причина:** `orca worktree rm` останавливает PTY удаляемого worktree и
+присылает SIGTERM; при cleanup изнутри worktree живая OMP-сессия умирает
+(инцидент 2026-11-23). Старый `removeWorktree` дополнительно делал
+`--delete-branch --force` и безусловный `git branch -D`.
+**Решение:** `removeWorktree` требует merged (`merge-base --is-ancestor`),
+чистый worktree, target не base и не текущий cwd, отсутствие процессов с cwd
+внутри и живых терминалов Orca; не передаёт `--delete-branch`/`--force` без
+явного запроса. Tip ветки сохраняется в `refs/omp-worktree-backup/*`; ветка
+по умолчанию остаётся, явное удаление — только `git branch -d` после
+merged-проверки. Retry failed-задачи — `force` + `requireMerged: false`:
+старая ветка переименовывается в `<branch>-failed-<timestamp>`, новый
+attempt стартует с чистой ветки; коммиты не теряются. Orca-путь удаляет и
+metadata; git-fallback оставляет stale-запись, которую убирает последующий
+`orca worktree rm`.
+**Следствие:** docs/AGENTS больше не советуют сырой `--delete-branch`;
+cleanup выполняется снаружи удаляемого worktree.
+
 ## Отклонённые альтернативы
 
 | Альтернатива | Почему нет |

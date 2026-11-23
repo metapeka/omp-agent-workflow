@@ -25,7 +25,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.13`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.14`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -37,7 +37,9 @@ hit rate, этот проект управляет контекстом и см�
   проверяет и даёт вердикт, затем предлагает только незакрытые действия;
   0.5.12 — ключ `workflow` в статус-строке (`YODA`/`YODA-SUP`,
   `⚠ HANDOFF`) и `statusEnabled` (13-й ключ); 0.5.13 — `SUP OFF` и
-  `T2 verify` в том же ключе.
+  `T2 verify` в том же ключе; 0.5.14 — безопасный cleanup worktree:
+  живой процесс/терминал и текущий worktree блокируют удаление, ветка
+  остаётся, tip в backup-ref.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
@@ -73,11 +75,21 @@ omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
   -p 'Reply with exactly: OK'        # exit 0, stderr пуст
 bin/omp-yoda --version               # launcher находит supervisor и omp
 
-# финал
+# финал: merge ff-only из base-репозитория
 git -C /home/db1/projects/omp-agent-workflow merge --ff-only feat/<slug>
-orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<slug> \
-  --delete-branch
+# cleanup — только снаружи удаляемого worktree и без живых терминалов/процессов
+orca worktree list --json                  # убедиться: в worktree нет PTY
+orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<slug> --json
+git -C /home/db1/projects/omp-agent-workflow branch -d feat/<slug>  # только merged, -d
 ```
+
+- Cleanup нельзя запускать из терминала/сессии внутри удаляемого worktree:
+  Orca останавливает PTY этого worktree и присылает SIGTERM (инцидент
+  2026-11-23). Сначала выйди из сессии, закрой её терминал, затем удаляй из
+  base-репозитория.
+- `--delete-branch` и `--force` вручную не использовать: ветка удаляется
+  только явным `git branch -d` после проверки merged, tip сохраняется в
+  backup-ref.
 
 - Один агент — один worktree; не редактировать один файл параллельно.
 - Коммит — через `commit` namespace, не `git add`/`git commit`.
