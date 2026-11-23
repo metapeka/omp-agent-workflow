@@ -29,7 +29,7 @@ flowchart LR
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Wrap `[готово]` | `lib/orchestrator/wrap.ts` + `/wrap` в `orchestrator.ts` | 0.5.1: facts, cards, safe cleanup, next worktree |
-| Тесты 0.3 | `test/context-guard.test.mjs` | 45 тестов guard/handoff/preflight/supervisor/lock/session info |
+| Тесты 0.3 | `test/context-guard.test.mjs` | 52 теста guard/handoff/preflight/supervisor/lock/session info |
 | Тесты 0.5 | `test/orchestrator.test.mjs` | 38 тестов plan/state/cost/worktree/actions/policy |
 | Тесты extension | `test/orchestrator-extension.test.mjs` | 19 тестов tool/commands/hooks/wrap |
 | Тесты wrap core | `test/wrap.test.mjs` | 29 тестов facts/cards/guards/cleanup/next worktree/orca |

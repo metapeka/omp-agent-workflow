@@ -14,7 +14,7 @@
   (Settings, 12 ключей), 0.5.6–0.5.7 (`/handoff-preflight`).
 - `/handoff-preflight [файл]` — read-only, блокеры advisory; проверяет
   state, git (чистота, detached, нет коммитов), upstream, merged, marker.
-- Проверки: `npm test` 144/144, typecheck, extension load exit 0,
+- Проверки: `npm test` 145/145, typecheck, extension load exit 0,
   schema 12 ключей.
 - Текущая сессия могла стартовать до merge: перезапустить `bin/omp-yoda`.
 

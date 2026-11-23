@@ -1193,6 +1193,24 @@ describe("/handoff-preflight", () => {
 		}
 	});
 
+	it("fails when git is unavailable", async () => {
+		const { dir } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		const path = process.env.PATH;
+		try {
+			process.env.PATH = join(dir, "no-git-here");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(v.notes[0].level, "warning");
+			assert.match(v.notes[0].text, /не удалось проверить репозиторий/);
+		} finally {
+			if (path === undefined) delete process.env.PATH;
+			else process.env.PATH = path;
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("stays silent for sub-agents and non-TUI modes", async () => {
 		const { dir } = preflightRepo({ "HANDOFF.md": "# state\n" });
 		try {

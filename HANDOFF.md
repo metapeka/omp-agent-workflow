@@ -19,7 +19,7 @@
 | Orca additive 0.5.3 | terminal list/show, `status`, `ORCA_CLI_COMMAND` |
 | Settings 0.5.4–0.5.5 | 12 ключей в Settings → Plugins |
 | Preflight 0.5.6–0.5.7 | read-only проверка перед `/handoff-new` |
-| Проверки | `npm test` 144/144, `npm run typecheck`, extension load exit 0 |
+| Проверки | `npm test` 145/145, `npm run typecheck`, extension load exit 0 |
 
 ## `/handoff-preflight [файл]`
 
@@ -78,7 +78,7 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 144/144
+npm test                                  # 145/145
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст

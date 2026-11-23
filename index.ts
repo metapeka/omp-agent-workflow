@@ -54,6 +54,7 @@ function git(
 		cwd,
 		encoding: "utf8",
 		timeout: 10_000,
+		env: { ...process.env, LC_ALL: "C", LANG: "C" },
 	});
 	const stdout = typeof result.stdout === "string" ? result.stdout : "";
 	const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
