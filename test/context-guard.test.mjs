@@ -1343,10 +1343,15 @@ describe("/handoff-preflight", () => {
 		const { dir } = preflightRepo({ "ALT.md": "# alt\n" });
 		try {
 			const { commands } = install();
-			const v = view(40, { cwd: dir });
+			const { asked, askDialog } = checklistDialog(["state"]);
+			const v = view(40, { cwd: dir, askDialog });
 			await command(commands, "handoff-preflight", v.ctx, "ALT.md");
 
-			assert.equal(v.notes[0].level, "info");
+			const stateQuestion = asked[0].find((question) => question.id === "state");
+			assert.ok(stateQuestion);
+			assert.match(stateQuestion.question, /ALT\.md обновлён/);
+			assert.match(v.notes[0].text, /чек-лист: не отмечено — ALT\.md обновлён/);
+			assert.equal(v.notes[0].level, "warning");
 			assert.match(v.notes[0].text, /ALT\.md: закоммичен в HEAD/);
 			assert.doesNotMatch(v.notes[0].text, /HANDOFF\.md: нет/);
 		} finally {

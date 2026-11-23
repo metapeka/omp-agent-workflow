@@ -279,11 +279,13 @@ export function formatPreflight(report: PreflightReport): string {
 }
 
 /** Пункты, которые человек отмечает перед handoff; проверки ниже остаются автоматическими. */
-const HANDOFF_CHECKLIST: ReadonlyArray<{
+interface HandoffChecklistItem {
 	id: string;
 	label: string;
 	question: string;
-}> = [
+}
+
+const HANDOFF_CHECKLIST: ReadonlyArray<HandoffChecklistItem> = [
 	{
 		id: "task",
 		label: "задача завершена",
@@ -316,6 +318,18 @@ const HANDOFF_CHECKLIST: ReadonlyArray<{
 	},
 ];
 
+/** Подставляет фактический state-файл из аргумента `/handoff-preflight [файл]`. */
+function handoffChecklist(stateFile: string): ReadonlyArray<HandoffChecklistItem> {
+	return HANDOFF_CHECKLIST.map((item) => {
+		if (item.id !== "state") return item;
+		return {
+			...item,
+			label: `${stateFile} обновлён`,
+			question: `${stateFile} обновлён под следующую сессию?`,
+		};
+	});
+}
+
 type ChecklistOutcome =
 	| { status: "skipped" }
 	| { status: "cancelled" }
@@ -323,20 +337,22 @@ type ChecklistOutcome =
 
 /**
  * Чек-лист перед handoff: один диалог с вопросами Да/Нет.
- * Без `askDialog` (старый хост, headless) меню пропускается: проверки не
- * блокируются, таблица выводится как раньше.
+ * Без `askDialog` (старый TUI-хост) меню пропускается: проверки не
+ * блокируются, таблица выводится как раньше. Headless/sub сюда не попадают.
  */
 async function askHandoffChecklist(
 	ctx: ExtensionContext,
+	stateFile: string,
 ): Promise<ChecklistOutcome> {
 	const askDialog = ctx.ui.askDialog;
 	if (!askDialog) return { status: "skipped" };
+	const items = handoffChecklist(stateFile);
 	let result: ExtensionAskDialogResult | undefined;
 	try {
 		result = await askDialog(
-			HANDOFF_CHECKLIST.map((item, index) => ({
+			items.map((item, index) => ({
 				id: item.id,
-				header: `handoff ${index + 1}/${HANDOFF_CHECKLIST.length}`,
+				header: `handoff ${index + 1}/${items.length}`,
 				question: item.question,
 				options: [
 					{ label: "Да", description: "Пункт выполнен" },
@@ -356,9 +372,7 @@ async function askHandoffChecklist(
 	);
 	return {
 		status: "answered",
-		pending: HANDOFF_CHECKLIST.filter((item) => !done.has(item.id)).map(
-			(item) => item.label,
-		),
+		pending: items.filter((item) => !done.has(item.id)).map((item) => item.label),
 	};
 }
 
@@ -617,7 +631,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			if (!isMainTui(ctx)) return;
 			const stateFile = args.trim() || STATE_FILE;
-			const checklist = await askHandoffChecklist(ctx);
+			const checklist = await askHandoffChecklist(ctx, stateFile);
 			if (checklist.status === "cancelled") {
 				notify(ctx, "PREFLIGHT отменён: чек-лист не заполнен.", "info");
 				return;
