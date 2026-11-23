@@ -7,8 +7,9 @@
 
 ## Сейчас
 
-- [ ] Remote/GitHub и CI на remote — только по решению владельца.
-- [ ] Английский README — часть 1.0.
+- [x] Remote/GitHub и CI на remote: публичный `metapeka/omp-agent-workflow`,
+      release `v0.5.14`, CI green (2026-11-23).
+- [x] Английский README — часть 1.0; добавлены китайский и русский.
 - [ ] npm/marketplace — только по решению владельца.
 - [ ] Опционально: полный TUI E2E `/wrap` на Orca-managed worktree
       (confirm/cancel и branch retained); core Orca и TUI confirm/cancel

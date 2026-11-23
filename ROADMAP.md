@@ -2,7 +2,8 @@
 
 Дата: 2026-11-23. Версия: `0.5.14`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
-Orca-интеграция и Settings готовы; release/remote — по решению владельца.
+Orca-интеграция и Settings готовы; публичный GitHub-репозиторий и release
+`v0.5.14` есть; npm/marketplace — по решению владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -44,13 +45,15 @@ Orca-интеграция и Settings готовы; release/remote — по ре
   (auto 60%, без handoff).
 - Launcher `bin/omp-yoda`.
 
-## Этап 0.4 — standalone project (готово, кроме remote)
+## Этап 0.4 — standalone project (готово)
 
 - [x] Отдельный git-репозиторий `~/projects/omp-agent-workflow`.
 - [x] Регистрация проекта в Orca.
 - [x] Перенос launcher в `bin/omp-yoda`.
 - [x] `AGENTS.md`, `ROADMAP.md`, `HANDOFF.md`, CI.
-- [ ] Remote/GitHub и публикация — только по решению владельца.
+- [x] Remote/GitHub: публичный репозиторий, CI, release `v0.5.14`.
+- [x] Английский README + китайский и русский переводы, диаграммы, скриншоты.
+- [ ] npm/marketplace — только по решению владельца.
 
 ## Этап 0.5 — orchestrator и subagent-петля (готово)
 

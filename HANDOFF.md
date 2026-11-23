@@ -6,7 +6,9 @@
 `feat/preflight-checklist`, `feat/preflight-actions`,
 `feat/preflight-flow`, `feat/workflow-status-key`,
 `feat/workflow-status-p2` и `feat/safe-worktree-remove` слиты ff-only,
-worktrees удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
+worktrees удалены. GitHub: `metapeka/omp-agent-workflow` (public), тег и
+release `v0.5.14`, CI на Node 22 зелёный. Вики — `docs/README.md`;
+backlog — `TODO.md`.
 
 ## Что готово
 
@@ -29,7 +31,8 @@ worktrees удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
-| Проверки | `npm test` 181/181, `npm run typecheck`, extension load exit 0 |
+| Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
+| Проверки | `npm test` 182/182, `npm run typecheck`, extension load exit 0 |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
@@ -199,7 +202,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
    обход, не замена решения Orca.
 3. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
-4. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
+4. Решение владельца: npm/marketplace; английский README, GitHub и CI уже
+   сделаны.
 5. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов.
 
 ## Риски
@@ -223,4 +227,6 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
   больше не нужен.
 - git-fallback при недоступном Orca оставляет stale-запись в Orca; убрать —
   `orca worktree rm --worktree path:<path> --json`.
-- Remote отсутствует: push/publish — только по решению владельца.
+- Репозиторий публичный: не коммитить секреты, session/runtime-файлы и
+  локальные абсолютные пути в новых документах. npm/marketplace пока не
+  публиковались.
