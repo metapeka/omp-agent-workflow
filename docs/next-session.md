@@ -1,4 +1,4 @@
-# Next session: omp-agent-workflow 0.5.4
+# Next session: omp-agent-workflow 0.5.5
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
@@ -6,29 +6,25 @@
 ## Состояние
 
 - Репозиторий: `/home/db1/projects/omp-agent-workflow`, `main`, HEAD
-  `c16c9b1`, версия `0.5.4`.
-- `feat/settings-mvp` слита ff-only; worktree и ветка удалены.
+  `d1c4d63`, версия `0.5.5`.
+- `feat/settings-supervisor` слита ff-only; worktree и ветка удалены.
 - Готово: 0.3 (guard/handoff/Yoda), 0.5 (orchestrator), 0.5.1 (`/wrap`),
-  0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4 (Settings).
-- Settings: 9 ключей в `package.json#omp.settings`; приоритет
-  Settings > env > режим/дефолт (D12). Launcher читает `omp plugin config
-  list`; extension — `getPluginSettings` на `session_start`/`session_switch`.
-- `orcaEnabled=false` отключает supervisor/automatic handoff.
-- Проверки: `npm test` 127/127, typecheck, extension load exit 0,
-  `omp plugin config list` показывает 9 ключей, launcher env fallback.
-- Reviewer `SettingsReview`: ok; P2 (launcher env masking, session_switch
-  sync) и P3 исправлены.
-- Текущая сессия стартовала до merge: перезапустить `bin/omp-yoda`, чтобы
-  OMP и supervisor загрузили 0.5.4 и Settings UI увидел схему.
+  0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4–0.5.5
+  (Settings, 12 ключей).
+- Settings: `continuePrompt`, `supervisorRetries`, `supervisorLogLevel`
+  добавлены; launcher передаёт их supervisor'у через env.
+- Проверки: `npm test` 130/130, typecheck, extension load exit 0,
+  schema 12 ключей, dry-run JSON чистый, log level quiet/info проверены.
+- Reviewer `SettingsSupervisorReview`: ok; dry-run stdout и count исправлены.
+- Текущая сессия могла стартовать до merge: перезапустить `bin/omp-yoda`.
 
 ## Следующий этап
 
-1. Решение владельца: remote/GitHub, CI на remote, английский README,
-   tarball, npm/marketplace.
-2. P2 0.6: экономика handoff/компакции с `omp-cache-monitor`.
-3. Опционально: TUI E2E `/wrap` на Orca-managed worktree; Settings для
-   orchestrator-бюджетов (`reviewRequired`, `maxTasksPerSession`,
-   `maxSpendUsd`, `maxMinutes`).
+1. **0.6 economics отложено**: нужен машиночитаемый контракт cache-monitor
+   (`/cache-monitor costs --json` или tool). Без него не начинать.
+2. Решение владельца: remote/GitHub, CI, английский README, tarball, npm.
+3. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов
+   (`reviewRequired`, `maxTasksPerSession`, `maxSpendUsd`, `maxMinutes`).
 
 ## Границы
 
@@ -51,12 +47,13 @@ omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
 omp plugin config list omp-agent-workflow --json | jq '.schema | keys'
 bin/omp-yoda --version
 OMP_SUPERVISOR_ENABLED=0 bin/omp-yoda --version
+node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ```
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.5.4. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.5.5. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11/D12).
-> Settings → Plugins — основной способ настройки, env — fallback. Не менять
-> контракт 0.3, `index.ts`, cache-monitor и публикацию без решения владельца.
-> Следующий шаг — release-решение или 0.6 economics.
+> Settings → Plugins — основной способ настройки, env — fallback.
+> 0.6 economics отложено до машиночитаемого API cache-monitor; не трогать
+> cache-monitor. Не менять контракт 0.3 и публикацию без решения владельца.
