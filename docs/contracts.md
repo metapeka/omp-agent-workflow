@@ -121,6 +121,14 @@
   затрагивающему файл; она не доказывает, что state устарел.
 - Не путать с настройкой `orcaPreflight` (terminal show перед supervisor send).
 
+**Логика и границы.** Факты — git: state существует и закоммичен, дерево
+чисто (кроме `.omp-handoff-*`), ветка не detached, upstream, `HEAD` уже в
+`main` (`merge-base --is-ancestor`), marker. Свежесть — эвристика: число
+коммитов после последнего изменения `HANDOFF.md`; `0` — «актуален», больше —
+warning. Содержимое state не проверяется: старый текст в свежем коммите даст
+OK, несвязанные коммиты после state — ложный warning. Upstream сравнивается
+по локальным refs без fetch; всё считается от `ctx.cwd`.
+
 ## Файлы
 
 ### `.omp-handoff-session.json`
