@@ -6,7 +6,7 @@
 
 <p align="center">
   Детерминированный страж контекста · настоящий handoff<br>
-  оркестрация worktree для <a href="https://github.com/oh-my-pi/pi-coding-agent">OMP</a>
+  оркестрация worktree для <a href="https://github.com/can1357/oh-my-pi">OMP</a>
 </p>
 
 <p align="center">
@@ -46,9 +46,14 @@
 
 Долгие сессии агента ломаются на стыках: контекст кончается, решения теряются, cleanup уничтожает работу. Этот плагин делает стыки явными и обратимыми.
 
+<details>
+<summary>▶️ Смотреть 13-секундное демо</summary>
+
 ![Демо цикла оркестратора](docs/assets/demo.gif)
 
 *Реальная 13-секундная запись: `status → start → commit → verify → finish` на одноразовом git-репозитории. Worktree удалён, ветка сохранена.*
+
+</details>
 
 <a id="what"></a>
 ## 🧠 Что это

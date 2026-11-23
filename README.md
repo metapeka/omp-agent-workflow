@@ -6,7 +6,7 @@
 
 <p align="center">
   Deterministic context guard · true session handoff<br>
-  worktree orchestration for <a href="https://github.com/oh-my-pi/pi-coding-agent">OMP</a>
+  worktree orchestration for <a href="https://github.com/can1357/oh-my-pi">OMP</a>
 </p>
 
 <p align="center">
@@ -46,9 +46,14 @@
 
 Long agent sessions fail at the seams: context runs out, decisions get lost, cleanup destroys work. This plugin makes those seams explicit and reversible.
 
+<details>
+<summary>▶️ Watch the 13-second demo</summary>
+
 ![Orchestrator loop demo](docs/assets/demo.gif)
 
 *Real 13-second recording: `status → start → commit → verify → finish` on a throwaway git repo. The worktree is removed, the branch is kept.*
+
+</details>
 
 <a id="what"></a>
 ## 🧠 What it is

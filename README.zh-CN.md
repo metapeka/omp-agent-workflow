@@ -6,7 +6,7 @@
 
 <p align="center">
   确定性上下文守卫 · 真正的会话交接<br>
-  面向 <a href="https://github.com/oh-my-pi/pi-coding-agent">OMP</a> 的 worktree 编排
+  面向 <a href="https://github.com/can1357/oh-my-pi">OMP</a> 的 worktree 编排
 </p>
 
 <p align="center">
@@ -46,9 +46,14 @@
 
 长时间代理工作往往死在接缝处：上下文耗尽、决策丢失、清理毁掉成果。这个插件把这些接缝变成显式且可回滚的步骤。
 
+<details>
+<summary>▶️ 观看 13 秒演示</summary>
+
 ![Orchestrator 循环演示](docs/assets/demo.gif)
 
 *真实 13 秒录屏：在一次性 git 仓库中执行 `status → start → commit → verify → finish`。worktree 被删除，分支被保留。*
+
+</details>
 
 <a id="what"></a>
 ## 🧠 这是什么
