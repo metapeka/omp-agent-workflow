@@ -197,9 +197,10 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
    0.5.14; безопасный cleanup появится в новой сессии.
-2. Решить, заводить ли issue в Orca: `orca worktree rm` штатно останавливает
-   PTY удаляемого worktree и убивает caller, если он внутри; workflow-guard —
-   обход, не замена решения Orca.
+2. Issue в Orca заведён: [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
+   — `orca worktree rm` штатно останавливает PTY удаляемого worktree и
+   убивает caller, если он внутри; workflow-guard — обход, не замена
+   решения Orca. Ждём ответа maintainers.
 3. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
 4. Решение владельца: npm/marketplace; английский README, GitHub и CI уже
