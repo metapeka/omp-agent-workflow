@@ -119,6 +119,8 @@
 
 单项能力各自存在。真正有价值的是**粘合方式与保证**。
 
+该结论背后的公开市场调研——PI、OMP 与 GitHub，2026-11-23：[docs/research/market-landscape.zh-CN.md](docs/research/market-landscape.zh-CN.md)。
+
 ---
 
 <a id="how"></a>

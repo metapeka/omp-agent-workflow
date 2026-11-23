@@ -57,6 +57,7 @@ worktree и присылает SIGTERM живой OMP-сессии.
 | [handoff-flow.md](handoff-flow.md) | Два пути handoff: OMP без Orca (вручную) и Orca + supervisor (автоматически); кто вызывает `/handoff-new` и кто стартует новую сессию |
 | [decisions.md](decisions.md) | Подтверждённые решения D1–D10, отклонённые альтернативы, открытые вопросы |
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |
+| [research/market-landscape.md](research/market-landscape.md) | Рынок на 2026-11-23: PI, OMP и GitHub; ближайшие аналоги, чего нет ни у кого, выводы для позиционирования; переводы [RU](research/market-landscape.ru.md), [ZH](research/market-landscape.zh-CN.md) |
 
 ## Правила этой вики
 

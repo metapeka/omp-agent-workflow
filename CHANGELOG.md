@@ -4,6 +4,18 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [Unreleased]
+
+### Added
+
+- `docs/research/market-landscape.md` (+ Russian and Chinese translations):
+  public landscape of PI, OMP and GitHub, closest analogues, feature
+  prevalence, and positioning conclusions. Linked from the READMEs, the
+  wiki index and the roadmap.
+- Upstream Orca issue `stablyai/orca#47665` documenting that
+  `orca worktree rm` sends SIGTERM to a caller running inside the removed
+  worktree.
+
 ## [0.5.14] — 2026-11-23
 
 ### Fixed

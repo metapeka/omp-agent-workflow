@@ -119,6 +119,8 @@ We have not found another tool that does **all five** together:
 
 Each item exists somewhere. The product is the **glue and the guarantees**.
 
+The public landscape study behind this claim — PI, OMP and GitHub, 2026-11-23: [docs/research/market-landscape.md](docs/research/market-landscape.md).
+
 ---
 
 <a id="how"></a>

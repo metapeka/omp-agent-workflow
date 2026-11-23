@@ -17,6 +17,20 @@ Orca-интеграция и Settings готовы; публичный GitHub-р
 - Продукт read-only по отношению к чужому коду: не греет кэш, не меняет
   промпты, не тратит деньги без задачи.
 
+## Рынок и аналоги (2026-11-23)
+
+Обзор публичных экосистем — [docs/research/market-landscape.md](docs/research/market-landscape.md)
+([RU](docs/research/market-landscape.ru.md), [ZH](docs/research/market-landscape.zh-CN.md)).
+
+- Прямого аналога нет; отдельные половины (guard/handoff и оркестрация)
+  переполнены.
+- OMP builtin уже содержит `/handoff`, авто-компакцию, `--max-cost` и
+  `omp worktree add|list|clear`; наш продукт строится поверх.
+- Уникальны: supervisor вне процесса, лестница режимов, детерминированный
+  plan/state с бюджетами и stop-gates, cleanup guard с backup-ref.
+- Следствие: не продавать handoff как дифференциатор; инвестировать в
+  discovery (marketplace-каталог, сравнение) и в уникальную связку.
+
 ## Этап 0.1 — context guard (готово)
 
 - Warning 35%, предложение HANDOFF 50%.

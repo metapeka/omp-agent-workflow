@@ -30,6 +30,7 @@ backlog — `TODO.md`.
 | Flow 0.5.11 | preflight: состояние → меню незакрытых действий → итог |
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
+| Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
 | Проверки | `npm test` 182/182, `npm run typecheck`, extension load exit 0 |

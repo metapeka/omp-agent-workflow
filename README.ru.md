@@ -119,6 +119,8 @@
 
 По отдельности это есть у разных продуктов. Ценность — в **склейке и гарантиях**.
 
+Публичный обзор рынка, на котором основан вывод — PI, OMP и GitHub, 2026-11-23: [docs/research/market-landscape.ru.md](docs/research/market-landscape.ru.md).
+
 ---
 
 <a id="how"></a>
