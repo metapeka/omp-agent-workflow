@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import contextGuard from "../index.ts";
+import { createInitialState, writeState } from "../lib/orchestrator/state.ts";
 import {
 	acquireLock,
 	readOwner,
@@ -504,10 +505,38 @@ describe("/handoff-new", () => {
 
 describe("workflow status key", () => {
 	const temp = () => mkdtempSync(join(tmpdir(), "cg-status-"));
+	const liveSupervisor = (dir, pid = process.pid) => {
+		mkdirSync(join(dir, ".omp-handoff-supervisor.lock"), { recursive: true });
+		writeFileSync(
+			join(dir, ".omp-handoff-supervisor.lock", "owner.json"),
+			JSON.stringify({ pid }),
+		);
+	};
+	const currentTask = (dir, active = true) => {
+		const state = createInitialState({
+			planPath: "AUTOPLAN.md",
+			planHash: "hash",
+			mode: "yoda",
+			sessionFile: null,
+			now: new Date(),
+		});
+		state.run.active = active;
+		state.current = {
+			id: "T2",
+			branch: "feat/t2",
+			worktree: "/tmp/wt",
+			status: "verified",
+			commit: null,
+			startedAt: new Date().toISOString(),
+			checks: [],
+		};
+		writeState(join(dir, "STATE.json"), state);
+	};
 
 	it("publishes YODA-SUP on session_start", async () => {
 		const dir = temp();
 		try {
+			liveSupervisor(dir);
 			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
 			const v = view(10, { cwd: dir });
 			await fire(handlers, "session_start", {}, v.ctx);
@@ -554,6 +583,7 @@ describe("workflow status key", () => {
 				join(dir, ".omp-handoff-request.json"),
 				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/session.jsonl" }),
 			);
+			liveSupervisor(dir);
 			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
 			const v = view(10, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
 			await fire(handlers, "session_start", {}, v.ctx);
@@ -570,6 +600,7 @@ describe("workflow status key", () => {
 				join(dir, ".omp-handoff-request.json"),
 				JSON.stringify({ reason: "task-boundary", sessionFile: "/tmp/old.jsonl" }),
 			);
+			liveSupervisor(dir);
 			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
 			const v = view(10, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
 			await fire(handlers, "session_start", {}, v.ctx);
@@ -611,6 +642,57 @@ describe("workflow status key", () => {
 			assert.equal(v.statuses.at(-1).text, "YODA · ⚠ HANDOFF");
 			rmSync(marker, { force: true });
 			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("shows SUP OFF without a live supervisor", async () => {
+		const dir = temp();
+		try {
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA-SUP · SUP OFF");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("shows SUP OFF for a dead supervisor pid", async () => {
+		const dir = temp();
+		try {
+			liveSupervisor(dir, 2_147_483_647);
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA-SUP · SUP OFF");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("shows the active orchestrator task", async () => {
+		const dir = temp();
+		try {
+			currentTask(dir);
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda" });
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, "YODA · T2 verify");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("hides the orchestrator task when the run is inactive", async () => {
+		const dir = temp();
+		try {
+			currentTask(dir, false);
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda" });
+			const v = view(10, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
 			assert.equal(v.statuses.at(-1).text, "YODA");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });

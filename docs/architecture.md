@@ -23,7 +23,7 @@ flowchart LR
 
 | Часть | Путь | Роль |
 |---|---|---|
-| Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, `/handoff-preflight` (меню действий + проверки), session info, marker при пороге, ключ `workflow` в статус-строке |
+| Context guard | `index.ts` | Пороги 35/50/60, `/handoff`, `/handoff-new`, `/handoff-preflight` (меню действий + проверки), session info, marker при пороге, ключ `workflow` (режим, `SUP OFF`, задача, handoff) |
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new`; singleton lock на `--dir` |
 | Supervisor lock | `lib/supervisor-lock.mjs` | acquire/reclaim/release; identity guard после rename |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |

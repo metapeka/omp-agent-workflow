@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.12`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-23. Версия: `0.5.13`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция и Settings готовы; release/remote — по решению владельца.
 Оперативный список — `TODO.md`.
@@ -198,6 +198,14 @@ Orca-интеграция и Settings готовы; release/remote — по ре
       `session_compact`.
 - [x] `statusEnabled=false` очищает ключ; native `context_pct` не дублируется.
 - [x] Тесты, typecheck, README/вики/runbook.
+
+## Этап 0.5.13 — P2-статус: supervisor и задача (готово)
+
+- [x] `SUP OFF` в `yoda-supervised`, если lock/pid supervisor'а не найден.
+- [x] `T2 verify` — `STATE.json.run.active` + `current`; статусы
+      `run`/`verify`/`review`/`fail`.
+- [x] Порядок: режим → `SUP OFF` → задача → `⚠ HANDOFF`; один ключ.
+- [x] Тесты на live/dead supervisor, active/inactive run; docs.
 
 ## Этап 0.6 — экономика handoff (P2)
 

@@ -43,11 +43,14 @@
 | `supervisorRetries` | number 1–10 | `3` |
 | `supervisorLogLevel` | enum | `info` |
 
-## Статус-строка (0.5.12)
+## Статус-строка (0.5.12–0.5.13)
 
 - Один ключ `workflow`, только main TUI.
-- Текст: `YODA` / `YODA-SUP` по `workflowMode`; `⚠ HANDOFF` — при
-  `usage >= handoffAtPercent` или marker с текущим `sessionFile`.
+- Текст: `YODA` / `YODA-SUP` по `workflowMode`; `SUP OFF` — в
+  `yoda-supervised`, если lock/pid supervisor'а не найден; `T2 verify` —
+  пока `STATE.json.run.active` и есть `current`.
+- `⚠ HANDOFF` — при `usage >= handoffAtPercent` или marker с текущим
+  `sessionFile`.
 - Stale marker другой сессии игнорируется.
 - `statusEnabled=false` вызывает `setStatus(key, undefined)`.
 - `context_pct`, cache и другие native/чужие метрики не дублируются;

@@ -30,7 +30,8 @@ supervisor или команда `/handoff-new`.
 команды отправляет continuation prompt сам. Без Orca после ручного
 `/handoff-new` отправь в новой сессии «продолжай» — иначе агент не начнёт.
 
-Ключ `workflow` показывает режим и `⚠ HANDOFF`; `statusEnabled=false`
+Ключ `workflow` показывает режим, `SUP OFF` при недоступном supervisor,
+`T2 verify` для активной задачи и `⚠ HANDOFF`; `statusEnabled=false`
 отключает его. `context_pct` не дублируется.
 
 ## Акторы

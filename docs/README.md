@@ -4,7 +4,7 @@
 OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
 объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.12` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.13` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
@@ -26,6 +26,8 @@ TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.12` — ключ `workflow` в статус-строке: `YODA`/`YODA-SUP` и
 `⚠ HANDOFF`; `statusEnabled` — 13-й ключ Settings; `context_pct` не
 дублируется.
+`0.5.13` — P2-статус: `SUP OFF` при недоступном supervisor и `T2 verify`
+для активной задачи orchestrator; тот же ключ `workflow`.
 
 ## С чего начать
 

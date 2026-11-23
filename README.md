@@ -56,9 +56,14 @@ Env-переменные (`OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOF
 ```text
 yoda:              YODA
 yoda-supervised:   YODA-SUP
+supervisor down:   YODA-SUP · SUP OFF
+orchestrator:      YODA-SUP · T2 verify
 порог/marker:      YODA-SUP · ⚠ HANDOFF
 ```
 
+`SUP OFF` — только `yoda-supervised`, если lock/pid supervisor'а не найден.
+`T2 verify` — пока `STATE.json.run.active` и есть `current`; статусы
+`run`/`verify`/`review`/`fail`.
 `⚠ HANDOFF` появляется при `usage >= handoffAtPercent` или marker текущей
 сессии, исчезает после handoff. `statusEnabled=false` очищает ключ.
 `manual`/`assisted` режим не показывают.

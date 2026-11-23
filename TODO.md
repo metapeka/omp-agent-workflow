@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-23. Версия: `0.5.12`.
+Дата: 2026-11-23. Версия: `0.5.13`.
 
 ## Сейчас
 
@@ -64,6 +64,8 @@
 - [x] 0.5.12 — ключ `workflow` в статус-строке: `YODA`/`YODA-SUP`,
       `⚠ HANDOFF` по порогу/marker; `statusEnabled` (13-й ключ), stale
       marker игнорируется, `context_pct` не дублируется; тесты и docs.
+- [x] 0.5.13 — P2-статус: `SUP OFF` при мёртвом/отсутствующем supervisor
+      и `T2 verify` при `run.active`; тесты и docs.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

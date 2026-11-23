@@ -1,11 +1,12 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.12`; ветки `feat/handoff-preflight`,
+`main`, версия `0.5.13`; ветки `feat/handoff-preflight`,
 `feat/preflight-fixes`, `feat/handoff-state-embed`,
 `feat/preflight-checklist`, `feat/preflight-actions`,
-`feat/preflight-flow` и `feat/workflow-status-key` слиты ff-only, worktrees
-удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
+`feat/preflight-flow`, `feat/workflow-status-key` и
+`feat/workflow-status-p2` слиты ff-only, worktrees удалены. Вики —
+`docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -26,7 +27,8 @@
 | Actions 0.5.10 | `/handoff-preflight`: проверки, commit, ff-merge; остальное вручную |
 | Flow 0.5.11 | preflight: состояние → меню незакрытых действий → итог |
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
-| Проверки | `npm test` 168/168, `npm run typecheck`, extension load exit 0 |
+| Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
+| Проверки | `npm test` 172/172, `npm run typecheck`, extension load exit 0 |
 
 ## `/handoff-preflight [файл]`
 
@@ -75,12 +77,14 @@ state-файла; prompt без состояния больше не перед�
   сессии «продолжай». Supervisor при automatic handoff отправляет
   continuation prompt сам.
 
-## Статус-строка 0.5.12
+## Статус-строка 0.5.12–0.5.13
 
 Один ключ `workflow`, только main TUI. Текст: `YODA` / `YODA-SUP` по
 `workflowMode`; `⚠ HANDOFF` — при `usage >= handoffAtPercent` или marker
-текущей сессии. Stale marker другой сессии игнорируется.
-`statusEnabled=false` очищает ключ; native `context_pct` не дублируется.
+текущей сессии. `SUP OFF` — в `yoda-supervised`, если lock/pid supervisor'а
+не найден. `T2 verify` — пока `STATE.json.run.active` и есть `current`.
+Stale marker другой сессии игнорируется. `statusEnabled=false` очищает ключ;
+native `context_pct` не дублируется.
 
 ## Settings 0.5.5
 
@@ -125,7 +129,7 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 168/168
+npm test                                  # 172/172
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -136,8 +140,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ## Следующие шаги
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.12; ключ `workflow` появится в новой сессии. Заодно проверить новый
-   порядок `/handoff-preflight` из 0.5.11.
+   0.5.13; ключ `workflow` (`SUP OFF`, `T2 verify`) появится в новой сессии.
 2. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
 3. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.

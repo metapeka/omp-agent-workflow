@@ -107,10 +107,12 @@ orca worktree rm --worktree path:<path> --delete-branch --json
 
 ## Статус-строка
 
-Ключ `workflow`: `YODA`/`YODA-SUP` по режиму и `⚠ HANDOFF` при пороге или
-marker текущей сессии. В `manual`/`assisted` ключ пуст; `statusEnabled=false`
-очищает его. Stale marker другой сессии warning не показывает.
-`context_pct` и cache не дублируются.
+Ключ `workflow`: `YODA`/`YODA-SUP` по режиму, `SUP OFF` при недоступном
+supervisor в `yoda-supervised`, `T2 verify` для активной задачи
+orchestrator и `⚠ HANDOFF` при пороге или marker текущей сессии.
+В `manual`/`assisted` ключ пуст; `statusEnabled=false` очищает его.
+Stale marker другой сессии warning не показывает. `context_pct` и cache
+не дублируются.
 
 Если OMP рисует hook-статус дважды, оставить один путь: `status` в
 `statusLine.rightSegments` + `statusLine.showHookStatus=false`, либо убрать

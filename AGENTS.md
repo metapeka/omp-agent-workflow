@@ -25,7 +25,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.12`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.13`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -36,11 +36,12 @@ hit rate, этот проект управляет контекстом и см�
   действий preflight: проверки, commit, ff-merge; 0.5.11 — preflight сначала
   проверяет и даёт вердикт, затем предлагает только незакрытые действия;
   0.5.12 — ключ `workflow` в статус-строке (`YODA`/`YODA-SUP`,
-  `⚠ HANDOFF`) и `statusEnabled` (13-й ключ).
+  `⚠ HANDOFF`) и `statusEnabled` (13-й ключ); 0.5.13 — `SUP OFF` и
+  `T2 verify` в том же ключе.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 168 тестов; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
+- `npm test` — 172 теста; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
 
@@ -120,7 +121,7 @@ orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<s
 - Не сжимать посреди tool-loop или незавершённого edit; ждать `turn_end` и
   `ctx.isIdle()`.
 - `context_pct` в native status line уже есть; свой процент не дублировать.
-  Ключ `workflow` — только режим и `⚠ HANDOFF`.
+  Ключ `workflow` — режим, `SUP OFF`, `T2 verify`, `⚠ HANDOFF`.
 
 ## Делегирование
 

@@ -26,6 +26,10 @@ import {
 	resolveSettings,
 	type WorkflowSettings,
 } from "./lib/workflow-settings.ts";
+import {
+	readState,
+	STATE_FILE as ORCHESTRATOR_STATE_FILE,
+} from "./lib/orchestrator/state.ts";
 
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
 const HANDOFF_INSTRUCTIONS =
@@ -706,16 +710,65 @@ function handoffMarkerPending(cwd: string, sessionFile: string | null): boolean 
 	}
 }
 
-/** Текст ключа `workflow`: режим и ожидаемый handoff; процент не дублируем. */
+/** Supervisor жив: lock есть, owner.pid существует. */
+function supervisorAlive(cwd: string): boolean {
+	try {
+		const raw = JSON.parse(
+			readFileSync(
+				resolve(cwd, ".omp-handoff-supervisor.lock", "owner.json"),
+				"utf8",
+			),
+		) as { pid?: unknown };
+		if (
+			typeof raw.pid !== "number" ||
+			!Number.isInteger(raw.pid) ||
+			raw.pid <= 0
+		) {
+			return false;
+		}
+		process.kill(raw.pid, 0);
+		return true;
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code === "EPERM";
+	}
+}
+
+/** Короткий статус текущей задачи orchestrator. */
+function taskStatusLabel(status: string): string {
+	if (status === "running") return "run";
+	if (status === "verified") return "verify";
+	if (status === "reviewed") return "review";
+	if (status === "failed") return "fail";
+	return status;
+}
+
+/** `T2 verify`, только пока run.active и есть current. */
+function orchestratorTaskText(cwd: string): string | undefined {
+	try {
+		const state = readState(resolve(cwd, ORCHESTRATOR_STATE_FILE));
+		if (!state?.run?.active || !state.current) return undefined;
+		return `${state.current.id} ${taskStatusLabel(state.current.status)}`;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Текст ключа `workflow`: режим, supervisor, задача, handoff. */
 function workflowStatusText(
 	settings: WorkflowSettings,
-	handoffPending: boolean,
+	options: {
+		handoffPending: boolean;
+		supervisorOff: boolean;
+		task: string | undefined;
+	},
 ): string | undefined {
 	if (!settings.statusEnabled) return undefined;
 	const parts: string[] = [];
 	if (settings.workflowMode === "yoda") parts.push("YODA");
 	else if (settings.workflowMode === "yoda-supervised") parts.push("YODA-SUP");
-	if (handoffPending) parts.push("⚠ HANDOFF");
+	if (options.supervisorOff) parts.push("SUP OFF");
+	if (options.task) parts.push(options.task);
+	if (options.handoffPending) parts.push("⚠ HANDOFF");
 	return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
@@ -784,7 +837,12 @@ export default function contextGuard(pi: ExtensionAPI): void {
 				ctx.cwd,
 				ctx.sessionManager.getSessionFile() ?? null,
 			);
-		const text = workflowStatusText(settings, pending);
+		const text = workflowStatusText(settings, {
+			handoffPending: pending,
+			supervisorOff:
+				settings.workflowMode === "yoda-supervised" && !supervisorAlive(ctx.cwd),
+			task: orchestratorTaskText(ctx.cwd),
+		});
 		try {
 			ctx.ui.setStatus(STATUS_KEY, text);
 		} catch {
