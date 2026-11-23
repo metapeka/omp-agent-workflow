@@ -33,6 +33,43 @@ const SESSION_INFO = ".omp-handoff-session.json";
 const STATE_FILE = "HANDOFF.md";
 const REQUEST_MARKER = ".omp-handoff-request.json";
 
+/** Лимит state-файла в новой сессии: 64k символов ≈ 16k токенов. */
+const HANDOFF_STATE_LIMIT = 64_000;
+
+/**
+ * Сообщение для новой сессии: continuation prompt + содержимое state-файла.
+ * Без содержимого новая сессия видит только просьбу прочитать файл и может
+ * начать работу, не прочитав его. Обрезка сохраняет маркер и путь файла.
+ */
+function handoffMessage(
+	prompt: string,
+	stateName: string,
+	statePath: string,
+): string {
+	let state: string;
+	try {
+		const content = readFileSync(statePath, "utf8");
+		if (content.length <= HANDOFF_STATE_LIMIT) {
+			state = content;
+		} else {
+			let cut = content.slice(0, HANDOFF_STATE_LIMIT);
+			const last = cut.charCodeAt(cut.length - 1);
+			// не разрываем surrogate pair
+			if (last >= 0xd800 && last <= 0xdbff) cut = cut.slice(0, -1);
+			state =
+				`${cut}\n\n[state обрезан: показаны ${cut.length} из ${content.length} ` +
+				`символов; остальное прочитай из ${statePath}]`;
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return (
+			`${prompt}\n\nНе удалось прочитать ${stateName} (${statePath}): ${message}. ` +
+			"Прочитай state-файл сам до начала работы."
+		);
+	}
+	return `${prompt}\n\n--- ${stateName} (${statePath}) ---\n${state}\n--- конец ${stateName} ---`;
+}
+
 export type PreflightStatus = "pass" | "warn" | "fail";
 
 export interface PreflightCheck {
@@ -509,7 +546,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		description: "Начать новую сессию после обновления HANDOFF.md",
 		handler: async (args, ctx) => {
 			if (!isMainTui(ctx)) return;
-			const statePath = resolve(ctx.cwd, args.trim() || "HANDOFF.md");
+			const stateName = args.trim() || STATE_FILE;
+			const statePath = resolve(ctx.cwd, stateName);
 			if (!existsSync(statePath)) {
 				notify(ctx, `HANDOFF не найден: ${statePath}. Сначала обнови state.`, "warning");
 				return;
@@ -529,7 +567,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 					setup: async (sessionManager) => {
 						sessionManager.appendCustomMessageEntry(
 							"handoff",
-							settings.continuePrompt,
+							handoffMessage(settings.continuePrompt, stateName, statePath),
 							true,
 						);
 					},

@@ -9,7 +9,8 @@
 - [x] `/handoff` — компакция с инструкциями сохранить решения.
 - [x] warning 35/50 и авто-компакция 60 в context guard.
 - [x] `/handoff-new` — проверить `HANDOFF.md`, дождаться idle, вызвать
-      `ctx.newSession({ parentSession })`, внедрить custom message.
+      `ctx.newSession({ parentSession })`, внедрить custom message с
+      содержимым state-файла.
 - [x] session info — файл `.omp-handoff-session.json` с terminal handle,
       session file, cwd, pid.
 - [x] marker protocol — `.omp-handoff-request.json` с reason/requestedAt.
@@ -38,7 +39,8 @@ E2E пройден в реальном Orca-терминале: marker → super
 3. Supervisor видит marker и session info, ждёт idle, отправляет
    `/handoff-new` в terminal handle.
 4. `/handoff-new` ждёт idle, проверяет `HANDOFF.md`, вызывает `newSession`,
-   добавляет custom message «прочитай HANDOFF.md и продолжай».
+   добавляет custom message: `continuePrompt` + содержимое state-файла
+   (до 64 000 символов, при превышении — маркер обрезки).
 5. Supervisor проверяет, что новая сессия стартовала, marker удалён, двух
    активных сессий нет.
 6. Cooldown: extension не просит новый handoff 300 с

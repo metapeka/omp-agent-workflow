@@ -1,9 +1,9 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.7`; ветки `feat/handoff-preflight` и
-`feat/preflight-fixes` слиты ff-only, worktrees удалены. Вики —
-`docs/README.md`; backlog — `TODO.md`.
+`main`, версия `0.5.8`; ветки `feat/handoff-preflight`,
+`feat/preflight-fixes` и `feat/handoff-state-embed` слиты ff-only, worktrees
+удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -19,7 +19,8 @@
 | Orca additive 0.5.3 | terminal list/show, `status`, `ORCA_CLI_COMMAND` |
 | Settings 0.5.4–0.5.5 | 12 ключей в Settings → Plugins |
 | Preflight 0.5.6–0.5.7 | read-only проверка перед `/handoff-new` |
-| Проверки | `npm test` 145/145, `npm run typecheck`, extension load exit 0 |
+| State 0.5.8 | `/handoff-new` встраивает state-файл в новую сессию |
+| Проверки | `npm test` 149/149, `npm run typecheck`, extension load exit 0 |
 
 ## `/handoff-preflight [файл]`
 
@@ -34,6 +35,18 @@ Read-only, ничего не пишет и не чинит. Блокеры **adv
   marker текущей сессии (supervisor сработает сам).
 - Ошибка git отличается от «не репозиторий»; git-вызовы с timeout 10 с.
 - Аргумент — как у `/handoff-new`: `/handoff-preflight ALT.md`.
+
+## `/handoff-new [файл]` 0.5.8
+
+Custom message новой сессии собирается из `continuePrompt` и содержимого
+state-файла; prompt без состояния больше не передаётся.
+
+- Лимит — 64 000 символов; при превышении добавляется маркер с числом
+  показанных/полных символов и путём файла; surrogate pair не разрывается.
+- Ошибка чтения — fallback: prompt + просьба прочитать файл самому.
+- Текст `continuePrompt` остаётся настраиваемым и идёт первым.
+- `cwd` новой сессии — `ctx.cwd`; запускать `/handoff-new` из корня
+  передаваемого проекта.
 
 ## Settings 0.5.5
 
@@ -78,7 +91,7 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 145/145
+npm test                                  # 149/149
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -89,7 +102,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ## Следующие шаги
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.7; Settings UI и `/handoff-preflight` появятся в новой сессии.
+   0.5.8; новое поведение `/handoff-new`, Settings UI и
+   `/handoff-preflight` появятся в новой сессии.
 2. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
 3. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
@@ -101,6 +115,9 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
   работает env fallback.
 - `/handoff-preflight` — эвристика и advisory; не заменяет проверки
   supervisor'а и не блокирует `/handoff-new`.
+- Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
+  устарел или обрезан, новая сессия должна перечитать файл, а не доверять
+  снимку. Содержимое state попадает в файл сессии — секреты туда не писать.
 - Launcher читает Settings при старте; extension — на
   `session_start`/`session_switch`.
 - `orcaEnabled=false` отключает automatic handoff.

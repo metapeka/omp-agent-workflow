@@ -38,7 +38,7 @@
 | `orcaEnabled` | boolean | `true` (false отключает supervisor/automatic handoff) |
 | `orcaPreflight` | boolean | `true` |
 | `supervisorEnabled` | boolean | `true` |
-| `continuePrompt` | string | текущий текст |
+| `continuePrompt` | string | текущий текст; state-файл добавляется после него |
 | `supervisorRetries` | number 1–10 | `3` |
 | `supervisorLogLevel` | enum | `info` |
 
@@ -79,7 +79,12 @@
 - Только main TUI.
 - Требует существующий `HANDOFF.md` (или указанный файл); иначе отказ.
 - Ждёт idle, вызывает `ctx.newSession({ parentSession, setup })`, добавляет
-  custom message «прочитай HANDOFF.md и продолжи».
+  custom message: `continuePrompt` + содержимое state-файла.
+- Содержимое читается через `readFileSync`; лимит — 64 000 символов, при
+  превышении сообщение содержит маркер обрезки и путь файла. Ошибка чтения
+  даёт fallback: prompt + просьба прочитать файл самому.
+- `cwd` новой сессии — `ctx.cwd`; `/handoff-new` не ищет «последний
+  редактированный репозиторий». Запускать из корня передаваемого проекта.
 - Сообщает об отмене, если `newSession` вернул `cancelled`.
 
 ### `/handoff-preflight [файл]`

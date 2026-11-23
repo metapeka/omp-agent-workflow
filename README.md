@@ -35,7 +35,7 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 | `orcaEnabled` | `true` | Orca terminal list/show, live-терминалы `/wrap` и automatic handoff; `false` отключает supervisor, git/`/proc` fallback |
 | `orcaPreflight` | `true` | Проверять terminal handle перед handoff |
 | `supervisorEnabled` | `true` | Запускать supervisor из `bin/omp-yoda` |
-| `continuePrompt` | текущий текст | Что получает новая сессия после handoff |
+| `continuePrompt` | текущий текст | Начало custom message новой сессии; state-файл добавляется после него |
 | `supervisorRetries` | `3` | Попытки supervisor при send/preflight |
 | `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
 
@@ -90,7 +90,11 @@ OMP_HANDOFF_AT=55        # или off; просить handoff на пороге
 
 `/handoff-new` начинает новую сессию после того, как `HANDOFF.md` обновлён.
 Команда ждёт idle, проверяет state и вызывает `ctx.newSession`, добавляя
-custom message «прочитай HANDOFF.md и продолжай». Без `HANDOFF.md` отказывает.
+custom message из `continuePrompt` и содержимого state-файла. Встраивается
+до 64 000 символов; при превышении добавляется маркер обрезки, при ошибке
+чтения — просьба прочитать файл самому. Без `HANDOFF.md` отказывает.
+`cwd` новой сессии — `ctx.cwd`, поэтому запускай `/handoff-new` из корня
+передаваемого проекта.
 
 `/handoff-preflight [файл]` — read-only проверка перед `/handoff-new`:
 `HANDOFF.md` (или указанный файл) на месте и не старше HEAD, дерево чистое,

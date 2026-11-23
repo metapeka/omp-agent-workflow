@@ -408,6 +408,88 @@ describe("/handoff-new", () => {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	});
+
+	it("embeds HANDOFF.md content in the custom message", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		try {
+			writeFileSync(
+				join(dir, "HANDOFF.md"),
+				"# state\nUNIQUE-STATE-MARKER-42\nnext: test\n",
+			);
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+
+			await command(commands, "handoff-new", v.ctx);
+
+			assert.equal(v.customMessages.length, 1);
+			const message = v.customMessages[0][1];
+			assert.match(message, /UNIQUE-STATE-MARKER-42/);
+			assert.match(message, /next: test/);
+			assert.match(message, /Прочитай HANDOFF\.md/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("truncates a state file above the 64k limit", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		try {
+			const head = "A".repeat(70_000);
+			const tail = "TAIL-MUST-BE-ABSENT";
+			writeFileSync(join(dir, "HANDOFF.md"), `${head}${tail}`);
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+
+			await command(commands, "handoff-new", v.ctx);
+
+			const message = v.customMessages[0][1];
+			assert.match(
+				message,
+				new RegExp(`state обрезан: показаны 64000 из ${head.length + tail.length}`),
+			);
+			assert.doesNotMatch(message, /TAIL-MUST-BE-ABSENT/);
+			assert.ok(message.length < 65_000, `message length ${message.length}`);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("uses an alternative state file from the command argument", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		try {
+			writeFileSync(join(dir, "HANDOFF.md"), "DEFAULT-STATE\n");
+			writeFileSync(join(dir, "ALT.md"), "ALTERNATIVE-STATE-MARKER\n");
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+
+			await command(commands, "handoff-new", v.ctx, "ALT.md");
+
+			const message = v.customMessages[0][1];
+			assert.match(message, /ALTERNATIVE-STATE-MARKER/);
+			assert.doesNotMatch(message, /DEFAULT-STATE/);
+			assert.match(message, /ALT\.md/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("falls back to the prompt when the state file cannot be read", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		try {
+			mkdirSync(join(dir, "STATE"));
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+
+			await command(commands, "handoff-new", v.ctx, "STATE");
+
+			const message = v.customMessages[0][1];
+			assert.match(message, /Не удалось прочитать STATE/);
+			assert.match(message, /Прочитай state-файл сам/);
+			assert.match(message, /Прочитай HANDOFF\.md/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("supervisor", () => {

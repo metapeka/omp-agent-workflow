@@ -102,7 +102,8 @@ Launcher читает те же ключи через `omp plugin config list` �
 4. Supervisor видит marker + session info, ждёт idle, отправляет
    `/handoff-new` в terminal handle.
 5. `/handoff-new` проверяет `HANDOFF.md`, ждёт idle, вызывает `newSession`,
-   добавляет custom message «прочитай HANDOFF.md и продолжи».
+   добавляет custom message: `continuePrompt` + содержимое state-файла
+   (лимит 64k, маркер обрезки, fallback при ошибке чтения).
 6. Cooldown и stale-marker guard не дают циклу повториться.
 
 Детали схем — [contracts.md](contracts.md).

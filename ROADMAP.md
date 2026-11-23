@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.7`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-23. Версия: `0.5.8`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция и Settings готовы; release/remote — по решению владельца.
 Оперативный список — `TODO.md`.
@@ -139,6 +139,16 @@ Orca-интеграция и Settings готовы; release/remote — по ре
 - [x] `/handoff-preflight [файл]` учитывает аргумент, как `/handoff-new`.
 - [x] git-вызовы с timeout 10 с; блокеры advisory (явно в docs).
 - [x] Тесты: upstream ahead/behind/synced, detached, merged, custom state.
+
+## Этап 0.5.8 — state в новую сессию (готово)
+
+- [x] `/handoff-new` встраивает содержимое state-файла в custom message
+      вместе с `continuePrompt`, а не передаёт только prompt.
+- [x] Лимит 64 000 символов; при превышении — маркер обрезки с полным
+      размером и путём файла; surrogate pair не разрывается.
+- [x] Ошибка чтения — fallback: prompt + просьба прочитать файл самому.
+- [x] Тесты: контент в message, обрезка, альтернативный `[файл]`, fallback.
+- [x] Документировано: `cwd` новой сессии — `ctx.cwd`.
 
 ## Этап 0.6 — экономика handoff (P2)
 
