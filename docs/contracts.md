@@ -89,20 +89,28 @@
 
 ### `/handoff-preflight [файл]`
 
-- Только main TUI. Показывает меню действий (`askDialog`), выполняет
-  выбранные, затем печатает read-only таблицу проверок. Блокеры advisory:
+- Только main TUI. Сначала печатает read-only таблицу и вердикт, затем
+  меню действий (`askDialog`) только для незакрытых пунктов, выполняет
+  выбранные и печатает структурированный итог. Блокеры advisory:
   `/handoff-new` их не проверяет.
-- Действия: `checks` — `npm run test` и `npm run typecheck`, если скрипты
-  есть в `package.json`; `commit` — `git add -A` и коммит с сообщением из
-  `input`; `merge` — `git merge --ff-only` текущей ветки в `main` worktree.
-- Безопасность: commit и merge по умолчанию «Пропустить»; merge не
-  форсится, требует чистый `main` worktree и fast-forward; упавшие проверки
-  блокируют выбранные commit/merge в этом запуске.
-- Вручную/агентом: завершить задачу, обновить `HANDOFF.md`, убрать worktree
-  после выхода — команда это не делает.
+- Меню: `checks` — всегда; `commit` — если дерево грязное; `merge` — если
+  ветка не влита в `main`. У предложенных действий предвыбран «Сделать».
+- Действия: `checks` — `npm run test`/`typecheck`, если скрипты есть;
+  `commit` — `git add -A` без runtime-файлов `.omp-handoff-*` и коммит с
+  сообщением из `input`; `merge` — `git merge --ff-only` текущей ветки в
+  чистый `main` worktree.
+- Безопасность: merge не форсится и требует fast-forward; detached HEAD
+  отклоняется; битый/нечитаемый `package.json` считается провалом проверок;
+  упавшие проверки блокируют выбранные commit/merge в этом запуске.
+- Итог: разделы «действия», «вручную/агентом», «итог» с таблицей и
+  вердиктом. Вручную остаются: завершить задачу, обновить `HANDOFF.md`,
+  удалить worktree после выхода.
 - Отмена меню останавливает команду. Без `askDialog` (старый TUI-хост)
   меню пропускается, команда остаётся read-only и печатает таблицу; в
   headless/sub команда молчит.
+- Runtime-файлы `.omp-handoff-session.json`, `.omp-handoff-request.json`,
+  `.omp-handoff-supervisor.lock*`, `.omp-handoff-done.json` не считаются
+  грязным деревом и не коммитятся.
 - Блокеры (`fail`): нет state-файла (default `HANDOFF.md`); грязное дерево;
   detached HEAD; нет коммитов; git-репозиторий не читается; незапушенные
   коммиты при наличии upstream.

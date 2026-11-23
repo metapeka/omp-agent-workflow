@@ -1,10 +1,11 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.10`; ветки `feat/handoff-preflight`,
+`main`, версия `0.5.11`; ветки `feat/handoff-preflight`,
 `feat/preflight-fixes`, `feat/handoff-state-embed`,
-`feat/preflight-checklist` и `feat/preflight-actions` слиты ff-only,
-worktrees удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
+`feat/preflight-checklist`, `feat/preflight-actions` и `feat/preflight-flow`
+слиты ff-only, worktrees удалены. Вики — `docs/README.md`; backlog —
+`TODO.md`.
 
 ## Что готово
 
@@ -23,21 +24,28 @@ worktrees удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
 | State 0.5.8 | `/handoff-new` встраивает state-файл в новую сессию |
 | Checklist 0.5.9 | `/handoff-preflight`: чек-лист, затем таблица проверок |
 | Actions 0.5.10 | `/handoff-preflight`: проверки, commit, ff-merge; остальное вручную |
-| Проверки | `npm test` 158/158, `npm run typecheck`, extension load exit 0 |
+| Flow 0.5.11 | preflight: состояние → меню незакрытых действий → итог |
+| Проверки | `npm test` 160/160, `npm run typecheck`, extension load exit 0 |
 
 ## `/handoff-preflight [файл]`
 
-Сначала меню действий (`askDialog`), затем read-only таблица проверок.
+Сначала read-only таблица и вердикт, затем меню только незакрытых действий,
+затем структурированный итог: действия, ручные шаги, свежая таблица.
 Действия могут менять репозиторий; блокеры **advisory**: `/handoff-new`
 их не проверяет.
 
-- Действия: `checks` — `npm run test`/`typecheck`, если скрипты есть;
-  `commit` — `git add -A` + сообщение из `input`; `merge` — только
-  `git merge --ff-only` в чистый `main` worktree.
-- По умолчанию `checks` — «Сделать», `commit`/`merge` — «Пропустить».
-  Ошибка не форсится; упавшие проверки блокируют выбранные commit/merge
-  в этом запуске.
-- Вручную/агентом: завершить задачу, обновить `HANDOFF.md`, убрать worktree
+- Меню: `checks` — всегда; `commit` — при грязном дереве; `merge` — если
+  ветка не влита в `main`. У предложенных действий предвыбран «Сделать».
+- `checks` — `npm run test`/`typecheck`, если скрипты есть; битый или
+  нечитаемый `package.json` — провал проверок.
+- `commit` — `git add -A` без runtime-файлов `.omp-handoff-*` + сообщение
+  из `input`; detached HEAD отклоняется.
+- `merge` — только `git merge --ff-only` в чистый `main` worktree; ошибка
+  не форсится; упавшие проверки блокируют commit/merge в этом запуске.
+- Runtime-файлы `.omp-handoff-session.json`, `.omp-handoff-request.json`,
+  `.omp-handoff-supervisor.lock*`, `.omp-handoff-done.json` не считаются
+  грязным деревом и не коммитятся.
+- Вручную/агентом: завершить задачу, обновить `HANDOFF.md`, удалить worktree
   после выхода.
 - Отмена меню останавливает команду. Без `askDialog` (старый TUI-хост) меню
   пропускается, команда read-only и печатает таблицу; в headless/sub
@@ -106,7 +114,7 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 158/158
+npm test                                  # 160/160
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -117,8 +125,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ## Следующие шаги
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.10; меню действий `/handoff-preflight` и новое поведение
-   `/handoff-new` появятся в новой сессии.
+   0.5.11; новый порядок `/handoff-preflight` (проверка → меню → итог)
+   появится в новой сессии.
 2. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
 3. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
@@ -131,7 +139,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 - `/handoff-preflight` — эвристика и advisory; не заменяет проверки
   supervisor'а и не блокирует `/handoff-new`. Выбранные действия `commit`
   и `merge` меняют репозиторий: merge только ff-only в чистый `main`
-  worktree, commit — `git add -A`.
+  worktree, commit — `git add -A` без runtime-файлов `.omp-handoff-*`.
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.

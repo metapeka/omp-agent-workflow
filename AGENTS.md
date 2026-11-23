@@ -25,7 +25,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.10`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.11`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -33,11 +33,12 @@ hit rate, этот проект управляет контекстом и см�
   supervisor (`continuePrompt`, retries, log level); 0.5.6–0.5.7 —
   `/handoff-preflight`; 0.5.8 — state-файл встраивается в новую сессию;
   0.5.9 — чек-лист перед таблицей `/handoff-preflight`; 0.5.10 — меню
-  действий preflight: проверки, commit, ff-merge.
+  действий preflight: проверки, commit, ff-merge; 0.5.11 — preflight сначала
+  проверяет и даёт вердикт, затем предлагает только незакрытые действия.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 158 тестов; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
+- `npm test` — 160 тестов; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
 
@@ -106,9 +107,9 @@ orca worktree rm --worktree path:/home/db1/orca/workspaces/omp-agent-workflow/<s
 | больше 600k | Форсировать handoff/compact |
 
 - `HANDOFF` — триггер: обнови `HANDOFF.md`, затем `/handoff`.
-- `/handoff-preflight [файл]` — меню действий (проверки, commit, ff-merge)
-  и проверка state/git/marker перед `/handoff-new`; commit/merge по
-  умолчанию «Пропустить», блокеры advisory: команда ничего не запрещает.
+- `/handoff-preflight [файл]` — сначала таблица и вердикт, затем меню только
+  незакрытых действий (проверки, commit, ff-merge), затем итог; блокеры
+  advisory: команда ничего не запрещает.
 - `/handoff-new` — новая сессия; сначала должен существовать `HANDOFF.md`.
 - Automatic handoff: агент пишет `.omp-handoff-request.json`, supervisor
   отправляет `/handoff-new` в terminal handle из `.omp-handoff-session.json`.

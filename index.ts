@@ -36,6 +36,14 @@ const HANDOFF_INSTRUCTIONS =
 const SESSION_INFO = ".omp-handoff-session.json";
 const STATE_FILE = "HANDOFF.md";
 const REQUEST_MARKER = ".omp-handoff-request.json";
+const RUNTIME_PATHS = [
+	SESSION_INFO,
+	REQUEST_MARKER,
+	".omp-handoff-supervisor.lock",
+	".omp-handoff-supervisor.lock.stale-*",
+	".omp-handoff-done.json",
+];
+const RUNTIME_EXCLUDES = RUNTIME_PATHS.map((path) => `:(exclude)${path}`);
 
 /** Лимит state-файла в новой сессии: 64k символов ≈ 16k токенов. */
 const HANDOFF_STATE_LIMIT = 64_000;
@@ -78,6 +86,7 @@ export type PreflightStatus = "pass" | "warn" | "fail";
 
 export interface PreflightCheck {
 	status: PreflightStatus;
+	id?: string;
 	text: string;
 }
 
@@ -123,12 +132,12 @@ export function runPreflight(
 	stateFile = STATE_FILE,
 ): PreflightReport {
 	const checks: PreflightCheck[] = [];
-	const add = (status: PreflightStatus, text: string): void => {
-		checks.push({ status, text });
+	const add = (status: PreflightStatus, text: string, id?: string): void => {
+		checks.push(id ? { status, id, text } : { status, text });
 	};
 
-	if (existsSync(resolve(cwd, stateFile))) add("pass", `${stateFile}: есть`);
-	else add("fail", `${stateFile}: нет — сначала обнови state`);
+	if (existsSync(resolve(cwd, stateFile))) add("pass", `${stateFile}: есть`, "state");
+	else add("fail", `${stateFile}: нет — сначала обнови state`, "state");
 
 	const repo = git(cwd, ["rev-parse", "--is-inside-work-tree"]);
 	if (!repo.ok || repo.out !== "true") {
@@ -149,25 +158,31 @@ export function runPreflight(
 		return { ready: false, checks };
 	}
 
-	const dirty = git(cwd, ["status", "--porcelain"]);
+	const dirty = git(cwd, [
+		"status",
+		"--porcelain",
+		"--",
+		".",
+		...RUNTIME_EXCLUDES,
+	]);
 	if (!dirty.ok) {
-		add("warn", "git status: не удалось прочитать");
+		add("warn", "git status: не удалось прочитать", "worktree");
 	} else if (!dirty.out) {
-		add("pass", "git: чисто");
+		add("pass", "git: чисто", "worktree");
 	} else {
 		const lines = dirty.out.split("\n");
 		const names = lines.slice(0, 3).map((line) => line.slice(3).trim()).join(", ");
 		const rest = lines.length > 3 ? ` и ещё ${lines.length - 3}` : "";
-		add("fail", `git: изменено файлов ${lines.length} — ${names}${rest}`);
+		add("fail", `git: изменено файлов ${lines.length} — ${names}${rest}`, "worktree");
 	}
 
 	const branch = git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
 	const branchName = branch.ok ? branch.out : "";
 	if (!branchName || branchName === "HEAD") {
-		add("fail", "git: detached HEAD — переключись на ветку");
+		add("fail", "git: detached HEAD — переключись на ветку", "branch");
 	} else {
 		const head = git(cwd, ["rev-parse", "--short", "HEAD"]);
-		add("pass", `ветка: ${branchName}${head.ok ? ` @ ${head.out}` : ""}`);
+		add("pass", `ветка: ${branchName}${head.ok ? ` @ ${head.out}` : ""}`, "branch");
 	}
 
 	const upstream = git(cwd, [
@@ -208,13 +223,14 @@ export function runPreflight(
 	}
 
 	if (branchName && branchName !== "HEAD" && branchName !== "main") {
-		const dest = git(cwd, ["rev-parse", "--verify", "--quiet", "origin/main"]).ok
-			? "origin/main"
-			: "main";
+		const dest = git(cwd, ["rev-parse", "--verify", "--quiet", "main"]).ok
+			? "main"
+			: "origin/main";
 		if (git(cwd, ["rev-parse", "--verify", "--quiet", dest]).ok) {
 			if (git(cwd, ["merge-base", "--is-ancestor", "HEAD", dest]).ok)
-				add("pass", `ветка влита в ${dest}`);
-			else add("warn", `ветка не влита в ${dest} — смерджи до handoff`);
+				add("pass", `ветка влита в ${dest}`, "merge");
+			else
+				add("warn", `ветка не влита в ${dest} — смерджи до handoff`, "merge");
 		}
 	}
 
@@ -264,7 +280,12 @@ export function runPreflight(
 	return { ready: !checks.some((c) => c.status === "fail"), checks };
 }
 
-export function formatPreflight(report: PreflightReport): string {
+const DIVIDER = "────────────────────────────────────────────────";
+
+export function formatPreflight(
+	report: PreflightReport,
+	title = "состояние",
+): string {
 	const verdict = report.ready
 		? "preflight: OK — можно /handoff-new"
 		: "preflight: блокеры — /handoff-new рано";
@@ -274,8 +295,11 @@ export function formatPreflight(report: PreflightReport): string {
 		fail: "✗",
 	};
 	return [
-		verdict,
+		DIVIDER,
+		`PREFLIGHT · ${title}`,
 		...report.checks.map((c) => `${icons[c.status]} ${c.text}`),
+		DIVIDER,
+		verdict,
 	].join("\n");
 }
 
@@ -285,35 +309,46 @@ interface HandoffAction {
 	label: string;
 	question: string;
 	description: string;
-	recommended: number;
 }
 
-const HANDOFF_ACTIONS: ReadonlyArray<HandoffAction> = [
-	{
-		id: "checks",
-		label: "проверки",
-		question: "Прогнать npm test и typecheck?",
-		description: "npm run test и npm run typecheck, если скрипты есть",
-		recommended: 0,
-	},
-	{
-		id: "commit",
-		label: "коммит",
-		question: "Закоммитить изменения?",
-		description: "git add -A и коммит с введённым сообщением",
-		recommended: 1,
-	},
-	{
-		id: "merge",
-		label: "merge",
-		question: "Слить ветку в main (ff-only)?",
-		description: "fast-forward в main worktree; при конфликте — ошибка",
-		recommended: 1,
-	},
+const CHECKS_ACTION: HandoffAction = {
+	id: "checks",
+	label: "проверки",
+	question: "Прогнать npm test и typecheck?",
+	description: "npm run test и npm run typecheck, если скрипты есть",
+};
+
+const COMMIT_ACTION: HandoffAction = {
+	id: "commit",
+	label: "коммит",
+	question: "Закоммитить изменения?",
+	description: "git add -A (без runtime-файлов) и сообщение из input",
+};
+
+const MERGE_ACTION: HandoffAction = {
+	id: "merge",
+	label: "merge",
+	question: "Слить ветку в main (ff-only)?",
+	description: "fast-forward в чистый main worktree; при конфликте — ошибка",
+};
+
+const MANUAL_HANDOFF_STEPS = [
+	"завершить задачу — сессию можно закрывать",
+	"обновить HANDOFF.md под следующую сессию",
+	"удалить worktree после выхода",
 ];
 
-const MANUAL_HANDOFF_STEPS =
-	"вручную/агентом: завершить задачу, обновить HANDOFF.md, убрать worktree после выхода";
+/** Оставляет в меню только то, что действительно требует действия. */
+function actionsForPreflight(report: PreflightReport): HandoffAction[] {
+	const byId = new Map<string, PreflightCheck>();
+	for (const check of report.checks) {
+		if (check.id) byId.set(check.id, check);
+	}
+	const actions: HandoffAction[] = [CHECKS_ACTION];
+	if (byId.get("worktree")?.status === "fail") actions.push(COMMIT_ACTION);
+	if (byId.get("merge")?.status === "warn") actions.push(MERGE_ACTION);
+	return actions;
+}
 
 type ActionOutcome =
 	| { status: "skipped" }
@@ -324,21 +359,24 @@ type ActionOutcome =
  * Меню действий перед handoff. Без `askDialog` (старый TUI-хост) меню
  * пропускается: команда остаётся read-only и печатает таблицу.
  */
-async function askHandoffActions(ctx: ExtensionContext): Promise<ActionOutcome> {
+async function askHandoffActions(
+	ctx: ExtensionContext,
+	actions: readonly HandoffAction[],
+): Promise<ActionOutcome> {
 	const askDialog = ctx.ui.askDialog;
-	if (!askDialog) return { status: "skipped" };
+	if (!askDialog || actions.length === 0) return { status: "skipped" };
 	let result: ExtensionAskDialogResult | undefined;
 	try {
 		result = await askDialog(
-			HANDOFF_ACTIONS.map((action, index) => ({
+			actions.map((action, index) => ({
 				id: action.id,
-				header: `handoff ${index + 1}/${HANDOFF_ACTIONS.length}`,
+				header: `handoff ${index + 1}/${actions.length}`,
 				question: action.question,
 				options: [
 					{ label: "Сделать", description: action.description },
 					{ label: "Пропустить", description: "Ничего не менять" },
 				],
-				recommended: action.recommended,
+				recommended: 0,
 			})),
 		);
 	} catch {
@@ -353,6 +391,27 @@ async function askHandoffActions(ctx: ExtensionContext): Promise<ActionOutcome> 
 				.map((item) => item.id),
 		),
 	};
+}
+
+/** Итог: действия, ручные шаги и свежая таблица состояния. */
+function formatPreflightResult(
+	report: PreflightReport,
+	actions: readonly HandoffActionReport[],
+): string {
+	const actionLines =
+		actions.length > 0
+			? actions.map((action) => `${action.ok ? "✓" : "✗"} ${action.text}`)
+			: ["— не выбраны"];
+	const sections = [
+		[DIVIDER, "PREFLIGHT · действия", ...actionLines].join("\n"),
+		[
+			DIVIDER,
+			"PREFLIGHT · вручную/агентом",
+			...MANUAL_HANDOFF_STEPS.map((step) => `• ${step}`),
+		].join("\n"),
+		formatPreflight(report, "итог"),
+	];
+	return sections.join("\n\n");
 }
 
 export interface HandoffActionReport {
@@ -371,7 +430,13 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 			text: "коммит: detached HEAD — переключись на ветку",
 		};
 	}
-	const status = git(ctx.cwd, ["status", "--porcelain"]);
+	const status = git(ctx.cwd, [
+		"status",
+		"--porcelain",
+		"--",
+		".",
+		...RUNTIME_EXCLUDES,
+	]);
 	if (!status.ok) {
 		return { id: "commit", ok: false, text: `коммит: git status — ${status.error}` };
 	}
@@ -383,19 +448,7 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 	if (typeof message !== "string" || !message.trim()) {
 		return { id: "commit", ok: true, text: "коммит: пропущен (нет сообщения)" };
 	}
-	const add = git(
-		ctx.cwd,
-		[
-			"add",
-			"-A",
-			"--",
-			".",
-			":(exclude).omp-handoff-session.json",
-			":(exclude).omp-handoff-request.json",
-			":(exclude).omp-handoff-supervisor.lock",
-		],
-		60_000,
-	);
+	const add = git(ctx.cwd, ["add", "-A", "--", ".", ...RUNTIME_EXCLUDES], 60_000);
 	if (!add.ok) return { id: "commit", ok: false, text: `коммит: git add — ${add.error}` };
 	const commit = git(ctx.cwd, ["commit", "-m", message.trim()], 120_000);
 	if (!commit.ok) {
@@ -431,7 +484,13 @@ function performMerge(cwd: string): HandoffActionReport {
 	if (!target) {
 		return { id: "merge", ok: false, text: "merge: main worktree не найден" };
 	}
-	const status = git(target, ["status", "--porcelain"]);
+	const status = git(target, [
+		"status",
+		"--porcelain",
+		"--",
+		".",
+		...RUNTIME_EXCLUDES,
+	]);
 	if (!status.ok) {
 		return { id: "merge", ok: false, text: "merge: main worktree не читается" };
 	}
@@ -550,12 +609,13 @@ async function performChecks(cwd: string): Promise<HandoffActionReport> {
 
 async function runHandoffActions(
 	ctx: ExtensionContext,
+	actions: readonly HandoffAction[],
 	selected: ReadonlySet<string>,
 ): Promise<HandoffActionReport[]> {
 	const reports: HandoffActionReport[] = [];
 	let checksOk: boolean | null = null;
 	let commitOk: boolean | null = null;
-	for (const action of HANDOFF_ACTIONS) {
+	for (const action of actions) {
 		if (!selected.has(action.id)) continue;
 		if (action.id === "commit" && checksOk === false) {
 			reports.push({
@@ -841,33 +901,41 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			if (!isMainTui(ctx)) return;
 			const stateFile = args.trim() || STATE_FILE;
-			const outcome = await askHandoffActions(ctx);
+			const sessionFile = ctx.sessionManager.getSessionFile() ?? null;
+			const initial = runPreflight(ctx.cwd, sessionFile, stateFile);
+			if (!ctx.ui.askDialog) {
+				notify(
+					ctx,
+					formatPreflight(initial),
+					initial.ready ? "info" : "warning",
+				);
+				return;
+			}
+			notify(
+				ctx,
+				formatPreflight(initial, "состояние до действий"),
+				initial.ready ? "info" : "warning",
+			);
+			const available = actionsForPreflight(initial);
+			const outcome = await askHandoffActions(ctx, available);
 			if (outcome.status === "cancelled") {
 				notify(ctx, "PREFLIGHT отменён: действия не выбраны.", "info");
 				return;
 			}
-			if (outcome.status === "answered" && outcome.selected.size > 0) {
+			if (outcome.status === "skipped") return;
+			if (outcome.selected.size > 0) {
 				notify(ctx, "PREFLIGHT: выполняю выбранные действия…", "info");
 			}
-			const actions =
-				outcome.status === "answered"
-					? await runHandoffActions(ctx, outcome.selected)
-					: [];
-			const report = runPreflight(
-				ctx.cwd,
-				ctx.sessionManager.getSessionFile() ?? null,
-				stateFile,
+			const actions = await runHandoffActions(
+				ctx,
+				available,
+				outcome.selected,
 			);
-			const lines: string[] = [];
-			if (actions.length > 0) {
-				lines.push(...actions.map((action) => `${action.ok ? "✓" : "✗"} ${action.text}`));
-			}
-			if (outcome.status === "answered") lines.push(MANUAL_HANDOFF_STEPS);
-			lines.push(formatPreflight(report));
+			const report = runPreflight(ctx.cwd, sessionFile, stateFile);
 			const failed = actions.some((action) => !action.ok);
 			notify(
 				ctx,
-				lines.join("\n"),
+				formatPreflightResult(report, actions),
 				failed || !report.ready ? "warning" : "info",
 			);
 		},
