@@ -120,6 +120,8 @@ orca worktree rm --worktree path:<path> --delete-branch --json
 > контексте. В Orca automatic handoff делается сам: supervisor после
 > `/handoff-new` отправляет continuation prompt.
 
+Полное описание обоих путей — [handoff-flow.md](handoff-flow.md).
+
 Проверить marker:
 
 ```bash

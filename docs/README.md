@@ -32,6 +32,7 @@ TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 | Меняешь 0.3 (guard/handoff/supervisor) | [contracts.md](contracts.md) → [architecture.md](architecture.md) → [operations.md](operations.md) |
 | Реализуешь 0.5 | [orchestrator.md](orchestrator.md) → [decisions.md](decisions.md) → [AUTOPLAN.example.md](AUTOPLAN.example.md) |
 | Разбираешь сбой в TUI/Orca | [operations.md](operations.md) |
+| Разбираешься, как проходит handoff | [handoff-flow.md](handoff-flow.md) → [contracts.md](contracts.md) |
 | Принимаешь решение по продукту | [decisions.md](decisions.md) |
 
 ## Страницы
@@ -43,6 +44,7 @@ TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 | [orchestrator.md](orchestrator.md) | Дизайн 0.5: роли, `AUTOPLAN.md`, `STATE.json`, действия, политика, бюджеты, stop-gates, handoff на границе, этапы A–D |
 | [wrap.md](wrap.md) | `/wrap` 0.5.1: карточки, safety для cleanup, handoff, следующая задача |
 | [operations.md](operations.md) | Runbook: установка, запуск, supervisor, worktree, проверки, типовые сбои |
+| [handoff-flow.md](handoff-flow.md) | Два пути handoff: OMP без Orca (вручную) и Orca + supervisor (автоматически); кто вызывает `/handoff-new` и кто стартует новую сессию |
 | [decisions.md](decisions.md) | Подтверждённые решения D1–D10, отклонённые альтернативы, открытые вопросы |
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |
 
