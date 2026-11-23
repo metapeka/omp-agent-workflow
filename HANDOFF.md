@@ -1,10 +1,10 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.9`; ветки `feat/handoff-preflight`,
-`feat/preflight-fixes`, `feat/handoff-state-embed` и
-`feat/preflight-checklist` слиты ff-only, worktrees удалены. Вики —
-`docs/README.md`; backlog — `TODO.md`.
+`main`, версия `0.5.10`; ветки `feat/handoff-preflight`,
+`feat/preflight-fixes`, `feat/handoff-state-embed`,
+`feat/preflight-checklist` и `feat/preflight-actions` слиты ff-only,
+worktrees удалены. Вики — `docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -22,20 +22,26 @@
 | Preflight 0.5.6–0.5.7 | read-only проверка перед `/handoff-new` |
 | State 0.5.8 | `/handoff-new` встраивает state-файл в новую сессию |
 | Checklist 0.5.9 | `/handoff-preflight`: чек-лист, затем таблица проверок |
-| Проверки | `npm test` 152/152, `npm run typecheck`, extension load exit 0 |
+| Actions 0.5.10 | `/handoff-preflight`: проверки, commit, ff-merge; остальное вручную |
+| Проверки | `npm test` 158/158, `npm run typecheck`, extension load exit 0 |
 
 ## `/handoff-preflight [файл]`
 
-Сначала интерактивный чек-лист (`askDialog`), затем read-only проверка.
-Ничего не пишет и не чинит. Блокеры **advisory**: `/handoff-new` их не
-проверяет.
+Сначала меню действий (`askDialog`), затем read-only таблица проверок.
+Действия могут менять репозиторий; блокеры **advisory**: `/handoff-new`
+их не проверяет.
 
-- Чек-лист: задача завершена; изменения закоммичены; ветка влита в `main`;
-  worktree убран; `HANDOFF.md` обновлён; тесты и typecheck прошли.
-- Неотмеченные пункты — строкой «не отмечено» перед таблицей, уровень
-  warning. Отмена диалога останавливает команду.
-- Без `askDialog` (старый TUI-хост) меню пропускается, таблица выводится
-  сразу; в headless/sub команда молчит.
+- Действия: `checks` — `npm run test`/`typecheck`, если скрипты есть;
+  `commit` — `git add -A` + сообщение из `input`; `merge` — только
+  `git merge --ff-only` в чистый `main` worktree.
+- По умолчанию `checks` — «Сделать», `commit`/`merge` — «Пропустить».
+  Ошибка не форсится; упавшие проверки блокируют выбранные commit/merge
+  в этом запуске.
+- Вручную/агентом: завершить задачу, обновить `HANDOFF.md`, убрать worktree
+  после выхода.
+- Отмена меню останавливает команду. Без `askDialog` (старый TUI-хост) меню
+  пропускается, команда read-only и печатает таблицу; в headless/sub
+  команда молчит.
 - Блокеры: нет state-файла (default `HANDOFF.md`); грязное дерево; detached
   HEAD; нет коммитов; git-репозиторий не читается; незапушенные коммиты при
   наличии upstream.
@@ -100,7 +106,7 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 152/152
+npm test                                  # 158/158
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -111,8 +117,8 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 ## Следующие шаги
 
 1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.9; чек-лист `/handoff-preflight`, новое поведение `/handoff-new`,
-   Settings UI появятся в новой сессии.
+   0.5.10; меню действий `/handoff-preflight` и новое поведение
+   `/handoff-new` появятся в новой сессии.
 2. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
 3. Решение владельца: remote/GitHub/CI, английский README, npm/marketplace.
@@ -123,7 +129,9 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 - Установленный пакет без резолвимого OMP loader → Settings игнорируются,
   работает env fallback.
 - `/handoff-preflight` — эвристика и advisory; не заменяет проверки
-  supervisor'а и не блокирует `/handoff-new`.
+  supervisor'а и не блокирует `/handoff-new`. Выбранные действия `commit`
+  и `merge` меняют репозиторий: merge только ff-only в чистый `main`
+  worktree, commit — `git add -A`.
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.

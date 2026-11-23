@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.9`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-23. Версия: `0.5.10`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция и Settings готовы; release/remote — по решению владельца.
 Оперативный список — `TODO.md`.
@@ -160,6 +160,21 @@ Orca-интеграция и Settings готовы; release/remote — по ре
 - [x] Команда по-прежнему read-only и останавливается после таблицы;
       `/handoff-new` запускается отдельно.
 - [x] Тесты: чек-лист, все пункты отмечены, отмена; docs и версия.
+
+## Этап 0.5.10 — действия preflight (готово)
+
+- [x] `/handoff-preflight` — меню действий «Сделать / Пропустить»: проверки,
+      commit, ff-merge.
+- [x] Проверки: `npm run test`/`typecheck`, если скрипты есть.
+- [x] Commit: `git add -A` + сообщение из `input`; merge: только
+      `--ff-only` в чистый `main` worktree.
+- [x] Упавшие проверки блокируют выбранные commit/merge в этом запуске.
+- [x] Вручную/агентом: завершить задачу, обновить `HANDOFF.md`, убрать
+      worktree после выхода.
+- [x] Отмена меню останавливает команду; без `askDialog` — read-only
+      таблица, как раньше.
+- [x] Тесты: меню, проверки, commit, ff-merge, блокировка при провале,
+      отмена; docs и версия.
 
 ## Этап 0.6 — экономика handoff (P2)
 

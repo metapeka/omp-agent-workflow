@@ -109,13 +109,11 @@ orca worktree rm --worktree path:<path> --delete-branch --json
 
 1. Обновить `HANDOFF.md`: цель, состояние, решения, файлы, проверки,
    следующие шаги.
-2. Закоммитить state (`HANDOFF.md`), если политика проекта это требует;
-   иначе preflight покажет грязное дерево.
-3. `/handoff-preflight [файл]` — чек-лист, затем read-only проверка: state,
-   git, ветка, upstream, marker. Блокеры advisory: команда ничего не
-   запрещает.
-4. `/handoff` — сжать контекст (не пишет `HANDOFF.md`).
-5. `/handoff-new` — новая сессия; без `HANDOFF.md` отказывает.
+2. `/handoff-preflight [файл]` — меню действий: проверки, commit, ff-merge;
+   затем read-only таблица state/git/ветка/upstream/marker. Commit и merge
+   можно не выбирать и сделать вручную. Блокеры advisory.
+3. `/handoff` — сжать контекст (не пишет `HANDOFF.md`).
+4. `/handoff-new` — новая сессия; без `HANDOFF.md` отказывает.
 
 Проверить marker:
 

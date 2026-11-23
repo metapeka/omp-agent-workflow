@@ -4,7 +4,7 @@
 OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
 объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.9` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.10` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
@@ -19,6 +19,8 @@ TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 (лимит 64k, маркер обрезки, fallback при ошибке чтения).
 `0.5.9` — `/handoff-preflight` показывает чек-лист перед таблицей проверок;
 отмена останавливает команду, без `askDialog` меню пропускается.
+`0.5.10` — `/handoff-preflight` меню действий: проверки, commit, ff-merge;
+вручную остаются задача, `HANDOFF.md`, worktree.
 
 ## С чего начать
 

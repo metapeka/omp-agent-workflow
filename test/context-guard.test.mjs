@@ -92,6 +92,7 @@ function view(percent, options = {}) {
 		parentSession = null,
 		newSessionResult = { cancelled: false },
 		askDialog = null,
+		input = null,
 	} = options;
 	const notes = [];
 	const compactions = [];
@@ -116,6 +117,7 @@ function view(percent, options = {}) {
 				notes.push({ text, level });
 			},
 			...(askDialog ? { askDialog } : {}),
+			...(input ? { input } : {}),
 		},
 		getContextUsage() {
 			return {
@@ -1017,6 +1019,9 @@ function preflightRepo(files) {
 		return result.stdout.trim();
 	};
 	run("init", "-q", "-b", "main");
+	run("config", "user.name", "Test");
+	run("config", "user.email", "test@example.com");
+	run("config", "commit.gpgsign", "false");
 	for (const [name, content] of Object.entries(files)) {
 		writeFileSync(join(dir, name), content);
 	}
@@ -1025,7 +1030,7 @@ function preflightRepo(files) {
 	return { dir, run };
 }
 
-function checklistDialog(noIds = []) {
+function actionDialog(selectedIds = []) {
 	const asked = [];
 	const askDialog = async (questions) => {
 		asked.push(questions);
@@ -1034,9 +1039,11 @@ function checklistDialog(noIds = []) {
 			results: questions.map((question) => ({
 				id: question.id,
 				question: question.question,
-				options: ["Да", "Нет"],
+				options: ["Сделать", "Пропустить"],
 				multi: false,
-				selectedOptions: [noIds.includes(question.id) ? "Нет" : "Да"],
+				selectedOptions: [
+					selectedIds.includes(question.id) ? "Сделать" : "Пропустить",
+				],
 			})),
 		};
 	};
@@ -1065,40 +1072,24 @@ describe("/handoff-preflight", () => {
 		}
 	});
 
-	it("shows the checklist and reports items not marked", async () => {
+	it("shows the action menu and leaves skipped actions alone", async () => {
 		const { dir } = preflightRepo({
 			"HANDOFF.md": "# state\n",
 			"index.ts": "export {};\n",
 		});
 		try {
 			const { commands } = install();
-			const { asked, askDialog } = checklistDialog(["state"]);
+			const { asked, askDialog } = actionDialog();
 			const v = view(40, { cwd: dir, askDialog });
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(asked.length, 1);
-			assert.equal(asked[0].length, 6);
-			assert.match(asked[0][0].question, /задача завершена/);
-			assert.match(v.notes[0].text, /чек-лист: не отмечено — HANDOFF\.md обновлён/);
-			assert.match(v.notes[0].text, /preflight: OK/);
-			assert.equal(v.notes[0].level, "warning");
-		} finally {
-			rmSync(dir, { recursive: true, force: true });
-		}
-	});
-
-	it("keeps the preflight verdict when every checklist item is marked", async () => {
-		const { dir } = preflightRepo({
-			"HANDOFF.md": "# state\n",
-			"index.ts": "export {};\n",
-		});
-		try {
-			const { commands } = install();
-			const { askDialog } = checklistDialog();
-			const v = view(40, { cwd: dir, askDialog });
-			await command(commands, "handoff-preflight", v.ctx);
-
-			assert.match(v.notes[0].text, /чек-лист: всё отмечено/);
+			assert.deepEqual(
+				asked[0].map((question) => question.id),
+				["checks", "commit", "merge"],
+			);
+			assert.match(v.notes[0].text, /вручную\/агентом: завершить задачу/);
+			assert.doesNotMatch(v.notes[0].text, /коммит:|проверки:|merge:/);
 			assert.match(v.notes[0].text, /preflight: OK/);
 			assert.equal(v.notes[0].level, "info");
 		} finally {
@@ -1106,7 +1097,214 @@ describe("/handoff-preflight", () => {
 		}
 	});
 
-	it("stops when the checklist is cancelled", async () => {
+	it("runs selected checks", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"package.json": JSON.stringify({
+				scripts: { test: "exit 0", typecheck: "exit 0" },
+			}),
+		});
+		try {
+			const { commands } = install();
+			const { askDialog } = actionDialog(["checks"]);
+			const v = view(40, { cwd: dir, askDialog });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(v.notes.at(-1).text, /✓ проверки: test OK; typecheck OK/);
+			assert.match(v.notes.at(-1).text, /preflight: OK/);
+			assert.equal(v.notes.at(-1).level, "info");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("commits changes with the entered message", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => "test: handoff",
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "test: handoff");
+			assert.equal(run("status", "--porcelain"), "");
+			assert.match(v.notes.at(-1).text, /✓ коммит: [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /preflight: OK/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("fast-forwards the branch into the main worktree", async () => {
+		const parent = mkdtempSync(join(tmpdir(), "cg-action-merge-"));
+		const mainDir = join(parent, "main");
+		const featureDir = join(parent, "feature");
+		mkdirSync(mainDir);
+		const gitAt = (cwd, ...args) => {
+			const result = spawnSync(
+				"git",
+				[
+					"-c",
+					"user.name=Test",
+					"-c",
+					"user.email=test@example.com",
+					"-c",
+					"commit.gpgsign=false",
+					...args,
+				],
+				{ cwd, encoding: "utf8" },
+			);
+			assert.equal(result.status, 0, result.stderr);
+			return result.stdout.trim();
+		};
+		try {
+			gitAt(mainDir, "init", "-q", "-b", "main");
+			writeFileSync(join(mainDir, "HANDOFF.md"), "# state\n");
+			writeFileSync(join(mainDir, "code.ts"), "export {};\n");
+			gitAt(mainDir, "add", "-A");
+			gitAt(mainDir, "commit", "-q", "-m", "init");
+			gitAt(mainDir, "worktree", "add", "-q", "-b", "feat", featureDir);
+			writeFileSync(join(featureDir, "feature.ts"), "export {};\n");
+			gitAt(featureDir, "add", "-A");
+			gitAt(featureDir, "commit", "-q", "-m", "feat");
+
+			const { commands } = install();
+			const { askDialog } = actionDialog(["merge"]);
+			const v = view(40, { cwd: featureDir, askDialog });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(v.notes.at(-1).text, /✓ merge: main @ [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /влита в main/);
+			assert.equal(
+				gitAt(mainDir, "rev-parse", "HEAD"),
+				gitAt(featureDir, "rev-parse", "HEAD"),
+			);
+		} finally {
+			rmSync(parent, { recursive: true, force: true });
+		}
+	});
+
+	it("does not commit or merge when selected checks fail", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"package.json": JSON.stringify({
+				scripts: { test: "exit 1", typecheck: "exit 0" },
+			}),
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			let inputs = 0;
+			const { commands } = install();
+			const { askDialog } = actionDialog(["checks", "commit", "merge"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => {
+					inputs += 1;
+					return "must not commit";
+				},
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(inputs, 0);
+			assert.equal(run("log", "-1", "--format=%s"), "init");
+			assert.match(v.notes.at(-1).text, /✗ проверки: test FAIL/);
+			assert.match(v.notes.at(-1).text, /коммит: пропущен — проверки не прошли/);
+			assert.equal(v.notes.at(-1).level, "warning");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("fails checks on broken package.json and skips commit", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"package.json": "{not json\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			let inputs = 0;
+			const { commands } = install();
+			const { askDialog } = actionDialog(["checks", "commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => {
+					inputs += 1;
+					return "must not commit";
+				},
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(inputs, 0);
+			assert.equal(run("log", "-1", "--format=%s"), "init");
+			assert.match(v.notes.at(-1).text, /✗ проверки: package\.json — битый JSON/);
+			assert.match(v.notes.at(-1).text, /коммит: пропущен — проверки не прошли/);
+			assert.equal(v.notes.at(-1).level, "warning");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("does not commit handoff runtime files", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			writeFileSync(join(dir, ".omp-handoff-session.json"), "{}\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => "test: files",
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "test: files");
+			assert.deepEqual(run("show", "--name-only", "--format=", "HEAD").split("\n"), [
+				"code.ts",
+			]);
+			assert.match(run("status", "--porcelain"), /\?\? \.omp-handoff-session\.json/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses to commit on detached HEAD", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			run("checkout", "-q", "--detach");
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			let inputs = 0;
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => {
+					inputs += 1;
+					return "must not commit";
+				},
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(inputs, 0);
+			assert.equal(run("log", "-1", "--format=%s"), "init");
+			assert.match(v.notes.at(-1).text, /коммит: detached HEAD/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("stops when the action menu is cancelled", async () => {
 		const { dir } = preflightRepo({
 			"HANDOFF.md": "# state\n",
 			"index.ts": "export {};\n",
@@ -1343,15 +1541,10 @@ describe("/handoff-preflight", () => {
 		const { dir } = preflightRepo({ "ALT.md": "# alt\n" });
 		try {
 			const { commands } = install();
-			const { asked, askDialog } = checklistDialog(["state"]);
-			const v = view(40, { cwd: dir, askDialog });
+			const v = view(40, { cwd: dir });
 			await command(commands, "handoff-preflight", v.ctx, "ALT.md");
 
-			const stateQuestion = asked[0].find((question) => question.id === "state");
-			assert.ok(stateQuestion);
-			assert.match(stateQuestion.question, /ALT\.md обновлён/);
-			assert.match(v.notes[0].text, /чек-лист: не отмечено — ALT\.md обновлён/);
-			assert.equal(v.notes[0].level, "warning");
+			assert.equal(v.notes[0].level, "info");
 			assert.match(v.notes[0].text, /ALT\.md: закоммичен в HEAD/);
 			assert.doesNotMatch(v.notes[0].text, /HANDOFF\.md: нет/);
 		} finally {

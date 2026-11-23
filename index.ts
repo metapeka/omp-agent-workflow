@@ -12,7 +12,7 @@
  * Установка: `omp plugin link <каталог>` или копия в
  * `~/.omp/agent/extensions/context-guard.ts` (одно из двух).
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type {
@@ -90,11 +90,12 @@ export interface PreflightReport {
 function git(
 	cwd: string,
 	args: string[],
+	timeout = 10_000,
 ): { ok: boolean; out: string; error: string } {
 	const result = spawnSync("git", args, {
 		cwd,
 		encoding: "utf8",
-		timeout: 10_000,
+		timeout,
 		env: { ...process.env, LC_ALL: "C", LANG: "C" },
 	});
 	const stdout = typeof result.stdout === "string" ? result.stdout : "";
@@ -278,102 +279,311 @@ export function formatPreflight(report: PreflightReport): string {
 	].join("\n");
 }
 
-/** Пункты, которые человек отмечает перед handoff; проверки ниже остаются автоматическими. */
-interface HandoffChecklistItem {
-	id: string;
+/** Действия, которые preflight умеет выполнить сам; остальное — вручную/агентом. */
+interface HandoffAction {
+	id: "checks" | "commit" | "merge";
 	label: string;
 	question: string;
+	description: string;
+	recommended: number;
 }
 
-const HANDOFF_CHECKLIST: ReadonlyArray<HandoffChecklistItem> = [
+const HANDOFF_ACTIONS: ReadonlyArray<HandoffAction> = [
 	{
-		id: "task",
-		label: "задача завершена",
-		question: "Текущая задача завершена — сессию можно закрывать?",
+		id: "checks",
+		label: "проверки",
+		question: "Прогнать npm test и typecheck?",
+		description: "npm run test и npm run typecheck, если скрипты есть",
+		recommended: 0,
 	},
 	{
-		id: "commits",
-		label: "изменения закоммичены",
-		question: "Все изменения закоммичены?",
+		id: "commit",
+		label: "коммит",
+		question: "Закоммитить изменения?",
+		description: "git add -A и коммит с введённым сообщением",
+		recommended: 1,
 	},
 	{
 		id: "merge",
-		label: "ветка влита в main",
-		question: "Ветка влита в main?",
-	},
-	{
-		id: "worktree",
-		label: "worktree убран",
-		question: "Worktree и временные файлы убраны?",
-	},
-	{
-		id: "state",
-		label: "HANDOFF.md обновлён",
-		question: "HANDOFF.md обновлён под следующую сессию?",
-	},
-	{
-		id: "checks",
-		label: "тесты и typecheck прошли",
-		question: "npm test и typecheck прошли?",
+		label: "merge",
+		question: "Слить ветку в main (ff-only)?",
+		description: "fast-forward в main worktree; при конфликте — ошибка",
+		recommended: 1,
 	},
 ];
 
-/** Подставляет фактический state-файл из аргумента `/handoff-preflight [файл]`. */
-function handoffChecklist(stateFile: string): ReadonlyArray<HandoffChecklistItem> {
-	return HANDOFF_CHECKLIST.map((item) => {
-		if (item.id !== "state") return item;
-		return {
-			...item,
-			label: `${stateFile} обновлён`,
-			question: `${stateFile} обновлён под следующую сессию?`,
-		};
-	});
-}
+const MANUAL_HANDOFF_STEPS =
+	"вручную/агентом: завершить задачу, обновить HANDOFF.md, убрать worktree после выхода";
 
-type ChecklistOutcome =
+type ActionOutcome =
 	| { status: "skipped" }
 	| { status: "cancelled" }
-	| { status: "answered"; pending: readonly string[] };
+	| { status: "answered"; selected: ReadonlySet<string> };
 
 /**
- * Чек-лист перед handoff: один диалог с вопросами Да/Нет.
- * Без `askDialog` (старый TUI-хост) меню пропускается: проверки не
- * блокируются, таблица выводится как раньше. Headless/sub сюда не попадают.
+ * Меню действий перед handoff. Без `askDialog` (старый TUI-хост) меню
+ * пропускается: команда остаётся read-only и печатает таблицу.
  */
-async function askHandoffChecklist(
-	ctx: ExtensionContext,
-	stateFile: string,
-): Promise<ChecklistOutcome> {
+async function askHandoffActions(ctx: ExtensionContext): Promise<ActionOutcome> {
 	const askDialog = ctx.ui.askDialog;
 	if (!askDialog) return { status: "skipped" };
-	const items = handoffChecklist(stateFile);
 	let result: ExtensionAskDialogResult | undefined;
 	try {
 		result = await askDialog(
-			items.map((item, index) => ({
-				id: item.id,
-				header: `handoff ${index + 1}/${items.length}`,
-				question: item.question,
+			HANDOFF_ACTIONS.map((action, index) => ({
+				id: action.id,
+				header: `handoff ${index + 1}/${HANDOFF_ACTIONS.length}`,
+				question: action.question,
 				options: [
-					{ label: "Да", description: "Пункт выполнен" },
-					{ label: "Нет", description: "Пункт остаётся в чек-листе" },
+					{ label: "Сделать", description: action.description },
+					{ label: "Пропустить", description: "Ничего не менять" },
 				],
-				recommended: 0,
+				recommended: action.recommended,
 			})),
 		);
 	} catch {
 		return { status: "skipped" };
 	}
 	if (!result || result.kind !== "submit") return { status: "cancelled" };
-	const done = new Set(
-		result.results
-			.filter((item) => !item.timedOut && item.selectedOptions[0] === "Да")
-			.map((item) => item.id),
-	);
 	return {
 		status: "answered",
-		pending: items.filter((item) => !done.has(item.id)).map((item) => item.label),
+		selected: new Set(
+			result.results
+				.filter((item) => !item.timedOut && item.selectedOptions[0] === "Сделать")
+				.map((item) => item.id),
+		),
 	};
+}
+
+export interface HandoffActionReport {
+	id: string;
+	ok: boolean;
+	text: string;
+}
+
+/** Коммит всех изменений с сообщением из input-диалога. */
+async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport> {
+	const branch = git(ctx.cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
+	if (!branch.ok || !branch.out || branch.out === "HEAD") {
+		return {
+			id: "commit",
+			ok: false,
+			text: "коммит: detached HEAD — переключись на ветку",
+		};
+	}
+	const status = git(ctx.cwd, ["status", "--porcelain"]);
+	if (!status.ok) {
+		return { id: "commit", ok: false, text: `коммит: git status — ${status.error}` };
+	}
+	if (!status.out) return { id: "commit", ok: true, text: "коммит: нечего коммитить" };
+	const message = await ctx.ui.input(
+		"Сообщение коммита",
+		"handoff: перед сменой сессии",
+	);
+	if (typeof message !== "string" || !message.trim()) {
+		return { id: "commit", ok: true, text: "коммит: пропущен (нет сообщения)" };
+	}
+	const add = git(
+		ctx.cwd,
+		[
+			"add",
+			"-A",
+			"--",
+			".",
+			":(exclude).omp-handoff-session.json",
+			":(exclude).omp-handoff-request.json",
+			":(exclude).omp-handoff-supervisor.lock",
+		],
+		60_000,
+	);
+	if (!add.ok) return { id: "commit", ok: false, text: `коммит: git add — ${add.error}` };
+	const commit = git(ctx.cwd, ["commit", "-m", message.trim()], 120_000);
+	if (!commit.ok) {
+		return { id: "commit", ok: false, text: `коммит: git commit — ${commit.error}` };
+	}
+	const head = git(ctx.cwd, ["rev-parse", "--short", "HEAD"]);
+	return { id: "commit", ok: true, text: `коммит: ${head.ok ? head.out : "OK"}` };
+}
+
+/** Находит worktree, в котором checked out `main`. */
+function mainWorktree(cwd: string): string | null {
+	const list = git(cwd, ["worktree", "list", "--porcelain"]);
+	if (!list.ok) return null;
+	let path: string | null = null;
+	for (const line of list.out.split("\n")) {
+		if (line.startsWith("worktree ")) path = line.slice("worktree ".length);
+		else if (line === "branch refs/heads/main" && path) return path;
+		else if (line === "") path = null;
+	}
+	return null;
+}
+
+/** Fast-forward merge текущей ветки в main worktree; без force. */
+function performMerge(cwd: string): HandoffActionReport {
+	const branch = git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
+	if (!branch.ok || !branch.out || branch.out === "HEAD") {
+		return { id: "merge", ok: false, text: "merge: не удалось определить ветку" };
+	}
+	if (branch.out === "main") {
+		return { id: "merge", ok: true, text: "merge: уже на main" };
+	}
+	const target = mainWorktree(cwd);
+	if (!target) {
+		return { id: "merge", ok: false, text: "merge: main worktree не найден" };
+	}
+	const status = git(target, ["status", "--porcelain"]);
+	if (!status.ok) {
+		return { id: "merge", ok: false, text: "merge: main worktree не читается" };
+	}
+	if (status.out) {
+		return { id: "merge", ok: false, text: "merge: main worktree грязный" };
+	}
+	const ff = git(target, ["merge-base", "--is-ancestor", "main", branch.out]);
+	if (!ff.ok) {
+		return {
+			id: "merge",
+			ok: false,
+			text: "merge: не fast-forward — смерджи вручную",
+		};
+	}
+	const merge = git(target, ["merge", "--ff-only", branch.out], 120_000);
+	if (!merge.ok) {
+		return { id: "merge", ok: false, text: `merge: ${merge.error || "ошибка git"}` };
+	}
+	const head = git(target, ["rev-parse", "--short", "HEAD"]);
+	return { id: "merge", ok: true, text: `merge: main @ ${head.ok ? head.out : "OK"}` };
+}
+
+/** Запускает npm-скрипт без блокировки event loop TUI. */
+function runNpmScript(
+	cwd: string,
+	name: string,
+): Promise<{ ok: boolean; text: string }> {
+	const { promise, resolve } = Promise.withResolvers<{ ok: boolean; text: string }>();
+	let settled = false;
+	let timer: NodeJS.Timeout | undefined;
+	const finish = (ok: boolean, text: string): void => {
+		if (settled) return;
+		settled = true;
+		clearTimeout(timer);
+		resolve({ ok, text });
+	};
+	const child = spawn("npm", ["run", name], {
+		cwd,
+		env: { ...process.env, CI: "1" },
+		stdio: "ignore",
+	});
+	timer = setTimeout(() => {
+		child.kill("SIGKILL");
+		finish(false, `${name} FAIL (timeout)`);
+	}, 300_000);
+	child.on("error", (error) => finish(false, `${name} FAIL (${error.message})`));
+	child.on("close", (code) =>
+		finish(
+			code === 0,
+			code === 0 ? `${name} OK` : `${name} FAIL (exit ${code})`,
+		),
+	);
+	return promise;
+}
+
+/** Запускает scripts.test и scripts.typecheck из package.json, если они есть. */
+async function performChecks(cwd: string): Promise<HandoffActionReport> {
+	let text: string;
+	try {
+		text = readFileSync(resolve(cwd, "package.json"), "utf8");
+	} catch (error) {
+		const code =
+			error &&
+			typeof error === "object" &&
+			"code" in error &&
+			typeof error.code === "string"
+				? error.code
+				: null;
+		if (code === "ENOENT") {
+			return {
+				id: "checks",
+				ok: true,
+				text: "проверки: package.json нет — пропущено",
+			};
+		}
+		const message = error instanceof Error ? error.message : String(error);
+		return {
+			id: "checks",
+			ok: false,
+			text: `проверки: package.json не читается — ${message}`,
+		};
+	}
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(text);
+	} catch {
+		return { id: "checks", ok: false, text: "проверки: package.json — битый JSON" };
+	}
+	let raw: unknown = null;
+	if (parsed && typeof parsed === "object" && "scripts" in parsed) {
+		raw = parsed.scripts;
+	}
+	const scripts: Record<string, string> = {};
+	if (raw && typeof raw === "object") {
+		for (const [name, command] of Object.entries(raw)) {
+			if (typeof command === "string") scripts[name] = command;
+		}
+	}
+	const names = ["test", "typecheck"].filter((name) => name in scripts);
+	if (names.length === 0) {
+		return {
+			id: "checks",
+			ok: true,
+			text: "проверки: скриптов test/typecheck нет",
+		};
+	}
+	const results: string[] = [];
+	let ok = true;
+	for (const name of names) {
+		const result = await runNpmScript(cwd, name);
+		ok = ok && result.ok;
+		results.push(result.text);
+	}
+	return { id: "checks", ok, text: `проверки: ${results.join("; ")}` };
+}
+
+async function runHandoffActions(
+	ctx: ExtensionContext,
+	selected: ReadonlySet<string>,
+): Promise<HandoffActionReport[]> {
+	const reports: HandoffActionReport[] = [];
+	let checksOk: boolean | null = null;
+	let commitOk: boolean | null = null;
+	for (const action of HANDOFF_ACTIONS) {
+		if (!selected.has(action.id)) continue;
+		if (action.id === "commit" && checksOk === false) {
+			reports.push({
+				id: action.id,
+				ok: false,
+				text: "коммит: пропущен — проверки не прошли",
+			});
+			continue;
+		}
+		if (action.id === "merge" && (checksOk === false || commitOk === false)) {
+			reports.push({
+				id: action.id,
+				ok: false,
+				text: "merge: пропущен — есть незавершённый шаг",
+			});
+			continue;
+		}
+		const report =
+			action.id === "checks"
+				? await performChecks(ctx.cwd)
+				: action.id === "commit"
+					? await performCommit(ctx)
+					: performMerge(ctx.cwd);
+		reports.push(report);
+		if (action.id === "checks") checksOk = report.ok;
+		if (action.id === "commit") commitOk = report.ok;
+	}
+	return reports;
 }
 
 /** Краткий вид контекста: `42% (420k/1000k)`. */
@@ -627,37 +837,38 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand("handoff-preflight", {
-		description: "Чек-лист и проверка готовности к /handoff-new: git, state, marker",
+		description: "Действия и проверка готовности к /handoff-new: git, state, marker",
 		handler: async (args, ctx) => {
 			if (!isMainTui(ctx)) return;
 			const stateFile = args.trim() || STATE_FILE;
-			const checklist = await askHandoffChecklist(ctx, stateFile);
-			if (checklist.status === "cancelled") {
-				notify(ctx, "PREFLIGHT отменён: чек-лист не заполнен.", "info");
+			const outcome = await askHandoffActions(ctx);
+			if (outcome.status === "cancelled") {
+				notify(ctx, "PREFLIGHT отменён: действия не выбраны.", "info");
 				return;
 			}
+			if (outcome.status === "answered" && outcome.selected.size > 0) {
+				notify(ctx, "PREFLIGHT: выполняю выбранные действия…", "info");
+			}
+			const actions =
+				outcome.status === "answered"
+					? await runHandoffActions(ctx, outcome.selected)
+					: [];
 			const report = runPreflight(
 				ctx.cwd,
 				ctx.sessionManager.getSessionFile() ?? null,
 				stateFile,
 			);
-			const table = formatPreflight(report);
-			const pending = checklist.status === "answered" ? checklist.pending : null;
-			let prefix: string | null = null;
-			if (pending !== null) {
-				prefix =
-					pending.length === 0
-						? "чек-лист: всё отмечено"
-						: `чек-лист: не отмечено — ${pending.join(", ")}`;
+			const lines: string[] = [];
+			if (actions.length > 0) {
+				lines.push(...actions.map((action) => `${action.ok ? "✓" : "✗"} ${action.text}`));
 			}
+			if (outcome.status === "answered") lines.push(MANUAL_HANDOFF_STEPS);
+			lines.push(formatPreflight(report));
+			const failed = actions.some((action) => !action.ok);
 			notify(
 				ctx,
-				prefix ? `${prefix}\n${table}` : table,
-				pending && pending.length > 0
-					? "warning"
-					: report.ready
-						? "info"
-						: "warning",
+				lines.join("\n"),
+				failed || !report.ready ? "warning" : "info",
 			);
 		},
 	});
