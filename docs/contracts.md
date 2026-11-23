@@ -21,7 +21,7 @@
 
 ## Settings
 
-`package.json#omp.settings` даёт 9 ключей; UI — Settings → Plugins. Приоритет:
+`package.json#omp.settings` даёт 12 ключей; UI — Settings → Plugins. Приоритет:
 **Settings > env > режим/дефолт**. Значения читаются extension на
 `session_start` и `session_switch`, launcher — при старте. Для порогов `0`
 и `off` означают выключение; `handoffAtPercent`/`autoCompactPercent` без

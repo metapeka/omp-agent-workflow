@@ -55,7 +55,7 @@ const logLevel = (() => {
 	return raw === "quiet" || raw === "debug" ? raw : "info";
 })();
 const log = (message) => {
-	if (logLevel !== "quiet") console.log(message);
+	if (logLevel !== "quiet") console.error(message);
 };
 const intervalMs = Math.max(250, Number(values.interval) * 1000);
 const parsedAttempts = Number(values["max-attempts"]);

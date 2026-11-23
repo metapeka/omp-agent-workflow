@@ -458,7 +458,7 @@ describe("supervisor", () => {
 			);
 
 			assert.equal(result.status, 0, result.stderr);
-			assert.match(result.stdout, /waiting for grace/);
+			assert.match(result.stderr, /waiting for grace/);
 			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), true);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -484,7 +484,7 @@ describe("supervisor", () => {
 			);
 
 			assert.equal(result.status, 0, result.stderr);
-			assert.match(result.stdout, /stale marker removed/);
+			assert.match(result.stderr, /stale marker removed/);
 			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), false);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -535,7 +535,7 @@ describe("supervisor", () => {
 			);
 
 			assert.equal(result.status, 0, result.stderr);
-			assert.match(result.stdout, /disabled by OMP_SUPERVISOR_ENABLED/);
+			assert.match(result.stderr, /disabled by OMP_SUPERVISOR_ENABLED/);
 			assert.equal(
 				existsSync(join(dir, ".omp-handoff-supervisor.lock")),
 				false,
@@ -638,8 +638,8 @@ describe("supervisor", () => {
 				},
 			);
 
-			assert.doesNotMatch(quiet.stdout, /started dir=/);
-			assert.match(info.stdout, /started dir=/);
+			assert.doesNotMatch(quiet.stderr, /started dir=/);
+			assert.match(info.stderr, /started dir=/);
 			assert.equal(quiet.status, 1);
 			assert.equal(info.status, 1);
 		} finally {
