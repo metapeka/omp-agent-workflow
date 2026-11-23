@@ -5,6 +5,7 @@
 [English](README.md) · [简体中文](README.zh-CN.md) · [Русский](README.ru.md)
 
 [![tests](https://img.shields.io/badge/tests-182%2F182-brightgreen)](test)
+[![CI](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml)
 [![version](https://img.shields.io/badge/version-0.5.14-blue)](package.json)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![OMP](https://img.shields.io/badge/OMP-plugin-8a2be2)](package.json)
