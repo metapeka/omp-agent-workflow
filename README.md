@@ -96,6 +96,14 @@ custom message из `continuePrompt` и содержимого state-файла.
 `cwd` новой сессии — `ctx.cwd`, поэтому запускай `/handoff-new` из корня
 передаваемого проекта.
 
+> **Важно: кто запускает продолжение.**
+> `/handoff-new` только открывает новую сессию и кладёт state в контекст —
+> ход агента он не запускает. В Orca automatic handoff делает supervisor:
+> он отправляет `/handoff-new`, затем continuation prompt, и агент начинает
+> работу сам. В OMP без Orca после ручного `/handoff-new` отправь в новой
+> сессии любое сообщение, например «продолжай»: state уже в контексте,
+> повторять задачу не нужно.
+
 `/handoff-preflight [файл]` — проверка состояния, затем меню действий.
 Сначала печатается таблица и вердикт. В меню попадают только незакрытые
 пункты: `checks` всегда, `commit` — при грязном дереве, `merge` — если
@@ -129,8 +137,8 @@ HEAD, дерево чистое, ветка не detached, коммиты зап
    `HANDOFF.md` и записать `.omp-handoff-request.json`.
 2. Supervisor видит marker и session info, ждёт idle и отправляет
    `/handoff-new` в terminal handle.
-3. `/handoff-new` открывает новую сессию; supervisor отправляет continuation
-   prompt.
+3. `/handoff-new` открывает новую сессию и внедряет state; supervisor
+   отправляет continuation prompt — именно он запускает первый ход.
 
 Session info пишется расширением:
 

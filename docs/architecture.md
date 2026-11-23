@@ -103,8 +103,12 @@ Launcher читает те же ключи через `omp plugin config list` �
    `/handoff-new` в terminal handle.
 5. `/handoff-new` проверяет `HANDOFF.md`, ждёт idle, вызывает `newSession`,
    добавляет custom message: `continuePrompt` + содержимое state-файла
-   (лимит 64k, маркер обрезки, fallback при ошибке чтения).
-6. Cooldown и stale-marker guard не дают циклу повториться.
+   (лимит 64k, маркер обрезки, fallback при ошибке чтения). Ход не
+   запускается.
+6. Supervisor отправляет continuation prompt — первый user message, который
+   запускает агента. При ручном `/handoff-new` без supervisor это сообщение
+   («продолжай») отправляет пользователь.
+7. Cooldown и stale-marker guard не дают циклу повториться.
 
 Детали схем — [contracts.md](contracts.md).
 

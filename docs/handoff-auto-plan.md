@@ -40,10 +40,13 @@ E2E пройден в реальном Orca-терминале: marker → super
    `/handoff-new` в terminal handle.
 4. `/handoff-new` ждёт idle, проверяет `HANDOFF.md`, вызывает `newSession`,
    добавляет custom message: `continuePrompt` + содержимое state-файла
-   (до 64 000 символов, при превышении — маркер обрезки).
-5. Supervisor проверяет, что новая сессия стартовала, marker удалён, двух
-   активных сессий нет.
-6. Cooldown: extension не просит новый handoff 300 с
+   (до 64 000 символов, при превышении — маркер обрезки). Ход при этом не
+   запускается: custom message — контекст, а не user message.
+5. Supervisor проверяет, что новая сессия стартовала, и отправляет
+   continuation prompt — первый user message, который запускает агента.
+   Без supervisor это сообщение («продолжай») отправляет человек.
+6. Supervisor проверяет, что marker удалён и двух активных сессий нет.
+7. Cooldown: extension не просит новый handoff 300 с
    (`OMP_HANDOFF_COOLDOWN_SECONDS`), supervisor столько же не принимает
    ранние/stale marker'ы (`--cooldown`). Иначе новая сессия может уйти в цикл.
 

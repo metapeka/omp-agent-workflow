@@ -115,6 +115,11 @@ orca worktree rm --worktree path:<path> --delete-branch --json
 3. `/handoff` — сжать контекст (не пишет `HANDOFF.md`).
 4. `/handoff-new` — новая сессия; без `HANDOFF.md` отказывает.
 
+> **Важно.** В OMP без Orca `/handoff-new` только внедряет state в новую
+> сессию и не запускает ход. Отправь в ней «продолжай» — state уже в
+> контексте. В Orca automatic handoff делается сам: supervisor после
+> `/handoff-new` отправляет continuation prompt.
+
 Проверить marker:
 
 ```bash
@@ -125,7 +130,8 @@ cat .omp-handoff-session.json
 ## Automatic handoff
 
 Поток: порог → агент обновляет `HANDOFF.md` и пишет marker → supervisor
-отправляет `/handoff-new` → новая сессия читает `HANDOFF.md`.
+отправляет `/handoff-new` → supervisor отправляет continuation prompt →
+новая сессия начинает работу сама.
 
 Диагностика:
 

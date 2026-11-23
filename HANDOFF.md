@@ -70,6 +70,9 @@ state-файла; prompt без состояния больше не перед�
 - Текст `continuePrompt` остаётся настраиваемым и идёт первым.
 - `cwd` новой сессии — `ctx.cwd`; запускать `/handoff-new` из корня
   передаваемого проекта.
+- Ручной `/handoff-new` не запускает ход: без supervisor отправь в новой
+  сессии «продолжай». Supervisor при automatic handoff отправляет
+  continuation prompt сам.
 
 ## Settings 0.5.5
 

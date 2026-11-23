@@ -26,6 +26,10 @@ handoff, но не выходит за рамки, которые требуют
 `ExtensionCommandContext`. Поэтому для unattended-смены сессии нужен внешний
 supervisor или команда `/handoff-new`.
 
+`/handoff-new` внедряет state, но не запускает ход. В Orca supervisor после
+команды отправляет continuation prompt сам. Без Orca после ручного
+`/handoff-new` отправь в новой сессии «продолжай» — иначе агент не начнёт.
+
 ## Акторы
 
 | Актор | Ответственность | Контекст |
