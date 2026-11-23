@@ -1,0 +1,313 @@
+# omp-agent-workflow
+
+**面向 [OMP](https://github.com/oh-my-pi/pi-coding-agent) 的确定性上下文守卫、真正的会话交接与 worktree 编排。**
+
+[English](README.md) · [简体中文](README.zh-CN.md) · [Русский](README.ru.md)
+
+[![tests](https://img.shields.io/badge/tests-182%2F182-brightgreen)](test)
+[![version](https://img.shields.io/badge/version-0.5.14-blue)](package.json)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![OMP](https://img.shields.io/badge/OMP-plugin-8a2be2)](package.json)
+
+![Orchestrator 循环演示](docs/assets/demo.gif)
+
+*真实 13 秒录屏：在一次性 git 仓库中执行 `status → start → commit → verify → finish`。worktree 被删除，分支被保留。*
+
+---
+
+## 🧠 这是什么
+
+`omp-agent-workflow` **不是另一个编码代理**。它是你已经使用的代理之外的“连续性与纪律层”：
+
+- 🧭 **上下文守卫** — 35% 警告，50% 建议交接，60/70% 执行确定性动作，而不是指望模型自己发现。
+- 🔁 **真正的交接** — 启动一个**全新会话**，把 `HANDOFF.md` + `STATE.json` 嵌入首条消息并继续任务。这不是同一线程里的 `/compact`。
+- 👷 **外部守护进程** — 一个普通 Node watcher（不是 LLM），能在 OMP 进程结束后继续存活，并在 marker 出现时向终端 handle 发送 `/handoff-new`。
+- 🧩 **编排器** — `AUTOPLAN.md` → worktree → 实现 → 验证 → 快进合并 → 安全清理 → 下一任务；预算、门控和停止原因都记录在 `STATE.json`。
+- 🛡️ **默认安全** — 清理会拒绝未合并、脏、当前、有活进程或活终端的 worktree；分支 tip 会写入备份引用。
+- 🎛️ **人工确认 `/wrap`** — 一个菜单完成收尾：交接、清理、创建下一个 worktree、回顾评审。
+
+它可以在纯 OMP 下工作。Orca 是可选的增强。
+
+---
+
+## ✨ 与众不同之处
+
+大多数工具优化**模型调用**。这个项目优化**会话边界**——代理最容易丢失决策、浪费上下文或毁掉工作的地方。
+
+| # | 差异 | 实际意义 |
+|---|---|---|
+| 1 | **确定性阈值** | 35/50/60/70% 是设置，不是感觉。换模型也保持一致。 |
+| 2 | **交接到全新会话** | 新会话从干净上下文开始并拿到状态文件；旧会话不再拖着 50 万 token 的历史。 |
+| 3 | **守护进程在代理之外** | OMP 会话死了，watcher 还活着。它是文件协议 + 终端 handle，不是提示词。 |
+| 4 | **计划 → worktree → 验证 → 合并** | 每个任务隔离、可验证、只做 ff-only 合并。同一时间只有一个 `current` 任务。 |
+| 5 | **不会自毁的清理** | 活会话和当前 worktree 是硬阻断；分支默认保留；tip 可恢复。 |
+| 6 | **OMP 原生，Orca 可选** | 设置放在 OMP，状态只多一个键；没有 Orca 也能优雅降级。 |
+
+> 一句话：**让长时间代理工作可恢复、有边界、可回滚。**
+
+---
+
+## 📊 与同类工具对比
+
+| 能力 | **omp-agent-workflow** | Claude Code | Codex CLI | Aider | OpenCode | Cline | Orca |
+|---|---|---|---|---|---|---|---|
+| 可配置阈值的上下文预算守卫 | ✅ 确定性三段守卫 | ⚠️ 手动 `/compact` / `/clear` | ⚠️ compact + resume | ⚠️ repo map + token 预算 | ⚠️ 内置上下文管理 | ⚠️ 上下文管理 | — |
+| 交接给**全新**会话并嵌入状态 | ✅ 新会话 + 状态文件 | ⚠️ 同线程 resume/compact | ⚠️ resume/fork | — | ⚠️ 会话，需手动 | — | — |
+| 会话结束后仍存活的外部守护进程 | ✅ | — | — | — | — | — | — |
+| 计划 → worktree → 验证 → ff 合并 | ✅ | ⚠️ 手动 / 子代理 | ⚠️ 手动 | ⚠️ 手动提交 | ⚠️ | ⚠️ | ⚠️ 仅 worktree |
+| 清理守卫 + 备份引用 | ✅ merged/clean/current/live 检查 | — | — | — | — | — | ⚠️ worktree remove |
+| 人工确认收尾向导 | ✅ `/wrap` | ⚠️ | — | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| 设置 UI + 环境变量回退 | ✅ OMP Settings，13 个键 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 作为 OMP 之上的工作流层 | ✅ | — 自有代理 | — 自有代理 | — 自有代理 | — 自有代理 | — 自有代理 | ✅ 宿主 |
+
+**图例：** ✅ 一等能力 · ⚠️ 手动或部分支持 · — 不是其文档中的一等能力。
+
+*基于 2026 年 11 月的公开厂商文档。这是能力对比，不是基准测试。“—”不代表工具不好，只代表该能力不是其重点。*
+
+### 独特的组合
+
+我们还没有发现另一个工具同时做到这五件事：
+
+1. 确定性上下文预算，
+2. 交接到**全新**会话并嵌入状态，
+3. **外部**守护进程，
+4. 计划/worktree/验证/合并的编排，
+5. 保护活会话且恢复成本很低的清理守卫。
+
+单项能力各自存在。真正有价值的是**粘合方式与保证**。
+
+---
+
+## 🔁 工作方式
+
+![上下文生命周期](docs/assets/lifecycle.svg)
+
+### 交接协议（基于文件，无魔法）
+
+1. 代理更新 `HANDOFF.md`：目标、状态、决策、文件、检查、下一步。
+2. 在安全边界写入 `.omp-handoff-request.json`（marker）。
+3. 守护进程看到 marker，向 `.omp-handoff-session.json` 中的终端 handle 发送 `/handoff-new`。
+4. `/handoff-new` 用 `continuePrompt` + 状态文件构造新会话消息（64k 上限、截断标记、读取失败回退）。
+5. 新会话读取 `HANDOFF.md` 并继续。不会在工具循环中间压缩；插件等待 `turn_end` 和 `ctx.isIdle()`。
+
+```text
+OMP 会话 A ── marker ──▶ 守护进程 ── /handoff-new ──▶ OMP 会话 B
+      │                                                   │
+      └──────────── HANDOFF.md + STATE.json ──────────────┘
+```
+
+### 编排循环
+
+![编排循环](docs/assets/orchestrator-loop.svg)
+
+```bash
+bin/omp-orchestrate status
+bin/omp-orchestrate start T1
+# 代理在打印出的 worktree 中工作、提交、返回 SHA
+bin/omp-orchestrate verify T1
+bin/omp-orchestrate finish T1 --commit <sha> --review ok
+```
+
+`finish` 只在干净的 base 上做 **ff-only** 合并，记录 commit，然后删除 worktree——但必须通过清理守卫。否则返回 warning 并保留 worktree。
+
+### `/wrap` — 像人一样收尾
+
+![wrap 菜单](docs/assets/tui-wrap.png)
+
+向导先展示事实，再只提供有意义的动作。清理候选必须是 merged、clean、非当前、位于 base repo 之外，并且没有活进程或 Orca 终端。确认信息包含 path、branch、HEAD。
+
+---
+
+## 🚀 快速开始
+
+**要求：** Node.js 22+、OMP 19+、git。Orca 可选。
+
+```bash
+# 1. 获取代码
+git clone https://github.com/metapeka/omp-agent-workflow.git
+cd omp-agent-workflow
+
+# 2. 安装依赖并验证
+npm ci
+npm test
+npm run typecheck
+
+# 3. 链接为 OMP 插件
+omp plugin link "$PWD"
+omp plugin list
+
+# 4. 用推荐模式启动 OMP
+bin/omp-yoda                  # supervisor + OMP，yoda-supervised
+# 或者不用 launcher：
+OMP_WORKFLOW_MODE=yoda omp
+```
+
+然后使用：
+
+```text
+/handoff              # 更新 HANDOFF.md 并请求交接
+/handoff-preflight    # 新会话前检查阻断项/警告
+/handoff-new          # 启动嵌入状态的新会话
+/wrap                 # 收尾：清理、下一个 worktree、回顾评审
+```
+
+---
+
+## ⚙️ 配置
+
+Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境变量 > 模式默认值**。
+
+| 键 | 默认值 | 含义 |
+|---|---|---|
+| `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `statusEnabled` | `true` | 显示 `workflow` 状态键 |
+| `handoffAtPercent` | `55`（yoda）/ off | 交接阈值；`0` = 关闭 |
+| `handoffCooldownSeconds` | `300` | 交接后的冷却时间 |
+| `contextWarnPercent` | `35` | 第一次警告 |
+| `contextSuggestPercent` | `50` | 建议交接 |
+| `autoCompactPercent` | `60` / `70` / off | 自动压缩阈值 |
+| `orcaEnabled` | `true` | Orca 终端检查；`false` 回退到 git/`/proc` |
+| `orcaPreflight` | `true` | 交接前验证终端 handle |
+| `supervisorEnabled` | `true` | 允许 `bin/omp-yoda` 启动守护进程 |
+| `continuePrompt` | 内置 | 新会话消息的第一段 |
+| `supervisorRetries` | `3` | 发送/预检重试次数 |
+| `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
+
+环境变量回退：`OMP_WORKFLOW_MODE`、`OMP_STATUS_ENABLED`、`OMP_HANDOFF_AT`、`OMP_CONTEXT_*`、`OMP_HANDOFF_COOLDOWN_SECONDS`、`OMP_ORCA_ENABLED`、`OMP_ORCA_PREFLIGHT`、`OMP_SUPERVISOR_ENABLED`、`OMP_HANDOFF_PROMPT`、`OMP_SUPERVISOR_RETRIES`、`OMP_SUPERVISOR_LOG_LEVEL`、`ORCA_CLI_COMMAND`。
+
+### 模式
+
+| 模式 | 自动压缩 | 交接 | 守护进程 |
+|---|---|---|---|
+| `manual` | 关 | 关 | 关 |
+| `assisted`（默认） | 60% | 关 | 关 |
+| `yoda` | 70% 回退 | 55% | 关 |
+| `yoda-supervised` | 70% 回退 | 55% | ✅ |
+
+### 状态栏
+
+只增加一个键；原生 `context_pct` 不会重复。
+
+```text
+YODA                  yoda 模式
+YODA-SUP              yoda-supervised，守护进程存活
+YODA-SUP · SUP OFF    守护进程缺失
+YODA-SUP · T2 verify  正在验证编排任务 T2
+YODA · ⚠ HANDOFF      达到交接阈值
+```
+
+![workflow 状态键](docs/assets/tui-status.png)
+
+---
+
+## 🛡️ 安全模型
+
+- **不在回合中间压缩。** 插件等待 `turn_end` 和 `ctx.isIdle()`。
+- **同一时间一个当前任务。** 0.5 有意拒绝并行任务。
+- **只做 ff-only 合并。** 分叉会变成 `rebase-required`，不会产生静默的 merge commit。
+- **清理是保守的。** 拒绝未合并、脏、当前、有活进程、有活终端的 worktree。
+- **分支默认保留。** tip 写入 `refs/omp-worktree-backup/*`；删除必须显式并只使用 `git branch -d`。
+- **Orca 会杀掉被删除 worktree 的 PTY。** 从目标内部清理是硬错误：这正是 2026-11-23 事故中 `orca worktree rm` 向活着的 OMP 会话发送 SIGTERM 的原因。
+- **没有运行时依赖。** 只用 Node 内置模块；开发依赖是 typescript 和类型定义。
+
+详细工程笔记（俄语）：[`docs/operations.md`](docs/operations.md)、[`docs/decisions.md`](docs/decisions.md)。
+
+---
+
+## 🧩 命令
+
+| 命令 | 作用 |
+|---|---|
+| `/handoff` | 在安全边界更新状态并请求交接 |
+| `/handoff-preflight [file]` | 只读检查 + 仅列出未解决动作的菜单 |
+| `/handoff-new [file]` | 用 `continuePrompt` + 状态文件启动新会话 |
+| `/wrap` | 人工确认收尾：清理、下一个 worktree、评审、交接 |
+| `/orchestrate status\|next\|start\|verify\|finish\|rebase\|stop\|resume` | 编排控制 |
+| `bin/omp-yoda` | 启动器：守护进程 + OMP（`yoda-supervised`） |
+| `bin/omp-handoff-supervisor.mjs` | 外部 marker watcher（不是 LLM） |
+| `bin/omp-orchestrate` | 相同动作的无头 CLI |
+
+---
+
+## 🖼️ 截图
+
+### `/wrap` — 收尾任务
+
+![wrap](docs/assets/tui-wrap.png)
+
+只有当存在 merged、clean、非当前且没有活终端的 worktree 时，卡片才可用。所有破坏性动作都会要求确认。
+
+### `/handoff-preflight` — 切换前先知道
+
+![preflight](docs/assets/tui-preflight.png)
+
+阻断项是**建议性**的：它们解释缺什么，并只提供仍未完成的动作。`/handoff-new` 不会暗中被它们阻塞。
+
+### 真实 CLI：计划 → 验证 → 合并
+
+![orchestrate](docs/assets/terminal-orchestrate.png)
+
+### 守护进程是 watcher，不是模型
+
+![supervisor](docs/assets/terminal-supervisor.png)
+
+> CLI 目前输出俄语；JSON 输出与语言无关。本地化在路线图上。
+
+---
+
+## 📚 文档与目录
+
+| 路径 | 内容 |
+|---|---|
+| [`docs/README.md`](docs/README.md) | 工程 wiki（俄语）：架构、契约、runbook |
+| [`docs/orchestrator.md`](docs/orchestrator.md) | `AUTOPLAN.md`、`STATE.json`、预算、停止门控 |
+| [`docs/operations.md`](docs/operations.md) | 安装、守护进程、worktree、事故 |
+| [`docs/decisions.md`](docs/decisions.md) | 已接受决策与被拒方案 |
+| [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | 可复制的计划模板 |
+| [`CHANGELOG.md`](CHANGELOG.md) | 发布历史 |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | 本地检查与安全敏感区域 |
+| [`HANDOFF.md`](HANDOFF.md) | 当前项目状态与 SIGTERM 事故分析 |
+| [`ROADMAP.md`](ROADMAP.md) / [`TODO.md`](TODO.md) | 方向与待办 |
+
+---
+
+## ❓ FAQ 与限制
+
+**它是编码代理吗？** 不是。它是 OMP 的工作流层。你仍然使用自己的模型和代理。
+
+**它替代 `/compact` 吗？** 不，它补充它。`assisted` 模式仍使用压缩；`yoda` 更倾向于在 55% 交接。
+
+**需要 Orca 吗？** 不需要。Orca 提供终端/worktree 集成和更丰富的活体检查；没有它时使用 git 与 `/proc` 回退。
+
+**可以并行任务吗？** 0.5 不行。一个 `current` 任务让合并、预算和交接保持确定性。
+
+**会删除我的分支吗？** 默认不会。它保留分支并把 tip 写入备份引用。删除必须显式，且只在 merged 检查后使用 `git branch -d`。
+
+**阈值是测出来的吗？** 是可配置的启发式策略，确定性执行。把它当政策，不要当物理定律。
+
+**为什么有些界面是俄语？** 项目最初使用俄语。现在英/中文文档是主要入口；界面本地化是独立任务。
+
+---
+
+## 🧪 开发
+
+```bash
+npm ci
+npm test          # 182 个测试
+npm run typecheck
+```
+
+测试使用真实临时 git 仓库，不需要活的 Orca 或模型调用。扩展冒烟测试：
+
+```bash
+omp --no-extensions -e ./index.ts -e ./orchestrator.ts \
+  --no-session --no-tools --mode json -p 'Reply with exactly: OK'
+```
+
+贡献：行为变更必须有测试，文档在同一次提交更新，永远不要提交会话/运行时文件。
+
+---
+
+## 📄 许可证
+
+MIT © 2026 metapeka。见 [LICENSE](LICENSE)。

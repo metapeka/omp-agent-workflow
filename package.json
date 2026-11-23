@@ -2,14 +2,29 @@
   "name": "omp-agent-workflow",
   "version": "0.5.14",
   "type": "module",
-  "description": "Context guard, automatic handoff and Yoda workflow for OMP",
+  "description": "Deterministic context guard, session handoff, and worktree orchestration for OMP (oh-my-pi)",
   "keywords": [
     "omp-plugin",
     "oh-my-pi",
     "context",
     "compaction",
-    "handoff"
+    "handoff",
+    "session-management",
+    "orchestration",
+    "worktree",
+    "supervisor"
   ],
+  "homepage": "https://github.com/metapeka/omp-agent-workflow#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metapeka/omp-agent-workflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/metapeka/omp-agent-workflow/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "license": "MIT",
   "scripts": {
     "test": "node --experimental-strip-types --test test/*.test.mjs",
@@ -29,6 +44,9 @@
     "bin",
     "docs",
     "README.md",
+    "README.zh-CN.md",
+    "README.ru.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "omp": {

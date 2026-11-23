@@ -1,315 +1,313 @@
 # omp-agent-workflow
 
-OMP-расширение для работы агента: предупреждает о заполнении контекста и даёт
-команду `/handoff` для сжатия с сохранением решений и следующих шагов.
+**Deterministic context guard, true session handoff, and worktree orchestration for [OMP](https://github.com/oh-my-pi/pi-coding-agent).**
 
-Не заменяет native `context_pct`; в статус-строке публикует только свой ключ
-`workflow` — режим Yoda и ожидаемый handoff. Задача — предупредить заранее
-и дать детерминированное действие.
+[English](README.md) · [简体中文](README.zh-CN.md) · [Русский](README.ru.md)
 
-## Документация
+[![tests](https://img.shields.io/badge/tests-182%2F182-brightgreen)](test)
+[![version](https://img.shields.io/badge/version-0.5.14-blue)](package.json)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![OMP](https://img.shields.io/badge/OMP-plugin-8a2be2)](package.json)
 
-Вики проекта — `docs/README.md`:
+![Orchestrator loop demo](docs/assets/demo.gif)
 
-- `docs/architecture.md` — компоненты и факты OMP API: что extension может
-  и не может;
-- `docs/contracts.md` — стабильный контракт 0.3: режимы, env, файлы, команды;
-- `docs/orchestrator.md` — дизайн 0.5: `AUTOPLAN.md`, `STATE.json`, бюджеты,
-  stop-gates, subagent-петля;
-- `docs/operations.md` — runbook: запуск, supervisor, worktree, сбои;
-- `docs/decisions.md` — подтверждённые решения и отклонённые альтернативы.
+*Real 13-second recording: `status → start → commit → verify → finish` on a throwaway git repo. The worktree is removed, the branch is kept.*
 
-## Настройки
+---
 
-Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > env >
-режим/дефолт**. Значения сохраняются в OMP plugin config и применяются на
-следующем `session_start`; launcher читает их при старте.
+## 🧠 What it is
 
-| Ключ | Default | Смысл |
+`omp-agent-workflow` is **not another coding agent**. It is the continuity and discipline layer around the agent you already use:
+
+- 🧭 **Context guard** — warns at 35%, suggests a handoff at 50%, and triggers a deterministic action at 60/70% instead of hoping the model notices.
+- 🔁 **Real handoff** — starts a **new session**, embeds `HANDOFF.md` + `STATE.json` into its first message, and continues the task. This is not `/compact` in the same thread.
+- 👷 **External supervisor** — a plain Node watcher (not an LLM) that survives the OMP process and sends `/handoff-new` to the terminal handle when the marker appears.
+- 🧩 **Orchestrator** — `AUTOPLAN.md` → worktree → implement → verify → fast-forward merge → safe cleanup → next task, with budgets, gates, and stop reasons in `STATE.json`.
+- 🛡️ **Safe by default** — cleanup refuses dirty, unmerged, current, live-process, or live-terminal worktrees; the branch tip is saved in a backup ref.
+- 🎛️ **Human-in-the-loop `/wrap`** — one menu to finish a session: handoff, cleanup, next worktree, retro-review.
+
+It works with plain OMP. Orca is optional and additive.
+
+---
+
+## ✨ Why it is different
+
+Most tools optimize **the model call**. This project optimizes **the session boundary** — the moment where agents usually lose decisions, waste context, or destroy work.
+
+| # | Difference | What it means in practice |
 |---|---|---|
-| `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
-| `statusEnabled` | `true` | Ключ `workflow` в статус-строке: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
-| `handoffAtPercent` | режим: `55` / off | Порог HANDOFF, %; `0` = off |
-| `handoffCooldownSeconds` | `300` | Пауза после handoff |
-| `contextWarnPercent` | `35` | Warning о контексте |
-| `contextSuggestPercent` | `50` | Предложить HANDOFF |
-| `autoCompactPercent` | режим: `60` / `70` / off | Авто-компакция, %; `0` = off |
-| `orcaEnabled` | `true` | Orca terminal list/show, live-терминалы `/wrap` и automatic handoff; `false` отключает supervisor, git/`/proc` fallback |
-| `orcaPreflight` | `true` | Проверять terminal handle перед handoff |
-| `supervisorEnabled` | `true` | Запускать supervisor из `bin/omp-yoda` |
-| `continuePrompt` | текущий текст | Начало custom message новой сессии; state-файл добавляется после него |
-| `supervisorRetries` | `3` | Попытки supervisor при send/preflight |
-| `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
+| 1 | **Deterministic thresholds** | 35/50/60/70% are settings, not vibes. Same behavior on every model. |
+| 2 | **Handoff to a fresh session** | The new session starts clean and receives the state file; the old one does not keep dragging a 500k-token history. |
+| 3 | **Supervisor outside the agent** | If the OMP session dies, the watcher still exists. It is a file protocol + terminal handle, not a prompt. |
+| 4 | **Plan → worktree → verify → merge** | Every task is isolated, checked, and merged ff-only. One `current` task; no silent parallel chaos. |
+| 5 | **Cleanup that cannot self-destruct** | Live sessions and current worktrees are hard blockers; branches are retained by default; tips are recoverable. |
+| 6 | **OMP-native, Orca-optional** | Settings live in OMP, status uses one extra key, and everything degrades gracefully without Orca. |
 
-Env-переменные (`OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`,
-`OMP_CONTEXT_*`, `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`,
-`OMP_ORCA_PREFLIGHT`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`,
-`OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`)
-остаются fallback, если ключ не задан в Settings. Для порогов `0` и `off`
-означают выключение; значения `handoffAtPercent`/`autoCompactPercent` по
-умолчанию зависят от режима.
+> In one sentence: **it makes long agent work resumable, bounded, and reversible.**
 
-## Статус-строка
+---
 
-Один ключ `workflow`; `context_pct` и прочие native-метрики не дублируются.
+## 📊 How it compares
+
+| Capability | **omp-agent-workflow** | Claude Code | Codex CLI | Aider | OpenCode | Cline | Orca |
+|---|---|---|---|---|---|---|---|
+| Context budget guard with configurable thresholds | ✅ deterministic 3-zone guard | ⚠️ manual `/compact` / `/clear` | ⚠️ compact + resume | ⚠️ repo map + token budget | ⚠️ built-in context handling | ⚠️ context management | — |
+| Handoff to a **fresh** session with state embedded | ✅ new session + state file | ⚠️ resume/compact in the same thread | ⚠️ resume/fork | — | ⚠️ sessions, manual | — | — |
+| External supervisor that survives the session | ✅ | — | — | — | — | — | — |
+| Plan → worktree → verify → ff-merge loop | ✅ | ⚠️ manual / subagents | ⚠️ manual | ⚠️ manual commits | ⚠️ | ⚠️ | ⚠️ worktrees only |
+| Cleanup guard + backup ref | ✅ merged/clean/current/live checks | — | — | — | — | — | ⚠️ worktree remove |
+| Human-in-the-loop finish wizard | ✅ `/wrap` | ⚠️ | — | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Settings UI + env fallback | ✅ OMP Settings, 13 keys | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Works as a layer over OMP | ✅ | — own agent | — own agent | — own agent | — own agent | — own agent | ✅ host |
+
+**Legend:** ✅ first-class · ⚠️ manual or partial · — not a documented first-class feature.
+
+*Based on public vendor documentation as of November 2026. This is a capability comparison, not a benchmark. “—” does not mean a tool is bad; it means the capability is not its documented focus.*
+
+### The unique combination
+
+We have not found another tool that does **all five** together:
+
+1. deterministic context budgets,
+2. handoff to a **new** session with embedded state,
+3. an **external** supervisor,
+4. plan/worktree/verify/merge orchestration,
+5. a cleanup guard that protects live sessions and keeps recovery cheap.
+
+Each item exists somewhere. The product is the **glue and the guarantees**.
+
+---
+
+## 🔁 How it works
+
+![Context lifecycle](docs/assets/lifecycle.svg)
+
+### Handoff protocol (file-based, no magic)
+
+1. The agent updates `HANDOFF.md`: goal, state, decisions, files, checks, next step.
+2. At a safe boundary it writes `.omp-handoff-request.json` (marker).
+3. The supervisor sees the marker and sends `/handoff-new` to the terminal handle from `.omp-handoff-session.json`.
+4. `/handoff-new` builds a new session message from `continuePrompt` + the state file (64k limit, truncation marker, read-error fallback).
+5. The new session reads `HANDOFF.md` and continues. No compact event in the middle of a tool loop; the plugin waits for `turn_end` and `ctx.isIdle()`.
 
 ```text
-yoda:              YODA
-yoda-supervised:   YODA-SUP
-supervisor down:   YODA-SUP · SUP OFF
-orchestrator:      YODA-SUP · T2 verify
-порог/marker:      YODA-SUP · ⚠ HANDOFF
+OMP session A ── marker ──▶ supervisor ── /handoff-new ──▶ OMP session B
+      │                                                        │
+      └──────────── HANDOFF.md + STATE.json ───────────────────┘
 ```
 
-`SUP OFF` — только `yoda-supervised`, если lock/pid supervisor'а не найден.
-`T2 verify` — пока `STATE.json.run.active` и есть `current`; статусы
-`run`/`verify`/`review`/`fail`.
-`⚠ HANDOFF` появляется при `usage >= handoffAtPercent` или marker текущей
-сессии, исчезает после handoff. `statusEnabled=false` очищает ключ.
-`manual`/`assisted` режим не показывают.
+### Orchestrator loop
 
-## Режимы
-
-| `OMP_WORKFLOW_MODE` | Авто-компакция | Handoff |
-|---|---|---|
-| `manual` | выкл | выкл |
-| `assisted` (default) | 60% | выкл |
-| `yoda` | 70% fallback | 55% |
-| `yoda-supervised` | 70% fallback | 55% + supervisor |
-
-Env-переменные `OMP_CONTEXT_AUTO` и `OMP_HANDOFF_AT` — fallback, если
-соответствующий ключ не задан в Settings; Settings имеет приоритет.
-`yoda` без supervisor умеет только компакцию; `yoda-supervised` делает
-clean-window handoff.
-
-## Пороги
-
-| Контекст | Действие |
-|---|---|
-| 35% | Warning: планируй HANDOFF |
-| 50% | Warning: пора HANDOFF, обнови `HANDOFF.md` и выполни `/handoff` |
-| 60% | Авто-компакция после `agent_settled`, если агент idle и нет очереди |
-| ниже 35% | Флаги сбрасываются, предупреждения снова активны |
-
-Пороги можно переопределить в Settings → Plugins или env (fallback):
+![Orchestrator loop](docs/assets/orchestrator-loop.svg)
 
 ```bash
-OMP_CONTEXT_WARN=30
-OMP_CONTEXT_SUGGEST=45
-OMP_CONTEXT_AUTO=55      # или off
-OMP_HANDOFF_AT=55        # или off; просить handoff на пороге
+bin/omp-orchestrate status
+bin/omp-orchestrate start T1
+# agent works in the printed worktree, commits, returns the SHA
+bin/omp-orchestrate verify T1
+bin/omp-orchestrate finish T1 --commit <sha> --review ok
 ```
 
-## Команды
+`finish` merges **ff-only** into a clean base, records the commit, then removes the worktree — but only if the cleanup guard agrees. Otherwise it returns a warning and keeps the worktree.
 
-`/handoff` сжимает контекст с инструкциями сохранить цель, решения, изменённые
-файлы, проверки, блокеры и следующие шаги. Аргументы команды заменяют
-стандартные инструкции:
+### `/wrap` — finish like a human
 
-```text
-/handoff сохрани только архитектурные решения и следующие шаги
-```
+![wrap menu](docs/assets/tui-wrap.png)
 
-`/handoff-new` начинает новую сессию после того, как `HANDOFF.md` обновлён.
-Команда ждёт idle, проверяет state и вызывает `ctx.newSession`, добавляя
-custom message из `continuePrompt` и содержимого state-файла. Встраивается
-до 64 000 символов; при превышении добавляется маркер обрезки, при ошибке
-чтения — просьба прочитать файл самому. Без `HANDOFF.md` отказывает.
-`cwd` новой сессии — `ctx.cwd`, поэтому запускай `/handoff-new` из корня
-передаваемого проекта.
+The wizard shows the facts first, then offers only actions that make sense. Cleanup candidates must be merged, clean, non-current, outside the base repo, and free of live processes or Orca terminals. Confirmation includes path, branch, and HEAD.
 
-> **Важно: кто запускает продолжение.**
-> `/handoff-new` только открывает новую сессию и кладёт state в контекст —
-> ход агента он не запускает. В Orca automatic handoff делает supervisor:
-> он отправляет `/handoff-new`, затем continuation prompt, и агент начинает
-> работу сам. В OMP без Orca после ручного `/handoff-new` отправь в новой
-> сессии любое сообщение, например «продолжай»: state уже в контексте,
-> повторять задачу не нужно.
+---
 
-`/handoff-preflight [файл]` — проверка состояния, затем меню действий.
-Сначала печатается таблица и вердикт. В меню попадают только незакрытые
-пункты: `checks` всегда, `commit` — при грязном дереве, `merge` — если
-ветка не влита в `main`. У предложенных действий предвыбран «Сделать»;
-«Пропустить» ничего не меняет. После действий печатается итог: действия,
-ручные шаги и свежая таблица с вердиктом.
+## 🚀 Quick start
 
-- `checks` — `npm run test` и `typecheck`, если скрипты есть.
-- `commit` — `git add -A` (runtime-файлы `.omp-handoff-*` исключены) и
-  сообщение из диалога; detached HEAD отклоняется.
-- `merge` — только `git merge --ff-only` в чистый `main` worktree; ошибка
-  не форсится.
-- Упавшие проверки блокируют выбранные commit/merge в этом запуске.
-
-Вручную/агентом остаются: завершить задачу, обновить `HANDOFF.md`, удалить
-worktree после выхода.
-Таблица проверяет: `HANDOFF.md` (или указанный файл) на месте и не старше
-HEAD, дерево чистое, ветка не detached, коммиты запушены, ветка влита в
-`main`, marker отсутствует или от текущей сессии. Блокеры advisory:
-`/handoff-new` их не проверяет. На этом команда останавливается —
-`/handoff-new` запускается отдельно.
-Отмена меню останавливает команду; без `askDialog` (старый TUI-хост) меню
-пропускается, команда остаётся read-only и печатает таблицу. В headless/sub
-команда молчит.
-
-Оба handoff-действия не пишут `HANDOFF.md` сами: сначала обнови файл.
-
-## Автоматический handoff
-
-1. На `OMP_HANDOFF_AT` extension просит агента завершить задачу, обновить
-   `HANDOFF.md` и записать `.omp-handoff-request.json`.
-2. Supervisor видит marker и session info, ждёт idle и отправляет
-   `/handoff-new` в terminal handle.
-3. `/handoff-new` открывает новую сессию и внедряет state; supervisor
-   отправляет continuation prompt — именно он запускает первый ход.
-
-Session info пишется расширением:
-
-```json
-{ "terminal": "term_...", "sessionFile": "...", "cwd": "...", "pid": 123 }
-```
-
-Marker пишет агент; `sessionFile` защищает от stale-marker после handoff:
-
-```json
-{ "reason": "task-boundary", "sessionFile": "/path/to/session.jsonl" }
-```
-
-Запуск supervisor:
+**Requirements:** Node.js 22+, OMP 19+, git. Orca is optional.
 
 ```bash
-node bin/omp-handoff-supervisor.mjs --dir /path/to/worktree
-node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run
-```
+# 1. get the code
+git clone https://github.com/metapeka/omp-agent-workflow.git
+cd omp-agent-workflow
 
-`--dry-run` показывает terminal, команду и prompt, ничего не отправляя.
-Supervisor не является LLM: только marker, terminal handle и `orca terminal
-send`.
-
-Launcher `bin/omp-yoda` запускает supervisor на текущий каталог и OMP в
-режиме `yoda-supervised`:
-
-```bash
-bin/omp-yoda --version
-OMP_YODA_DIR=/path/to/worktree bin/omp-yoda
-```
-
-Лог supervisor — `${TMPDIR:-/tmp}/omp-yoda-supervisor.log`
-(`OMP_YODA_LOG` переопределяет). Supervisor снимается вместе с OMP.
-
-Supervisor — один на каталог: lock `.omp-handoff-supervisor.lock/` с
-`owner.json`. Второй экземпляр для того же `--dir` пишет в stderr
-`another supervisor is running` и выходит, не трогая marker. Lock снимается
-на выходе и по сигналам; после падения перехватывается, когда pid из
-`owner.json` уже мёртв.
-
-После handoff действует cooldown: extension не просит новый handoff
-(`OMP_HANDOFF_COOLDOWN_SECONDS`, по умолчанию 300), а supervisor удаляет
-ранние и stale marker'ы (`--cooldown`, по умолчанию 300). Это защищает от
-цикла «новая сессия сразу просит следующий handoff».
-
-## Orchestrator 0.5
-
-Оркестратор включается явно: `/orchestrate [AUTOPLAN.md]`. Наличие
-`AUTOPLAN.md` само по себе ничего не запускает.
-
-- `AUTOPLAN.md` — цель, бюджеты и задачи в fenced JSON-блоках
-  `json plan` / `json task`; шаблон — `docs/AUTOPLAN.example.md`.
-- `STATE.json` — runtime-состояние: current task, worktree, commit, checks,
-  spend, stop reason; не коммитится.
-- Tool `orchestrator` — детерминированные действия `status`, `next`,
-  `start`, `verify`, `finish`, `rebase`, `stop`, `resume`.
-- `finish` мержит только `--ff-only` в чистый base, требует verify и
-  reviewer verdict.
-- Бюджеты: `maxTasksPerSession`, `maxSpendUsd`, `maxMinutes`; stop-gates
-  фиксируют причину.
-- Handoff на границе задачи: агент обновляет `HANDOFF.md` и пишет marker;
-  supervisor открывает новую сессию.
-- CLI:
-
-```bash
-bin/omp-orchestrate status --json --dir /path/to/control-worktree
-bin/omp-orchestrate start T1 --dir /path/to/control-worktree
-bin/omp-orchestrate verify T1 --dir /path/to/control-worktree
-bin/omp-orchestrate finish T1 --commit SHA --review ok --dir /path/to/control-worktree
-# --review нужен только для задач с review:true
-```
-
-Авто-продолжение работает только в `yoda`/`yoda-supervised` и только после
-явного `/orchestrate`. В `manual`/`assisted` следующую задачу запускает
-человек. Полный контракт — `docs/orchestrator.md`.
-
-## Wrap: завершение работы
-
-`/wrap` — guided wizard для конца задачи/сессии. Он показывает карточки:
-handoff, обновление `HANDOFF.md`, cleanup завершённых worktree, worktree для
-следующей задачи, ретро-review.
-
-- Ничего не меняется по выбору карточки: destructive/spend действия требуют
-  `confirm` с точным path/branch/HEAD.
-- Cleanup — только merged в base, чистый, не текущий worktree и без live
-  процесса/терминала; удаление без `--force`, ветка по умолчанию остаётся,
-  её tip сохраняется в `refs/omp-worktree-backup/*`; удаление ветки — только
-  явно и через `git branch -d`.
-- Orca останавливает терминалы удаляемого worktree: cleanup нельзя запускать
-  изнутри него (SIGTERM живой сессии), только снаружи после выхода.
-- Текущий worktree не удаляется из-под работающего OMP: выйти и удалить
-  вручную.
-- Handoff-карточка не переключает сессию: после проверки `HANDOFF.md`
-  выполняется `/handoff-new`.
-- Publish/push не автоматизируются.
-
-Детали и safety: `docs/wrap.md`.
-
-Yoda-режимы и оркестрация: `docs/yoda-workflow.md`.
-План automatic handoff: `docs/handoff-auto-plan.md`.
-Состояние проекта: `HANDOFF.md`; план: `ROADMAP.md`; инструкции агенту:
-`AGENTS.md`.
-
-## Почему не авто на 50%
-
-Компакция — это отдельный запрос, который переписывает префикс и стоит денег.
-На 50% достаточно предупреждения; авто-компакция на 60% срабатывает только
-после завершения хода, когда `ctx.isIdle()` и нет `hasPendingMessages()`.
-Посреди tool-loop или незавершённого edit контекст не сжимается.
-
-## Установка
-
-Проект отдельный от `omp-cache-monitor`; в Orca зарегистрирован как
-`omp-agent-workflow`, рабочие worktree — `~/orca/workspaces/omp-agent-workflow/`.
-
-```bash
-omp plugin link /home/db1/projects/omp-agent-workflow
-```
-
-Альтернатива — скопировать `index.ts` в
-`~/.omp/agent/extensions/agent-workflow.ts`. Это даёт только context guard
-0.3; для orchestrator нужны также `orchestrator.ts` и `lib/`, поэтому
-рекомендуется `omp plugin link`. Ставить нужно одним способом.
-После установки перезапустить OMP.
-
-## Проверка
-
-```bash
+# 2. install dependencies and verify
+npm ci
 npm test
 npm run typecheck
-omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
-  -p 'Reply with exactly: OK'
-omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
-  --no-tools --mode json -p 'Reply with exactly: OK'
-npm run orchestrate -- status --json --dir <control-worktree>
+
+# 3. link it as an OMP plugin
+omp plugin link "$PWD"
+omp plugin list
+
+# 4. start OMP with the recommended mode
+bin/omp-yoda                  # supervisor + OMP in yoda-supervised
+# or, without the launcher:
+OMP_WORKFLOW_MODE=yoda omp
 ```
 
-## Ограничения
+Then use:
 
-- Работает только в TUI и только для главного агента; sub/print/json молчат.
-- `getContextUsage()` может вернуть `null` сразу после компакции — проверки
-  пропускаются до следующего хода.
-- Пороги — эвристика, а не измеренная граница модели.
-- Не управляет native warming/compaction; только просит OMP сжать контекст.
-- Orchestrator: `task` subagent не получает `cwd`, изоляция задачи держится
-  на абсолютном пути worktree и проверках. Один `current`, без параллельных
-  задач. `baseRepo` должен быть чистым; иначе `stop: base-dirty`.
+```text
+/handoff              # update HANDOFF.md + request a handoff
+/handoff-preflight    # check blockers/warnings before a new session
+/handoff-new          # start a new session with the state embedded
+/wrap                 # finish the task: cleanup, next worktree, retro-review
+```
 
-## Лицензия
+---
 
-MIT, см. `LICENSE`.
+## ⚙️ Configuration
+
+Settings → Plugins → `omp-agent-workflow`. Priority: **Settings > env > mode default**.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `statusEnabled` | `true` | Show the `workflow` status key |
+| `handoffAtPercent` | `55` (yoda) / off | Handoff threshold; `0` = off |
+| `handoffCooldownSeconds` | `300` | Cooldown after a handoff |
+| `contextWarnPercent` | `35` | First warning |
+| `contextSuggestPercent` | `50` | Suggest a handoff |
+| `autoCompactPercent` | `60` / `70` / off | Auto-compaction threshold |
+| `orcaEnabled` | `true` | Orca terminal checks; `false` falls back to git/`/proc` |
+| `orcaPreflight` | `true` | Verify the terminal handle before handoff |
+| `supervisorEnabled` | `true` | Start the supervisor from `bin/omp-yoda` |
+| `continuePrompt` | built-in | First part of the new session message |
+| `supervisorRetries` | `3` | Send/preflight retries |
+| `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
+
+Env fallbacks: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP_CONTEXT_*`, `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`.
+
+### Modes
+
+| Mode | Auto-compaction | Handoff | Supervisor |
+|---|---|---|---|
+| `manual` | off | off | off |
+| `assisted` (default) | 60% | off | off |
+| `yoda` | 70% fallback | 55% | off |
+| `yoda-supervised` | 70% fallback | 55% | ✅ |
+
+### Status line
+
+One extra key; native `context_pct` is not duplicated.
+
+```text
+YODA                  yoda mode
+YODA-SUP              yoda-supervised, supervisor alive
+YODA-SUP · SUP OFF    supervisor missing
+YODA-SUP · T2 verify  orchestrator task T2 is being verified
+YODA · ⚠ HANDOFF      handoff threshold reached
+```
+
+![workflow status key](docs/assets/tui-status.png)
+
+---
+
+## 🛡️ Safety model
+
+- **No compaction mid-turn.** The plugin waits for `turn_end` and `ctx.isIdle()`.
+- **One current task.** Parallel tasks are intentionally rejected in 0.5.
+- **Merge is ff-only.** Divergence becomes `rebase-required`, not a silent merge commit.
+- **Cleanup is conservative.** It refuses unmerged, dirty, current, live-process, and live-terminal worktrees.
+- **Branches are retained by default.** The tip is saved in `refs/omp-worktree-backup/*`; deletion is explicit and uses `git branch -d`.
+- **Orca kills PTYs of the removed worktree.** Cleanup from inside the target is a hard error: that is exactly the 2026-11-23 incident where `orca worktree rm` sent SIGTERM to a live OMP session.
+- **No runtime dependencies.** Only Node built-ins; dev dependencies are typescript and type definitions.
+
+Detailed engineering notes: [`docs/operations.md`](docs/operations.md), [`docs/decisions.md`](docs/decisions.md) (Russian).
+
+---
+
+## 🧩 Commands
+
+| Command | What it does |
+|---|---|
+| `/handoff` | Update state and request a handoff at a safe boundary |
+| `/handoff-preflight [file]` | Read-only checks + a menu of only unresolved actions |
+| `/handoff-new [file]` | Start a new session with `continuePrompt` + state file |
+| `/wrap` | Human-in-the-loop finish: cleanup, next worktree, review, handoff |
+| `/orchestrate status\|next\|start\|verify\|finish\|rebase\|stop\|resume` | Orchestrator control |
+| `bin/omp-yoda` | Launcher: supervisor + OMP in `yoda-supervised` |
+| `bin/omp-handoff-supervisor.mjs` | External marker watcher (not an LLM) |
+| `bin/omp-orchestrate` | Headless CLI for the same actions |
+
+---
+
+## 🖼️ Screenshots
+
+### `/wrap` — finish the task
+
+![wrap](docs/assets/tui-wrap.png)
+
+The card is enabled only when a merged, clean, non-current worktree without live terminals exists. Everything destructive asks for confirmation.
+
+### `/handoff-preflight` — know before you switch
+
+![preflight](docs/assets/tui-preflight.png)
+
+Blockers are **advisory**: they explain what is missing and offer only actions that are still open. `/handoff-new` does not secretly block on them.
+
+### Real CLI: plan → verify → merge
+
+![orchestrate](docs/assets/terminal-orchestrate.png)
+
+### The supervisor is a watcher, not a model
+
+![supervisor](docs/assets/terminal-supervisor.png)
+
+> The CLI speaks Russian today; JSON output is language-neutral. Localization is on the roadmap.
+
+---
+
+## 📚 Documentation and layout
+
+| Path | Contents |
+|---|---|
+| [`docs/README.md`](docs/README.md) | Engineering wiki (Russian): architecture, contracts, runbook |
+| [`docs/orchestrator.md`](docs/orchestrator.md) | `AUTOPLAN.md`, `STATE.json`, budgets, stop gates |
+| [`docs/operations.md`](docs/operations.md) | Install, supervisor, worktrees, incidents |
+| [`docs/decisions.md`](docs/decisions.md) | Accepted decisions and rejected alternatives |
+| [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | Copy-paste plan template |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release history |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local checks and safety-sensitive areas |
+| [`HANDOFF.md`](HANDOFF.md) | Current project state and the SIGTERM incident analysis |
+| [`ROADMAP.md`](ROADMAP.md) / [`TODO.md`](TODO.md) | Direction and backlog |
+
+---
+
+## ❓ FAQ and limitations
+
+**Is it a coding agent?** No. It is a workflow layer for OMP. You still use your model and agent.
+
+**Does it replace `/compact`?** No, it complements it. `assisted` mode still uses compaction; `yoda` prefers a handoff at 55%.
+
+**Does it require Orca?** No. Orca adds terminal/worktree integration and richer live checks; without it, git and `/proc` fallbacks are used.
+
+**Can I run parallel tasks?** Not in 0.5. One `current` task keeps merge, budgets, and handoff deterministic.
+
+**Will it delete my branch?** Not by default. It keeps the branch and saves the tip in a backup ref. Deletion is explicit and only `git branch -d` after a merged check.
+
+**Are the thresholds measured?** They are heuristics, configurable, and deterministic. Treat them as policy, not physics.
+
+**Why is some UI Russian?** The project started in Russian. English/Chinese docs are the primary entry point now; UI localization is a separate task.
+
+---
+
+## 🧪 Development
+
+```bash
+npm ci
+npm test          # 182 tests
+npm run typecheck
+```
+
+Tests use real temporary git repositories, no live Orca or model calls. The extension smoke test:
+
+```bash
+omp --no-extensions -e ./index.ts -e ./orchestrator.ts \
+  --no-session --no-tools --mode json -p 'Reply with exactly: OK'
+```
+
+Contributions: keep behavior changes covered by tests, update docs in the same commit, and never commit session/runtime files.
+
+---
+
+## 📄 License
+
+MIT © 2026 metapeka. See [LICENSE](LICENSE).
