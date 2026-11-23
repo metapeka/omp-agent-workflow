@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+	DEFAULT_CONTINUE_PROMPT,
 	defaultAutoPercent,
 	defaultHandoffPercent,
 	resolveSettings,
@@ -25,6 +26,9 @@ describe("workflow settings", () => {
 		assert.equal(s.orcaPreflight, true);
 		assert.equal(s.supervisorEnabled, true);
 		assert.equal(s.orcaCli, null);
+		assert.equal(s.continuePrompt, DEFAULT_CONTINUE_PROMPT);
+		assert.equal(s.supervisorRetries, 3);
+		assert.equal(s.supervisorLogLevel, "info");
 	});
 
 	it("keeps per-mode defaults until a setting overrides them", () => {
@@ -134,6 +138,40 @@ describe("workflow settings", () => {
 		assert.equal(invalid.contextWarnPercent, 35);
 		assert.equal(invalid.contextSuggestPercent, 50);
 		assert.equal(invalid.autoCompactPercent, 70);
+	});
+
+	it("resolves supervisor prompt, retries and log level", () => {
+		const fromEnv = resolveSettings(EMPTY, {
+			OMP_HANDOFF_PROMPT: "from env",
+			OMP_SUPERVISOR_RETRIES: "5",
+			OMP_SUPERVISOR_LOG_LEVEL: "debug",
+		});
+		assert.equal(fromEnv.continuePrompt, "from env");
+		assert.equal(fromEnv.supervisorRetries, 5);
+		assert.equal(fromEnv.supervisorLogLevel, "debug");
+
+		const explicit = resolveSettings(
+			{
+				continuePrompt: "  from settings  ",
+				supervisorRetries: 7,
+				supervisorLogLevel: "quiet",
+			},
+			{
+				OMP_HANDOFF_PROMPT: "from env",
+				OMP_SUPERVISOR_RETRIES: "5",
+				OMP_SUPERVISOR_LOG_LEVEL: "debug",
+			},
+		);
+		assert.equal(explicit.continuePrompt, "from settings");
+		assert.equal(explicit.supervisorRetries, 7);
+		assert.equal(explicit.supervisorLogLevel, "quiet");
+
+		const invalid = resolveSettings(
+			{ supervisorRetries: 99, supervisorLogLevel: "loud" },
+			{ OMP_SUPERVISOR_RETRIES: "0", OMP_SUPERVISOR_LOG_LEVEL: "verbose" },
+		);
+		assert.equal(invalid.supervisorRetries, 3);
+		assert.equal(invalid.supervisorLogLevel, "info");
 	});
 
 	it("clamps cooldown and rejects negative values", () => {

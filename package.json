@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "type": "module",
   "description": "Context guard, automatic handoff and Yoda workflow for OMP",
   "keywords": [
@@ -109,6 +109,32 @@
         "default": true,
         "env": "OMP_SUPERVISOR_ENABLED",
         "description": "Запускать supervisor в bin/omp-yoda для automatic handoff"
+      },
+      "continuePrompt": {
+        "type": "string",
+        "default": "Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.",
+        "env": "OMP_HANDOFF_PROMPT",
+        "description": "Текст, который новая сессия получает после handoff"
+      },
+      "supervisorRetries": {
+        "type": "number",
+        "default": 3,
+        "min": 1,
+        "max": 10,
+        "step": 1,
+        "env": "OMP_SUPERVISOR_RETRIES",
+        "description": "Попытки supervisor при send/preflight"
+      },
+      "supervisorLogLevel": {
+        "type": "enum",
+        "values": [
+          "quiet",
+          "info",
+          "debug"
+        ],
+        "default": "info",
+        "env": "OMP_SUPERVISOR_LOG_LEVEL",
+        "description": "Логи supervisor: quiet — только ошибки, info — lifecycle, debug — подробно"
       }
     }
   },

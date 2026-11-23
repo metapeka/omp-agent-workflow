@@ -35,10 +35,14 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 | `orcaEnabled` | `true` | Orca terminal list/show, live-терминалы `/wrap` и automatic handoff; `false` отключает supervisor, git/`/proc` fallback |
 | `orcaPreflight` | `true` | Проверять terminal handle перед handoff |
 | `supervisorEnabled` | `true` | Запускать supervisor из `bin/omp-yoda` |
+| `continuePrompt` | текущий текст | Что получает новая сессия после handoff |
+| `supervisorRetries` | `3` | Попытки supervisor при send/preflight |
+| `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
 
 Env-переменные (`OMP_WORKFLOW_MODE`, `OMP_HANDOFF_AT`, `OMP_CONTEXT_*`,
 `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`,
-`OMP_SUPERVISOR_ENABLED`, `ORCA_CLI_COMMAND`) остаются fallback, если ключ
+`OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`,
+`OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`) остаются fallback, если ключ
 не задан в Settings. Для порогов `0` и `off` означают выключение; значения
 `handoffAtPercent`/`autoCompactPercent` по умолчанию зависят от режима.
 

@@ -6,6 +6,10 @@
  * режим (`assisted`/`yoda`) сохраняет свои дефолты, пока ключ не задан.
  */
 export type WorkflowMode = "manual" | "assisted" | "yoda" | "yoda-supervised";
+export type SupervisorLogLevel = "quiet" | "info" | "debug";
+
+export const DEFAULT_CONTINUE_PROMPT =
+	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
 
 export interface WorkflowSettings {
 	workflowMode: WorkflowMode;
@@ -21,6 +25,9 @@ export interface WorkflowSettings {
 	supervisorEnabled: boolean;
 	/** null — использовать env `ORCA_CLI_COMMAND` или `orca` из PATH. */
 	orcaCli: string | null;
+	continuePrompt: string;
+	supervisorRetries: number;
+	supervisorLogLevel: SupervisorLogLevel;
 }
 
 export type EnvLike = Record<string, string | undefined>;
@@ -45,6 +52,11 @@ export function defaultHandoffPercent(mode: WorkflowMode): number | null {
 
 const isMode = (value: unknown): value is WorkflowMode =>
 	typeof value === "string" && MODES.includes(value as WorkflowMode);
+
+const LOG_LEVELS: readonly SupervisorLogLevel[] = ["quiet", "info", "debug"];
+const isLogLevel = (value: unknown): value is SupervisorLogLevel =>
+	typeof value === "string" &&
+	LOG_LEVELS.includes(value as SupervisorLogLevel);
 
 function boolFromEnv(env: EnvLike, name: string): boolean | undefined {
 	const raw = env[name]?.trim().toLowerCase();
@@ -143,6 +155,22 @@ export function resolveSettings(
 			? raw.orcaCli.trim()
 			: (env.ORCA_CLI_COMMAND?.trim() || null);
 
+	const continuePrompt =
+		typeof raw.continuePrompt === "string" && raw.continuePrompt.trim().length > 0
+			? raw.continuePrompt.trim()
+			: (env.OMP_HANDOFF_PROMPT?.trim() || DEFAULT_CONTINUE_PROMPT);
+	const supervisorRetries =
+		numberIn(raw.supervisorRetries, 1, 10) ??
+		envNumber(env, "OMP_SUPERVISOR_RETRIES", 1, 10) ??
+		3;
+	const rawLogLevel = raw.supervisorLogLevel;
+	const envLogLevel = env.OMP_SUPERVISOR_LOG_LEVEL?.trim();
+	const supervisorLogLevel = isLogLevel(rawLogLevel)
+		? rawLogLevel
+		: isLogLevel(envLogLevel)
+			? envLogLevel
+			: "info";
+
 	return {
 		workflowMode,
 		handoffAtPercent,
@@ -165,6 +193,9 @@ export function resolveSettings(
 			boolFromEnv(env, "OMP_SUPERVISOR_ENABLED") ??
 			true,
 		orcaCli,
+		continuePrompt,
+		supervisorRetries,
+		supervisorLogLevel,
 	};
 }
 

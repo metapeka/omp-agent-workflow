@@ -40,6 +40,9 @@ Launcher:
 - читает Settings → Plugins (`omp plugin config list`); env остаётся fallback;
 - запускает supervisor на `OMP_YODA_DIR` (default `$PWD`), если
   `supervisorEnabled` и `orcaEnabled` включены;
+- передаёт supervisor'у `continuePrompt`, `supervisorRetries`,
+  `supervisorLogLevel` через `OMP_HANDOFF_PROMPT`/`OMP_SUPERVISOR_RETRIES`/
+  `OMP_SUPERVISOR_LOG_LEVEL`;
 - при выключенном supervisor печатает причину и запускает OMP без него;
 - ставит `OMP_WORKFLOW_MODE=yoda-supervised`, `OMP_HANDOFF_AT=55`,
   `OMP_CONTEXT_AUTO=off`, если не переопределено;

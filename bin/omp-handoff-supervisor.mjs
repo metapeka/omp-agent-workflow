@@ -22,6 +22,7 @@ import { parseArgs } from "node:util";
 import { acquireLock, releaseLock } from "../lib/supervisor-lock.mjs";
 
 const DEFAULT_PROMPT =
+	process.env.OMP_HANDOFF_PROMPT?.trim() ||
 	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
 
 const { values } = parseArgs({
@@ -34,7 +35,10 @@ const { values } = parseArgs({
 		"dry-run": { type: "boolean", default: false },
 		prompt: { type: "string", default: DEFAULT_PROMPT },
 		"no-prompt": { type: "boolean", default: false },
-		"max-attempts": { type: "string", default: "3" },
+		"max-attempts": {
+			type: "string",
+			default: process.env.OMP_SUPERVISOR_RETRIES?.trim() || "3",
+		},
 		cooldown: { type: "string", default: "300" },
 		"stale-grace": { type: "string", default: "5" },
 		lock: { type: "string", default: ".omp-handoff-supervisor.lock" },
@@ -46,8 +50,18 @@ const dir = resolve(values.dir);
 const markerPath = resolve(dir, values.marker);
 const sessionPath = resolve(dir, values.session);
 const lockPath = resolve(dir, values.lock);
+const logLevel = (() => {
+	const raw = process.env.OMP_SUPERVISOR_LOG_LEVEL?.trim().toLowerCase();
+	return raw === "quiet" || raw === "debug" ? raw : "info";
+})();
+const log = (message) => {
+	if (logLevel !== "quiet") console.log(message);
+};
 const intervalMs = Math.max(250, Number(values.interval) * 1000);
-const maxAttempts = Math.max(1, Number(values["max-attempts"]));
+const parsedAttempts = Number(values["max-attempts"]);
+const maxAttempts = Number.isFinite(parsedAttempts)
+	? Math.max(1, parsedAttempts)
+	: 3;
 const cooldownMs = Math.max(0, Number(values.cooldown) * 1000);
 const staleGraceMs = Math.max(0, Number(values["stale-grace"]) * 1000);
 const lockGraceMs = Math.max(0, Number(values["lock-grace"]) * 1000);
@@ -150,7 +164,7 @@ async function main() {
 				staleCandidate = { sessionFile: marker.sessionFile, since: now };
 			}
 			if (now - staleCandidate.since < staleGraceMs) {
-				console.log(
+				log(
 					"[handoff-supervisor] marker/session mismatch; waiting for grace",
 				);
 				if (values.once) return;
@@ -159,7 +173,7 @@ async function main() {
 			}
 			rmSync(markerPath, { force: true });
 			staleCandidate = null;
-			console.log("[handoff-supervisor] stale marker removed (other session)");
+			log("[handoff-supervisor] stale marker removed (other session)");
 			if (values.once) return;
 			await sleep(intervalMs);
 			continue;
@@ -170,7 +184,7 @@ async function main() {
 			// После handoff новая сессия не должна просить следующий handoff
 			// раньше cooldown. Убираем marker, чтобы не было цикла.
 			rmSync(markerPath, { force: true });
-			console.log("[handoff-supervisor] early marker removed during cooldown");
+			log("[handoff-supervisor] early marker removed during cooldown");
 			if (values.once) return;
 			await sleep(intervalMs);
 			continue;
@@ -193,6 +207,7 @@ async function main() {
 		const previousSessionFile =
 			typeof session.sessionFile === "string" ? session.sessionFile : null;
 		if (orcaPreflight) {
+			if (logLevel === "debug") log(`[handoff-supervisor] preflight ${terminal}`);
 			const shown = runOrca([
 				"terminal",
 				"show",
@@ -249,8 +264,8 @@ async function main() {
 
 		rmSync(markerPath, { force: true });
 		lastHandoffAt = Date.now();
-		console.log(`[handoff-supervisor] /handoff-new sent to ${terminal}`);
-		console.log("[handoff-supervisor] new session detected");
+		log(`[handoff-supervisor] /handoff-new sent to ${terminal}`);
+		log("[handoff-supervisor] new session detected");
 
 		if (!values["no-prompt"]) {
 			await sleep(300);
@@ -270,7 +285,7 @@ async function main() {
 				fail(`prompt send failed: ${(prompt.stderr || prompt.stdout || "").trim()}`);
 				return;
 			}
-			console.log("[handoff-supervisor] continuation prompt sent");
+			log("[handoff-supervisor] continuation prompt sent");
 		}
 
 		if (values.once) return;
@@ -281,9 +296,10 @@ async function main() {
 
 if (!orcaEnabled || !supervisorEnabled) {
 	const reason = !orcaEnabled ? "OMP_ORCA_ENABLED" : "OMP_SUPERVISOR_ENABLED";
-	console.log(`[handoff-supervisor] disabled by ${reason}; exiting`);
+	log(`[handoff-supervisor] disabled by ${reason}; exiting`);
 	process.exit(0);
 }
+log(`[handoff-supervisor] started dir=${dir}`);
 
 let lock = null;
 try {

@@ -34,6 +34,9 @@ supervisor_setting="$(plugin_setting supervisorEnabled)"
 orca_enabled_setting="$(plugin_setting orcaEnabled)"
 orca_preflight_setting="$(plugin_setting orcaPreflight)"
 orca_cli_setting="$(plugin_setting orcaCli)"
+continue_prompt_setting="$(plugin_setting continuePrompt)"
+supervisor_retries_setting="$(plugin_setting supervisorRetries)"
+supervisor_log_setting="$(plugin_setting supervisorLogLevel)"
 
 # Settings > env > default.
 supervisor_value="${supervisor_setting:-${OMP_SUPERVISOR_ENABLED:-true}}"
@@ -43,6 +46,19 @@ orca_cli="${orca_cli_setting:-${ORCA_CLI_COMMAND:-orca}}"
 
 if [ -n "$orca_cli_setting" ]; then
   export ORCA_CLI_COMMAND="$orca_cli_setting"
+fi
+
+continue_prompt_value="${continue_prompt_setting:-${OMP_HANDOFF_PROMPT:-}}"
+supervisor_retries_value="${supervisor_retries_setting:-${OMP_SUPERVISOR_RETRIES:-}}"
+supervisor_log_value="${supervisor_log_setting:-${OMP_SUPERVISOR_LOG_LEVEL:-}}"
+if [ -n "$continue_prompt_value" ]; then
+  export OMP_HANDOFF_PROMPT="$continue_prompt_value"
+fi
+if [ -n "$supervisor_retries_value" ]; then
+  export OMP_SUPERVISOR_RETRIES="$supervisor_retries_value"
+fi
+if [ -n "$supervisor_log_value" ]; then
+  export OMP_SUPERVISOR_LOG_LEVEL="$supervisor_log_value"
 fi
 
 is_false() {

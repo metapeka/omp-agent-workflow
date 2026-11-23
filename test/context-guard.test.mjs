@@ -39,6 +39,9 @@ const ENV_KEYS = [
 	"OMP_ORCA_ENABLED",
 	"OMP_ORCA_PREFLIGHT",
 	"OMP_SUPERVISOR_ENABLED",
+	"OMP_HANDOFF_PROMPT",
+	"OMP_SUPERVISOR_RETRIES",
+	"OMP_SUPERVISOR_LOG_LEVEL",
 ];
 
 // Supervisor gates читают ambient env; тесты стартуют от чистого состояния.
@@ -46,6 +49,9 @@ for (const key of [
 	"OMP_ORCA_ENABLED",
 	"OMP_ORCA_PREFLIGHT",
 	"OMP_SUPERVISOR_ENABLED",
+	"OMP_HANDOFF_PROMPT",
+	"OMP_SUPERVISOR_RETRIES",
+	"OMP_SUPERVISOR_LOG_LEVEL",
 ]) {
 	delete process.env[key];
 }
@@ -575,6 +581,67 @@ describe("supervisor", () => {
 			const calls = readFileSync(log, "utf8");
 			assert.match(calls, /terminal send/);
 			assert.doesNotMatch(calls, /terminal show/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("uses OMP_HANDOFF_PROMPT in the dry-run plan", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({ terminal: "term_test" }),
+			);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "task-boundary" }),
+			);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{
+					encoding: "utf8",
+					env: {
+						...process.env,
+						OMP_HANDOFF_PROMPT: "custom prompt",
+						OMP_SUPERVISOR_LOG_LEVEL: "quiet",
+					},
+				},
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(JSON.parse(result.stdout).prompt, "custom prompt");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("honors supervisorLogLevel", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			const quiet = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{
+					encoding: "utf8",
+					env: { ...process.env, OMP_SUPERVISOR_LOG_LEVEL: "quiet" },
+				},
+			);
+			const info = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{
+					encoding: "utf8",
+					env: { ...process.env, OMP_SUPERVISOR_LOG_LEVEL: "info" },
+				},
+			);
+
+			assert.doesNotMatch(quiet.stdout, /started dir=/);
+			assert.match(info.stdout, /started dir=/);
+			assert.equal(quiet.status, 1);
+			assert.equal(info.status, 1);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

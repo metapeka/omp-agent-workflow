@@ -38,6 +38,9 @@
 | `orcaEnabled` | boolean | `true` (false отключает supervisor/automatic handoff) |
 | `orcaPreflight` | boolean | `true` |
 | `supervisorEnabled` | boolean | `true` |
+| `continuePrompt` | string | текущий текст |
+| `supervisorRetries` | number 1–10 | `3` |
+| `supervisorLogLevel` | enum | `info` |
 
 ## Env (fallback)
 
@@ -52,6 +55,9 @@
 | `OMP_ORCA_ENABLED` | `true` | Orca terminal list/show; `false` — fallback |
 | `OMP_ORCA_PREFLIGHT` | `true` | Проверять handle перед handoff |
 | `OMP_SUPERVISOR_ENABLED` | `true` | Запускать supervisor из launcher |
+| `OMP_HANDOFF_PROMPT` | текущий текст | Continuation prompt новой сессии |
+| `OMP_SUPERVISOR_RETRIES` | `3` | Попытки send/preflight |
+| `OMP_SUPERVISOR_LOG_LEVEL` | `info` | `quiet`/`info`/`debug` |
 | `OMP_YODA_DIR` | `$PWD` | Каталог supervisor/launcher |
 | `OMP_YODA_LOG` | `${TMPDIR:-/tmp}/omp-yoda-supervisor.log` | Лог supervisor |
 

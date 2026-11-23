@@ -51,8 +51,10 @@ flowchart LR
 значения через `getPluginSettings` (dynamic import OMP loader; вне OMP —
 fallback на env) и сводит их с env/режимом в `lib/workflow-settings.ts`.
 Launcher читает те же ключи через `omp plugin config list` и передаёт
-`OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED` supervisor'у. Приоритет:
-**Settings > env > режим/дефолт** (D12).
+`OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED` supervisor'у, а также
+`continuePrompt`/`supervisorRetries`/`supervisorLogLevel` через
+`OMP_HANDOFF_PROMPT`/`OMP_SUPERVISOR_RETRIES`/`OMP_SUPERVISOR_LOG_LEVEL`.
+Приоритет: **Settings > env > режим/дефолт** (D12).
 
 ## Что extension может и не может (OMP 19.1.0)
 

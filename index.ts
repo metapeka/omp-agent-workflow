@@ -29,8 +29,6 @@ const HANDOFF_INSTRUCTIONS =
 	"инструментов отбрось.";
 
 const SESSION_INFO = ".omp-handoff-session.json";
-const HANDOFF_NEW_PROMPT =
-	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
 
 /** Краткий вид контекста: `42% (420k/1000k)`. */
 function usageText(usage: {
@@ -304,7 +302,11 @@ export default function contextGuard(pi: ExtensionAPI): void {
 				const result = await ctx.newSession({
 					...(parentSession ? { parentSession } : {}),
 					setup: async (sessionManager) => {
-						sessionManager.appendCustomMessageEntry("handoff", HANDOFF_NEW_PROMPT, true);
+						sessionManager.appendCustomMessageEntry(
+							"handoff",
+							settings.continuePrompt,
+							true,
+						);
 					},
 				});
 				if (result.cancelled) notify(ctx, "HANDOFF-NEW отменён.", "info");

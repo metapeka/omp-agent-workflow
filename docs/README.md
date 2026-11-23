@@ -4,7 +4,7 @@
 OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
 объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.4` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.5` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
@@ -12,6 +12,7 @@ TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.2` — один supervisor на каталог, см. [operations.md](operations.md).
 `0.5.3` — Orca только как опция (D11): terminal list/show, status warning.
 `0.5.4` — Settings → Plugins (D12): 9 ключей, Settings > env.
+`0.5.5` — Settings для supervisor: `continuePrompt`, retries, log level.
 
 ## С чего начать
 

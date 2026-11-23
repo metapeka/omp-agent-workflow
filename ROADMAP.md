@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.4`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-23. Версия: `0.5.5`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция и Settings готовы; release/remote — по решению владельца.
 Оперативный список — `TODO.md`.
@@ -112,6 +112,16 @@ Orca-интеграция и Settings готовы; release/remote — по ре
       передаёт `OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED`.
 - [x] Supervisor: `orcaEnabled`/`supervisorEnabled` gate, `orcaPreflight`.
 - [x] D12, тесты settings (6) и supervisor (2); docs.
+
+## Этап 0.5.5 — Settings для supervisor (готово)
+
+- [x] `continuePrompt` — настраиваемый текст новой сессии (`/handoff-new`,
+      continuation prompt supervisor'а).
+- [x] `supervisorRetries` — попытки send/preflight (env/CLI).
+- [x] `supervisorLogLevel` — `quiet`/`info`/`debug`; lifecycle-логи под гейтом.
+- [x] Launcher передаёт настройки через `OMP_HANDOFF_PROMPT`,
+      `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`.
+- [x] Тесты settings/supervisor; docs.
 
 ## Этап 0.6 — экономика handoff (P2)
 
