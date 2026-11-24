@@ -243,31 +243,58 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 | Решения | `docs/decisions.md` (D11, D12, D13) |
 | Runbook | `docs/operations.md` |
 
+## Explainer site 2026-11-24
+
+Live: [metapeka.github.io/omp-agent-workflow](https://metapeka.github.io/omp-agent-workflow/)
+(EN), [/ru/](https://metapeka.github.io/omp-agent-workflow/ru/),
+[/zh/](https://metapeka.github.io/omp-agent-workflow/zh/). GitHub Pages —
+source `main /docs`, `.nojekyll`; homepage репозитория указывает на сайт.
+
+- Файлы: `docs/index.html`, `docs/ru/index.html`, `docs/zh/index.html`,
+  `docs/assets/site.css`, `docs/assets/explainer-banner.svg`; SVG-баннер
+  в README всех трёх языков.
+- Содержимое: prompt cache, session/context/cache, что убивает кэш, карта
+  «провайдер → OMP → плагин → cache-monitor», таймлайн сбросов, таблица
+  покрытия, реальные замеры, инцидент 2026-11-24, пороги 18/25/30/40/900,
+  чек-лист.
+- Замеры на 400-ходовой сессии: 397 cache-hit, hit 99.2%; диалог $2.77,
+  сессия $3.18; Kimi K3 → DeepSeek — 35 719 input / 768 cache; холодный
+  ход — 363 693 input / 0 cache ≈ $0.109. Деньги — `usage.cost.total` по
+  фиксированному каталогу, не счёт.
+- Проверки: HTML tag/link check; скриншоты EN/RU/ZH, light/dark, mobile
+  390px; live Pages 200 для страниц, CSS и баннера; баннер отрендерился
+  в GitHub README.
+
 ## Проверки
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 181/181
+npm test                                  # 192/192
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
 omp plugin config list omp-agent-workflow --json | jq '.schema | keys'
 node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  https://metapeka.github.io/omp-agent-workflow/       # 200
 ```
 
 ## Следующие шаги
 
-1. Перезапустить `bin/omp-yoda`: текущий OMP/supervisor загружены до merge
-   0.5.14; безопасный cleanup появится в новой сессии.
-2. Issue в Orca заведён: [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
+1. Новая сессия загрузит 0.5.17; проверить `omp plugin list`, `/handoff`,
+   `/handoff-preflight` и `SUP OFF` в TUI.
+2. Настройки пока `autoCompactPercent=60`; для окна 1M рекомендуется 40
+   (`omp plugin config set omp-agent-workflow autoCompactPercent 40`) —
+   решение владельца, код настройки не меняет.
+3. Issue в Orca заведён: [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    — `orca worktree rm` штатно останавливает PTY удаляемого worktree и
    убивает caller, если он внутри; workflow-guard — обход, не замена
    решения Orca. Ждём ответа maintainers.
-3. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
+4. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
-4. Решение владельца: npm/marketplace; английский README, GitHub и CI уже
+5. Решение владельца: npm/marketplace; английский README, GitHub и CI уже
    сделаны.
-5. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов.
+6. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов.
 
 ## Риски
 
