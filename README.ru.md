@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  182 теста · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
+  187 тестов · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-182%2F182-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-187%2F187-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -133,7 +133,7 @@
 1. Агент обновляет `HANDOFF.md`: цель, состояние, решения, файлы, проверки, следующий шаг.
 2. На безопасной границе пишет `.omp-handoff-request.json` (marker).
 3. Supervisor видит marker и отправляет `/handoff-new` в terminal handle из `.omp-handoff-session.json`.
-4. `/handoff-new` собирает сообщение новой сессии из `continuePrompt` + state-файла (лимит 64k, маркер обрезки, fallback при ошибке чтения).
+4. `/handoff-new` собирает сообщение новой сессии из `continuePrompt` + state-файла (лимит 32k, маркер обрезки, fallback при ошибке чтения).
 5. Новая сессия читает `HANDOFF.md` и продолжает. Компакции посреди tool-loop нет: плагин ждёт `turn_end` и `ctx.isIdle()`.
 
 ```text
@@ -231,6 +231,13 @@ Env fallback: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP_
 | `assisted` (default) | 60% | выкл | выкл |
 | `yoda` | 70% fallback | 55% | выкл |
 | `yoda-supervised` | 70% fallback | 55% | ✅ |
+
+**Проценты считаются от окна активной модели**
+(`ctx.getContextUsage().percent`), а не в абсолютных токенах. При окне 1M
+55% — это 550k токенов; при окне 100k те же 55% — 55k. Пример для 1M:
+warning 18% (180k), suggestion 25% (250k), handoff 30% (300k),
+авто-компакция 60% (600k). Те же проценты на окне 100k дают
+18k / 25k / 30k / 60k.
 
 ### Статус-строка
 
@@ -347,7 +354,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ```bash
 npm ci
-npm test          # 182 теста
+npm test          # 187 тестов
 npm run typecheck
 ```
 

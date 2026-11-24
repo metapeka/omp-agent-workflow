@@ -51,8 +51,18 @@ const RUNTIME_PATHS = [
 ];
 const RUNTIME_EXCLUDES = RUNTIME_PATHS.map((path) => `:(exclude)${path}`);
 
-/** Лимит state-файла в новой сессии: 64k символов ≈ 16k токенов. */
-const HANDOFF_STATE_LIMIT = 64_000;
+/**
+ * Лимит state-файла в новой сессии: 32k символов. Офлайн-токенизаторы
+ * (`omp toks`) дают 2.1–3.0 символа на токен для русского текста, то есть
+ * 32k символов ≈ 10–15k токенов — безопасно для окна 100k и не съедает
+ * заметную долю промпта на 1M.
+ */
+const HANDOFF_STATE_LIMIT = 32_000;
+
+/** Повторный запрос HANDOFF после стольких завершённых ходов без marker. */
+const HANDOFF_RETRY_TURNS = 2;
+/** Всего запросов до остановки: первый + повторы, чтобы не крутить цикл. */
+const HANDOFF_MAX_REQUESTS = 3;
 
 /**
  * Сообщение для новой сессии: continuation prompt + содержимое state-файла.
@@ -677,7 +687,7 @@ function writeSessionInfo(ctx: ExtensionContext): void {
 	if (!isMainTui(ctx)) return;
 	try {
 		const info = {
-			terminal: process.env.ORCA_TERMINAL_HANDLE ?? null,
+			terminal: process.env.ORCA_TERMINAL_HANDLE?.trim() || null,
 			sessionFile: ctx.sessionManager.getSessionFile() ?? null,
 			cwd: ctx.cwd,
 			pid: process.pid,
@@ -710,7 +720,7 @@ function handoffMarkerPending(cwd: string, sessionFile: string | null): boolean 
 	}
 }
 
-/** Supervisor жив: lock есть, owner.pid существует. */
+/** Supervisor жив: lock есть, owner.pid существует и lock — от этого каталога. */
 function supervisorAlive(cwd: string): boolean {
 	try {
 		const raw = JSON.parse(
@@ -718,12 +728,17 @@ function supervisorAlive(cwd: string): boolean {
 				resolve(cwd, ".omp-handoff-supervisor.lock", "owner.json"),
 				"utf8",
 			),
-		) as { pid?: unknown };
+		) as { pid?: unknown; dir?: unknown };
 		if (
 			typeof raw.pid !== "number" ||
 			!Number.isInteger(raw.pid) ||
 			raw.pid <= 0
 		) {
+			return false;
+		}
+		// Lock скопированного/подмонтированного каталога не подтверждает
+		// supervisor для текущего cwd.
+		if (typeof raw.dir === "string" && resolve(raw.dir) !== resolve(cwd)) {
 			return false;
 		}
 		process.kill(raw.pid, 0);
@@ -803,7 +818,11 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	let autoCompacted = false;
 	let compacting = false;
 	let handoffRequested = false;
+	let handoffRequestCount = 0;
+	let handoffTurnsSinceRequest = 0;
 	let handoffCooldownUntil = 0;
+	let supervisorWarned = false;
+	let terminalWarned = false;
 
 	/** После падения ниже warning пороги снова активны. */
 	const resetIfBelow = (percent: number): void => {
@@ -878,36 +897,96 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	};
 
 	/**
+	 * На пороге handoff предупредить, что supervisor/terminal handle не готовы:
+	 * иначе marker останется лежать, а сессия молча остановится.
+	 */
+	const warnHandoffPrereqs = (ctx: ExtensionContext): void => {
+		const supervisorRequired =
+			settings.workflowMode === "yoda-supervised" &&
+			settings.supervisorEnabled &&
+			settings.orcaEnabled;
+		if (!supervisorRequired) return;
+		if (supervisorAlive(ctx.cwd)) {
+			supervisorWarned = false;
+		} else if (!supervisorWarned) {
+			supervisorWarned = true;
+			notify(
+				ctx,
+				"Supervisor не запущен: automatic handoff не сработает. " +
+					`Запусти \`bash bin/omp-yoda --dir ${ctx.cwd}\`.`,
+				"warning",
+			);
+		}
+		if ((process.env.ORCA_TERMINAL_HANDLE?.trim() || null) === null && !terminalWarned) {
+			terminalWarned = true;
+			notify(
+				ctx,
+				"terminal handle нет — automatic handoff не сработает. Запусти OMP из Orca.",
+				"warning",
+			);
+		}
+	};
+
+	const resetHandoff = (): void => {
+		handoffRequested = false;
+		handoffRequestCount = 0;
+		handoffTurnsSinceRequest = 0;
+		handoffCooldownUntil = 0;
+		supervisorWarned = false;
+	};
+
+	/**
 	 * На пороге handoff просим агента завершить задачу, обновить state и
 	 * поставить marker. Новую сессию отсюда начать нельзя — это делает
-	 * supervisor через /handoff-new.
+	 * supervisor через /handoff-new. Если marker не появился за
+	 * HANDOFF_RETRY_TURNS ходов, запрос повторяется (до HANDOFF_MAX_REQUESTS)
+	 * с предупреждением, чтобы сессия не зависла молча.
 	 */
 	const checkHandoff = async (ctx: ExtensionContext): Promise<void> => {
 		if (!isMainTui(ctx) || settings.handoffAtPercent === null) return;
-		if (Date.now() < handoffCooldownUntil) return;
 		const usage = readUsage(ctx);
 		if (!usage) return;
 		if (usage.percent < settings.handoffAtPercent) {
-			handoffRequested = false;
-			handoffCooldownUntil = 0;
+			resetHandoff();
 			return;
 		}
-		if (handoffRequested || !ctx.isIdle() || ctx.hasPendingMessages()) return;
+		warnHandoffPrereqs(ctx);
+
+		const sessionFile = ctx.sessionManager.getSessionFile() ?? null;
+		// Marker уже стоит: handoff принят, ждём supervisor.
+		if (handoffMarkerPending(ctx.cwd, sessionFile)) return;
+
+		const retryDue =
+			handoffRequested &&
+			handoffRequestCount < HANDOFF_MAX_REQUESTS &&
+			handoffTurnsSinceRequest >= HANDOFF_RETRY_TURNS;
+		if (handoffRequested && !retryDue) return;
+		// Cooldown гасит новый запрос, но не повтор с собственным дедлайном.
+		if (!retryDue && Date.now() < handoffCooldownUntil) return;
+		if (!ctx.isIdle() || ctx.hasPendingMessages()) return;
 
 		handoffRequested = true;
+		handoffTurnsSinceRequest = 0;
 		handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;
-		const marker = JSON.stringify({
-			reason: "context",
-			sessionFile: ctx.sessionManager.getSessionFile() ?? null,
-		});
+		const marker = JSON.stringify({ reason: "context", sessionFile });
 		const text =
 			`HANDOFF: контекст ${usageText(usage)}. Заверши текущую задачу, обнови HANDOFF.md, ` +
 			`запиши .omp-handoff-request.json с ${marker} и заверши ход. ` +
 			"Не начинай новую задачу.";
 		try {
 			await pi.sendUserMessage(text);
+			handoffRequestCount += 1;
+			if (retryDue) {
+				notify(
+					ctx,
+					`HANDOFF запрошен ${handoffRequestCount} раз, marker не появился. ` +
+						"Проверь supervisor.",
+					"warning",
+				);
+			}
 		} catch (error) {
 			handoffRequested = false;
+			handoffTurnsSinceRequest = 0;
 			const message = error instanceof Error ? error.message : String(error);
 			notify(ctx, `Не удалось запросить HANDOFF: ${message}`, "warning");
 		}
@@ -949,7 +1028,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		suggested = false;
 		autoCompacted = false;
 		compacting = false;
-		handoffRequested = false;
+		resetHandoff();
 		try {
 			// Дочерняя сессия после /handoff-new не должна сразу уйти в новый handoff.
 			if (ctx.sessionManager.getHeader()?.parentSession) {
@@ -966,6 +1045,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	pi.on("turn_end", async (_event, ctx) => {
 		await refreshSettings(ctx);
 		checkWarnings(ctx);
+		if (handoffRequested) handoffTurnsSinceRequest += 1;
 		await checkHandoff(ctx);
 		await checkAuto(ctx);
 		updateStatus(ctx);
@@ -997,8 +1077,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		warned = false;
 		suggested = false;
 		autoCompacted = false;
-		handoffRequested = false;
-		handoffCooldownUntil = 0;
+		resetHandoff();
 		notify(ctx, "Контекст сжат.", "info");
 		updateStatus(ctx);
 	});
@@ -1009,8 +1088,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		suggested = false;
 		autoCompacted = false;
 		compacting = false;
-		handoffRequested = false;
-		handoffCooldownUntil = 0;
+		resetHandoff();
 		writeSessionInfo(ctx);
 		checkWarnings(ctx);
 		updateStatus(ctx);

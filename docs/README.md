@@ -4,8 +4,9 @@
 OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
 объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.14` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
-singleton + additive Orca + Settings + status key + safe cleanup).
+Версия: `0.5.15` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+singleton + additive Orca + Settings + status key + safe cleanup + handoff
+guards).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -16,7 +17,7 @@ TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.6` — `/handoff-preflight`: read-only проверка перед `/handoff-new`.
 `0.5.7` — preflight hardening: repo-error, upstream compare, `[файл]`.
 `0.5.8` — `/handoff-new` встраивает содержимое state-файла в custom message
-(лимит 64k, маркер обрезки, fallback при ошибке чтения).
+(лимит 32k, маркер обрезки, fallback при ошибке чтения).
 `0.5.9` — `/handoff-preflight` показывает чек-лист перед таблицей проверок;
 отмена останавливает команду, без `askDialog` меню пропускается.
 `0.5.10` — `/handoff-preflight` меню действий: проверки, commit, ff-merge;
@@ -33,6 +34,9 @@ merged/clean/current/live-процессы/терминалы, не исполь
 `--delete-branch`/`--force`/`-D`, сохраняет tip в backup-ref и по умолчанию
 оставляет ветку. Причина: `orca worktree rm` останавливает PTY удаляемого
 worktree и присылает SIGTERM живой OMP-сессии.
+`0.5.15` — handoff guards: state 32k символов (≈10–15k токенов), warning без
+supervisor/terminal handle на пороге, повтор запроса без marker через 2 хода
+(максимум 3 запроса).
 
 ## С чего начать
 

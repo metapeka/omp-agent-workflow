@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  182 个测试 · 0 运行时依赖 · 4 种模式 · 13 项设置 · MIT
+  187 个测试 · 0 运行时依赖 · 4 种模式 · 13 项设置 · MIT
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-182%2F182-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-187%2F187-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -133,7 +133,7 @@
 1. 代理更新 `HANDOFF.md`：目标、状态、决策、文件、检查、下一步。
 2. 在安全边界写入 `.omp-handoff-request.json`（marker）。
 3. 守护进程看到 marker，向 `.omp-handoff-session.json` 中的终端 handle 发送 `/handoff-new`。
-4. `/handoff-new` 用 `continuePrompt` + 状态文件构造新会话消息（64k 上限、截断标记、读取失败回退）。
+4. `/handoff-new` 用 `continuePrompt` + 状态文件构造新会话消息（32k 上限、截断标记、读取失败回退）。
 5. 新会话读取 `HANDOFF.md` 并继续。不会在工具循环中间压缩；插件等待 `turn_end` 和 `ctx.isIdle()`。
 
 ```text
@@ -231,6 +231,12 @@ Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境�
 | `assisted`（默认） | 60% | 关 | 关 |
 | `yoda` | 70% 回退 | 55% | 关 |
 | `yoda-supervised` | 70% 回退 | 55% | ✅ |
+
+**百分比相对于当前模型的上下文窗口**
+（`ctx.getContextUsage().percent`），不是绝对 token 数。1M 窗口下 55% 是
+550k token；100k 窗口下同样的 55% 是 55k。以 1M 窗口为例：警告 18%
+（180k）、建议 25%（250k）、交接 30%（300k）、自动压缩 60%（600k）。
+同样的百分比在 100k 窗口上分别是 18k / 25k / 30k / 60k。
 
 ### 状态栏
 
@@ -347,7 +353,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ```bash
 npm ci
-npm test          # 182 个测试
+npm test          # 187 个测试
 npm run typecheck
 ```
 

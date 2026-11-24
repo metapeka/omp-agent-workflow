@@ -16,6 +16,36 @@ semantic for the plugin contract, not for OMP itself.
   `orca worktree rm` sends SIGTERM to a caller running inside the removed
   worktree.
 
+## [0.5.15] — 2026-11-24
+
+### Changed
+
+- `/handoff-new` state limit lowered from 64k to 32k characters. `omp toks`
+  measures 2.1–3.0 characters per token on Russian text, so 64k characters
+  was ~21–30k tokens, not the documented ~16k. 32k characters is ~10–15k
+  tokens.
+- READMEs, AGENTS and the wiki now state that all percentages are relative
+  to the active model's context window (`ctx.getContextUsage().percent`),
+  with 1M and 100k recalculations.
+
+### Added
+
+- In `yoda-supervised`, the handoff threshold now verifies the supervisor
+  lock (`owner.json`: pid alive, same directory) and warns once if it is
+  missing: `bash bin/omp-yoda --dir <cwd>`.
+- Warn once per session when `ORCA_TERMINAL_HANDLE` is empty, because the
+  supervisor cannot start a new session without a terminal handle.
+- If the agent ends turns without writing the marker, the handoff request is
+  repeated after 2 completed turns with a warning; after 3 requests the
+  repeat loop stops.
+
+### Fixed
+
+- An empty or whitespace-only `ORCA_TERMINAL_HANDLE` is stored as `null`
+  instead of an empty string in `.omp-handoff-session.json`.
+- `supervisorEnabled` is now consumed by the extension, not only by the
+  launcher and supervisor.
+
 ## [0.5.14] — 2026-11-23
 
 ### Fixed

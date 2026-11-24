@@ -1,9 +1,10 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-23. Версия: `0.5.14`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-24. Версия: `0.5.15`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
-Orca-интеграция и Settings готовы; публичный GitHub-репозиторий и release
-`v0.5.14` есть; npm/marketplace — по решению владельца.
+Orca-интеграция, Settings и handoff guards готовы; публичный
+GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
+владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -164,6 +165,7 @@ Orca-интеграция и Settings готовы; публичный GitHub-р
       вместе с `continuePrompt`, а не передаёт только prompt.
 - [x] Лимит 64 000 символов; при превышении — маркер обрезки с полным
       размером и путём файла; surrogate pair не разрывается.
+      (0.5.15: снижен до 32 000 символов после замера `omp toks`.)
 - [x] Ошибка чтения — fallback: prompt + просьба прочитать файл самому.
 - [x] Тесты: контент в message, обрезка, альтернативный `[файл]`, fallback.
 - [x] Документировано: `cwd` новой сессии — `ctx.cwd`.
@@ -235,6 +237,21 @@ Orca-интеграция и Settings готовы; публичный GitHub-р
 - [x] Причина: `orca worktree rm` останавливает PTY target (SIGTERM живой
       сессии); зафиксировано в HANDOFF и D13.
 - [x] Тесты (`test/worktree-remove.test.mjs`), typecheck, AGENTS/README/docs.
+
+## Этап 0.5.15 — handoff guards (готово)
+
+- [x] State 32 000 символов вместо 64 000: `omp toks` на русском даёт
+      2.1–3.0 символа/токен, прежний комментарий «≈16k токенов» занижал
+      расход в 1.3–1.9 раза.
+- [x] `yoda-supervised`: на пороге handoff проверять lock/pid supervisor'а и
+      каталог lock; warning с командой запуска, один раз на порог.
+- [x] Пустой `ORCA_TERMINAL_HANDLE` → `null` в session info и warning, что
+      automatic handoff не сработает.
+- [x] Повтор запроса HANDOFF через 2 завершённых хода без marker; максимум
+      3 запроса, затем статус `⚠ HANDOFF` без новых ходов.
+- [x] README/AGENTS/docs: проценты относительны окна модели, примеры для
+      1M и 100k.
+- [x] Тесты на warning/retry/terminal handle, типаж-чек, docs.
 
 ## Этап 0.6 — экономика handoff (P2)
 

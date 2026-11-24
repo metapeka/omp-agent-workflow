@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-23. Версия: `0.5.14`.
+Дата: 2026-11-24. Версия: `0.5.15`.
 
 ## Сейчас
 
@@ -55,7 +55,7 @@
 - [x] 0.5.7 — preflight hardening: repo-error, upstream compare, `[файл]`,
       timeout, нет коммитов; тесты upstream/detached/merged.
 - [x] 0.5.8 — `/handoff-new` встраивает state-файл в custom message:
-      64k-лимит, маркер обрезки, fallback при ошибке чтения; тесты и docs.
+      64k-лимит (0.5.15: 32k), маркер обрезки, fallback при ошибке чтения; тесты и docs.
 - [x] 0.5.9 — `/handoff-preflight`: интерактивный чек-лист перед таблицей,
       неотмеченные пункты, отмена; тесты и docs.
 - [x] 0.5.10 — `/handoff-preflight`: меню действий «Сделать/Пропустить»,
@@ -71,6 +71,9 @@
       без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref;
       retry failed-задачи: `force`+`requireMerged:false`, старая ветка
       переименовывается; тесты и docs.
+- [x] 0.5.15 — handoff guards: state 32k символов (≈10–15k токенов), warning
+      без supervisor/terminal handle, повтор запроса без marker через 2 хода
+      (максимум 3); README/AGENTS про относительные проценты; тесты и docs.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

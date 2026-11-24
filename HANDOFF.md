@@ -1,7 +1,7 @@
 # Передача: omp-agent-workflow
 
-Дата: 2026-11-23. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.14`; ветки `feat/handoff-preflight`,
+Дата: 2026-11-24. Основной репозиторий: `~/projects/omp-agent-workflow`.
+`main`, версия `0.5.15`; ветки `feat/handoff-preflight`,
 `feat/preflight-fixes`, `feat/handoff-state-embed`,
 `feat/preflight-checklist`, `feat/preflight-actions`,
 `feat/preflight-flow`, `feat/workflow-status-key`,
@@ -32,8 +32,9 @@ backlog — `TODO.md`.
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
+| Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
-| Проверки | `npm test` 182/182, `npm run typecheck`, extension load exit 0 |
+| Проверки | `npm test` 187/187, `npm run typecheck`, extension load exit 0 |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
@@ -123,8 +124,10 @@ orca worktree rm --worktree path:<wt> --json    # PTY target получает SI
 Custom message новой сессии собирается из `continuePrompt` и содержимого
 state-файла; prompt без состояния больше не передаётся.
 
-- Лимит — 64 000 символов; при превышении добавляется маркер с числом
-  показанных/полных символов и путём файла; surrogate pair не разрывается.
+- Лимит — 32 000 символов; `omp toks` на русском тексте даёт 2.1–3.0
+  символа/токен, то есть это ≈10–15k токенов, а не 16k при прежних 64k.
+  При превышении добавляется маркер с числом показанных/полных символов и
+  путём файла; surrogate pair не разрывается.
 - Ошибка чтения — fallback: prompt + просьба прочитать файл самому.
 - Текст `continuePrompt` остаётся настраиваемым и идёт первым.
 - `cwd` новой сессии — `ctx.cwd`; запускать `/handoff-new` из корня
@@ -132,6 +135,23 @@ state-файла; prompt без состояния больше не перед�
 - Ручной `/handoff-new` не запускает ход: без supervisor отправь в новой
   сессии «продолжай». Supervisor при automatic handoff отправляет
   continuation prompt сам.
+
+## Handoff guards 0.5.15
+
+Проверки на пороге handoff (`checkHandoff`), только main TUI:
+
+- Если `workflowMode=yoda-supervised`, `supervisorEnabled` и `orcaEnabled`
+  включены, но `.omp-handoff-supervisor.lock/owner.json` отсутствует, pid мёртв
+  или lock принадлежит другому каталогу — один warning на порог:
+  «Supervisor не запущен … `bash bin/omp-yoda --dir <cwd>`».
+- Пустой/пробельный `ORCA_TERMINAL_HANDLE` пишется в
+  `.omp-handoff-session.json` как `null`; на пороге — warning «terminal handle
+  нет — automatic handoff не сработает» один раз за сессию.
+- Marker нет через 2 завершённых хода после запроса — запрос повторяется с
+  warning «HANDOFF запрошен N раз, marker не появился»; после 3 запросов
+  повторы прекращаются, статус `⚠ HANDOFF` остаётся.
+- В режимах без automatic handoff (`assisted`, `manual`, `yoda`) эти
+  предупреждения не показываются.
 
 ## Статус-строка 0.5.12–0.5.13
 

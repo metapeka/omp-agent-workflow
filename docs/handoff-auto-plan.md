@@ -41,7 +41,7 @@ E2E пройден в реальном Orca-терминале: marker → super
    `/handoff-new` в terminal handle.
 4. `/handoff-new` ждёт idle, проверяет `HANDOFF.md`, вызывает `newSession`,
    добавляет custom message: `continuePrompt` + содержимое state-файла
-   (до 64 000 символов, при превышении — маркер обрезки). Ход при этом не
+   (до 32 000 символов, при превышении — маркер обрезки). Ход при этом не
    запускается: custom message — контекст, а не user message.
 5. Supervisor проверяет, что новая сессия стартовала, и отправляет
    continuation prompt — первый user message, который запускает агента.

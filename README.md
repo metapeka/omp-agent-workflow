@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  182 tests · 0 runtime deps · 4 modes · 13 settings · MIT
+  187 tests · 0 runtime deps · 4 modes · 13 settings · MIT
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-182%2F182-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-187%2F187-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -133,7 +133,7 @@ The public landscape study behind this claim — PI, OMP and GitHub, 2026-11-23:
 1. The agent updates `HANDOFF.md`: goal, state, decisions, files, checks, next step.
 2. At a safe boundary it writes `.omp-handoff-request.json` (marker).
 3. The supervisor sees the marker and sends `/handoff-new` to the terminal handle from `.omp-handoff-session.json`.
-4. `/handoff-new` builds a new session message from `continuePrompt` + the state file (64k limit, truncation marker, read-error fallback).
+4. `/handoff-new` builds a new session message from `continuePrompt` + the state file (32k limit, truncation marker, read-error fallback).
 5. The new session reads `HANDOFF.md` and continues. No compact event in the middle of a tool loop; the plugin waits for `turn_end` and `ctx.isIdle()`.
 
 ```text
@@ -231,6 +231,13 @@ Env fallbacks: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP
 | `assisted` (default) | 60% | off | off |
 | `yoda` | 70% fallback | 55% | off |
 | `yoda-supervised` | 70% fallback | 55% | ✅ |
+
+**Percentages are relative to the active model's context window**
+(`ctx.getContextUsage().percent`), not absolute token counts. With a 1M
+window, 55% is 550k tokens; with a 100k window the same 55% is 55k. Example
+for a 1M window: warn 18% (180k), suggest 25% (250k), handoff 30% (300k),
+auto-compaction 60% (600k). The same percentages on a 100k window mean
+18k / 25k / 30k / 60k.
 
 ### Status line
 
@@ -347,7 +354,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 ```bash
 npm ci
-npm test          # 182 tests
+npm test          # 187 tests
 npm run typecheck
 ```
 

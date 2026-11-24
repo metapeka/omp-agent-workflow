@@ -44,6 +44,7 @@ const ENV_KEYS = [
 	"OMP_HANDOFF_PROMPT",
 	"OMP_SUPERVISOR_RETRIES",
 	"OMP_SUPERVISOR_LOG_LEVEL",
+	"ORCA_TERMINAL_HANDLE",
 ];
 
 // Supervisor gates читают ambient env; тесты стартуют от чистого состояния.
@@ -243,6 +244,22 @@ describe("context warnings", () => {
 			);
 			assert.equal(info.cwd, dir);
 			assert.equal(info.sessionFile, "/tmp/session.jsonl");
+			assert.equal(info.terminal, null);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("writes a trimmed terminal handle from the environment", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-session-info-"));
+		try {
+			const { handlers } = install({ ORCA_TERMINAL_HANDLE: "  term_abc  " });
+			const main = view(40, { cwd: dir });
+			await fire(handlers, "session_start", {}, main.ctx);
+			const info = JSON.parse(
+				readFileSync(join(dir, ".omp-handoff-session.json"), "utf8"),
+			);
+			assert.equal(info.terminal, "term_abc");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -306,6 +323,93 @@ describe("automatic handoff request", () => {
 		await fire(handlers, "session_start", {}, v.ctx);
 		await fire(handlers, "turn_end", {}, v.ctx);
 		assert.equal(sent.length, 0);
+	});
+
+	it("retries when the marker does not appear and stops at the cap", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-retry-"));
+		try {
+			const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+			const v = view(56, { cwd: dir });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1, "no retry before the turn deadline");
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 2);
+			assert.ok(
+				v.notes.some((note) => /HANDOFF запрошен 2 раз, marker не появился/.test(note.text)),
+			);
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 3);
+			assert.ok(
+				v.notes.some((note) => /HANDOFF запрошен 3 раз, marker не появился/.test(note.text)),
+			);
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 3, "request cap stops the loop");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("does not retry once the session marker exists", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-marker-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "context", sessionFile: "/tmp/session.jsonl" }),
+			);
+			const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+			const v = view(56, { cwd: dir });
+			for (let turn = 0; turn < 4; turn += 1) {
+				await fire(handlers, "turn_end", {}, v.ctx);
+			}
+			assert.equal(sent.length, 0);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("warns when yoda-supervised has no running supervisor", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-sup-"));
+		try {
+			const { handlers, sent } = install({
+				OMP_WORKFLOW_MODE: "yoda-supervised",
+				ORCA_TERMINAL_HANDLE: "term_test",
+			});
+			const v = view(56, { cwd: dir });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+
+			const warnings = v.notes.filter((note) => /Supervisor не запущен/.test(note.text));
+			assert.equal(warnings.length, 1);
+			assert.match(warnings[0].text, /bash bin\/omp-yoda --dir /);
+			assert.equal(sent.length, 1);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("warns once when the terminal handle is missing", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-term-"));
+		try {
+			const { handlers } = install({ OMP_WORKFLOW_MODE: "yoda-supervised" });
+			const v = view(56, { cwd: dir });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+
+			const warnings = v.notes.filter((note) => /terminal handle нет/.test(note.text));
+			assert.equal(warnings.length, 1);
+			assert.match(warnings[0].text, /automatic handoff не сработает/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 
@@ -442,10 +546,10 @@ describe("/handoff-new", () => {
 		}
 	});
 
-	it("truncates a state file above the 64k limit", async () => {
+	it("truncates a state file above the 32k limit", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
 		try {
-			const head = "A".repeat(70_000);
+			const head = "A".repeat(40_000);
 			const tail = "TAIL-MUST-BE-ABSENT";
 			writeFileSync(join(dir, "HANDOFF.md"), `${head}${tail}`);
 			const { commands } = install();
@@ -456,10 +560,10 @@ describe("/handoff-new", () => {
 			const message = v.customMessages[0][1];
 			assert.match(
 				message,
-				new RegExp(`state обрезан: показаны 64000 из ${head.length + tail.length}`),
+				new RegExp(`state обрезан: показаны 32000 из ${head.length + tail.length}`),
 			);
 			assert.doesNotMatch(message, /TAIL-MUST-BE-ABSENT/);
-			assert.ok(message.length < 65_000, `message length ${message.length}`);
+			assert.ok(message.length < 33_000, `message length ${message.length}`);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
