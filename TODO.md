@@ -19,6 +19,8 @@
 
 - [ ] 0.6: экономика handoff/компакции с `omp-cache-monitor` — стоимость,
       влияние на hit rate; без TTL/warming без данных провайдера.
+      Вход готов: `docs/research/model-modes.md` — цены 9 моделей, замеры
+      reasoning (n=3) и handoff-payload (20 сессий), цена границы, режим v1.
 - [ ] Интеграция с Orca orchestration Runs/gates — `[future]` 0.6+.
 - [ ] Параллельные задачи и multi-repo — `[future]`.
 - [ ] Свои agent definitions (`implementer`/`verifier`) через `.omp/agents`.

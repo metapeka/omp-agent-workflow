@@ -259,6 +259,45 @@
       </div>
     </section>
 
+    <section id="handoff-numbers">
+      <h2>Handoff and thinking: measured</h2>
+      <p>Two measurements on this machine: 20 real handoff sessions (what the new session actually receives) and controlled probes on thinking levels.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Handoff, 20 sessions</th><th class="num">Min</th><th class="num">Median</th><th class="num">Max</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Injected state, characters</td><td class="num">81</td><td class="num">5,271</td><td class="num">21,363</td></tr>
+            <tr><td>First request, tokens</td><td class="num">12,236</td><td class="num">—</td><td class="num">14,511</td></tr>
+            <tr><td>Cache read on that request</td><td class="num">9,856</td><td class="num">—</td><td class="num">14,080</td></tr>
+            <tr><td>New input tokens</td><td class="num">73</td><td class="num">1,886</td><td class="num">3,850</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The stable system+tools prefix often survives into the new session: cache read on the very first turn was 9.8–14.1k tokens. The state payload adds ~2k new tokens. So a handoff at a task boundary costs 0.01–0.3 turn when the target model's cache is warm, and 0.8–1.2 turns when it is cold.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Thinking, cost per 100k turn</th><th class="num">Median reasoning</th><th class="num">Cost</th><th class="num">Ceiling</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>flash, <code>off</code></td><td class="num">1,354</td><td class="num">$0.0052</td><td class="num">$0.0056</td></tr>
+            <tr><td>flash, <code>auto</code></td><td class="num">4,766</td><td class="num">$0.0093</td><td class="num">$0.0175</td></tr>
+            <tr><td>pro, <code>off</code> / <code>auto</code></td><td class="num">467 / 445</td><td class="num">$0.0080</td><td class="num">$0.0085 / $0.0080</td></tr>
+            <tr><td>pro, <code>high</code></td><td class="num">1,403</td><td class="num">$0.0090</td><td class="num">$0.0176</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><code>off</code> slows reasoning on flash ≈3.5× but does not disable it; on pro it changes nothing.</li>
+        <li>Thinking blocks in the transcript are not a billing signal: with <code>off</code>, <code>usage.reasoningTokens</code> was 1,187–1,645 while the transcript showed zero blocks.</li>
+        <li>The catalog <code>thinking</code> array lists selectable levels; the client accepted every level on every model tried.</li>
+        <li>Budget by median, reserve by the ceiling; do not mix runs when computing a ceiling.</li>
+      </ul>
+      <p class="muted">Details and the advisory-line format: <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/docs/research/model-modes.md">docs/research/model-modes.md</a>.</p>
+    </section>
+
     <section id="incident">
       <h2>Incident: the handoff that never happened</h2>
       <div class="incident-banner" role="note">
@@ -332,6 +371,8 @@ handoffCooldownSeconds=900</code></pre>
         <li>Run the supervisor and watch for <code>SUP OFF</code>; a marker without a supervisor is not a handoff.</li>
         <li>On a 1M window, set the fallback compaction to 40%, not 60%.</li>
         <li>Use <code>omp-cache-monitor</code> for hit rate and tokens. Treat USD as a list-price estimate, not an invoice.</li>
+        <li>Treat <code>thinking=off</code> as a throttle, not a switch: on flash it cut reasoning ≈3.5×; on pro it changed nothing.</li>
+        <li>Budget from medians, reserve from ceilings; thinking blocks in the transcript are not billed tokens.</li>
       </ul>
     </section>
   </main>
