@@ -1,7 +1,7 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-24. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.15`; ветки `feat/handoff-preflight`,
+`main`, версия `0.5.16`; ветки `feat/handoff-preflight`,
 `feat/preflight-fixes`, `feat/handoff-state-embed`,
 `feat/preflight-checklist`, `feat/preflight-actions`,
 `feat/preflight-flow`, `feat/workflow-status-key`,
@@ -33,8 +33,9 @@ backlog — `TODO.md`.
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
+| Session info 0.5.16 | `{sessions}` по pid, dead prune, lock + atomic rename; supervisor выбирает по `marker.sessionFile` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
-| Проверки | `npm test` 187/187, `npm run typecheck`, extension load exit 0 |
+| Проверки | `npm test` 190/190, `npm run typecheck`, extension load exit 0 |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
@@ -152,6 +153,27 @@ state-файла; prompt без состояния больше не перед�
   повторы прекращаются, статус `⚠ HANDOFF` остаётся.
 - В режимах без automatic handoff (`assisted`, `manual`, `yoda`) эти
   предупреждения не показываются.
+
+## Session info 0.5.16
+
+Дефект из аудита RMRP: `.omp-handoff-session.json` был один объект на cwd,
+и короткий `omp "…"` затирал terminal handle живой сессии; supervisor
+считал marker живой сессии stale.
+
+Выбран вариант 1 (карта записей), а не «не затирать живой pid»: при двух
+живых сессиях в одном cwd второй процесс не смог бы записать свой handle,
+и его marker всё равно считался бы stale.
+
+- Файл: `{ "sessions": [{ terminal, sessionFile, cwd, pid, updatedAt }] }`;
+  плоский объект 0.5.15 читается как одна запись.
+- `writeSessionInfo` объединяет по `pid`, живые чужие записи сохраняет,
+  мёртвые pid вычищает; read-modify-write под
+  `.omp-handoff-session.lock/`, запись атомарная (temp + rename).
+- Supervisor выбирает запись по `marker.sessionFile`; запись с мёртвым pid
+  не перехватывает marker живой сессии; без `sessionFile` — самая свежая
+  живая. `waitForNewSession` отслеживает ту же запись по `pid`/terminal.
+- `lib/session-info.ts` — parse/merge; `sessionFileFromInfo` в orchestrator
+  читает карту (сначала свой pid, затем самый свежий `updatedAt`).
 
 ## Статус-строка 0.5.12–0.5.13
 

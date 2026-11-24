@@ -153,21 +153,30 @@ OK, несвязанные коммиты после state — ложный warn
 ### `.omp-handoff-session.json`
 
 Пишет extension на `session_start`/`session_switch` только для main-сессии.
-Subagent-сессии файл не трогают. Читает supervisor.
+Subagent-сессии файл не трогают. Читают supervisor и orchestrator (spend).
 
 ```json
 {
-  "terminal": "term_...",
-  "sessionFile": "/home/u/.omp/agent/sessions/.../session.jsonl",
-  "cwd": "/path/to/worktree",
-  "pid": 12345,
-  "updatedAt": "2026-11-22T12:00:00.000Z"
+  "sessions": [
+    {
+      "terminal": "term_...",
+      "sessionFile": "/home/u/.omp/agent/sessions/.../session.jsonl",
+      "cwd": "/path/to/worktree",
+      "pid": 12345,
+      "updatedAt": "2026-11-24T12:00:00.000Z"
+    }
+  ]
 }
 ```
 
+- Один cwd может обслуживать несколько TUI-сессий: записи объединяются по
+  `pid`, живая чужая запись не затирается, мёртвые pid вычищаются при записи.
 - `terminal` — `ORCA_TERMINAL_HANDLE` или `null` вне Orca.
-- `sessionFile` — всегда main-сессия; иначе supervisor отбросит marker как stale.
-- Файл gitignored, не коммитится.
+- Supervisor выбирает запись по `marker.sessionFile`; без него — самую свежую
+  живую. Запись с мёртвым pid не перехватывает marker живой сессии.
+- Плоский объект 0.5.15 и раньше читается как одна запись.
+- Запись атомарная (temp + rename) под `.omp-handoff-session.lock/`; файл
+  gitignored и не коммитится.
 
 ### `.omp-handoff-request.json`
 

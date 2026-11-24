@@ -19,7 +19,7 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { acquireLock, releaseLock } from "../lib/supervisor-lock.mjs";
+import { acquireLock, pidAlive, releaseLock } from "../lib/supervisor-lock.mjs";
 
 const DEFAULT_PROMPT =
 	process.env.OMP_HANDOFF_PROMPT?.trim() ||
@@ -107,11 +107,81 @@ function runOrca(args) {
 	return spawnSync(orca, args, { encoding: "utf8", timeout: 30_000 });
 }
 
-/** Дождаться, пока extension запишет session info новой сессии. */
-async function waitForNewSession(previous, timeoutMs = 15_000) {
+/** Записи session info: `{sessions}` (0.5.16) или плоский объект (≤0.5.15). */
+function sessionEntries(session) {
+	if (!session || typeof session !== "object") return [];
+	if (Array.isArray(session.sessions)) {
+		return session.sessions.filter(
+			(entry) =>
+				entry &&
+				typeof entry === "object" &&
+				(typeof entry.sessionFile === "string" ||
+					typeof entry.terminal === "string"),
+		);
+	}
+	if (
+		typeof session.sessionFile === "string" ||
+		typeof session.terminal === "string"
+	) {
+		return [session];
+	}
+	return [];
+}
+
+function entryHasTerminal(entry) {
+	return typeof entry.terminal === "string" && entry.terminal.length > 0;
+}
+
+/** pid нет = legacy/неизвестно; не считаем такую запись мёртвой. */
+function entryLive(entry) {
+	if (entry.pid === undefined || entry.pid === null) return true;
+	return pidAlive(entry.pid);
+}
+
+/**
+ * Выбрать запись для marker. В одном cwd живут несколько TUI-сессий, поэтому
+ * точное совпадение `sessionFile` важнее «последней записи в файле».
+ * Короткий запуск с мёртвым pid не перехватывает marker живой сессии.
+ */
+function selectSession(session, marker) {
+	const entries = sessionEntries(session);
+	if (typeof marker.sessionFile === "string") {
+		const exact = entries.find(
+			(entry) => entry.sessionFile === marker.sessionFile,
+		);
+		if (exact) {
+			return entryLive(exact)
+				? { entry: exact, mismatch: false }
+				: { entry: null, mismatch: true };
+		}
+		return { entry: null, mismatch: true };
+	}
+	const candidates = entries
+		.filter(entryHasTerminal)
+		.filter(entryLive)
+		.sort((left, right) =>
+			String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")),
+		);
+	return { entry: candidates[0] ?? null, mismatch: false };
+}
+
+function entryByIdentity(session, identity) {
+	const entries = sessionEntries(session);
+	if (identity.pid !== undefined && identity.pid !== null) {
+		const byPid = entries.find((entry) => entry.pid === identity.pid);
+		if (byPid) return byPid;
+	}
+	if (identity.terminal) {
+		return entries.find((entry) => entry.terminal === identity.terminal) ?? null;
+	}
+	return null;
+}
+
+/** Дождаться, пока extension запишет новый sessionFile этой же сессии. */
+async function waitForNewSession(previous, identity, timeoutMs = 15_000) {
 	const start = Date.now();
 	while (Date.now() - start < timeoutMs) {
-		const current = readJson(sessionPath);
+		const current = entryByIdentity(readJson(sessionPath), identity);
 		if (
 			current &&
 			typeof current.sessionFile === "string" &&
@@ -121,7 +191,7 @@ async function waitForNewSession(previous, timeoutMs = 15_000) {
 		}
 		await sleep(250);
 	}
-	return readJson(sessionPath);
+	return entryByIdentity(readJson(sessionPath), identity);
 }
 
 function fail(message) {
@@ -146,16 +216,8 @@ async function main() {
 			continue;
 		}
 
-		const terminal = session.terminal;
-		if (typeof terminal !== "string" || terminal.length === 0) {
-			fail(`${sessionPath} has no terminal handle; start OMP from Orca`);
-			return;
-		}
-
-		if (
-			typeof marker.sessionFile === "string" &&
-			marker.sessionFile !== session.sessionFile
-		) {
+		const selected = selectSession(session, marker);
+		if (selected.mismatch) {
 			const now = Date.now();
 			if (
 				!staleCandidate ||
@@ -179,6 +241,13 @@ async function main() {
 			continue;
 		}
 		staleCandidate = null;
+
+		const entry = selected.entry;
+		const terminal = entry?.terminal;
+		if (typeof terminal !== "string" || terminal.length === 0) {
+			fail(`${sessionPath} has no terminal handle for the marker session; start OMP from Orca`);
+			return;
+		}
 
 		if (Date.now() - lastHandoffAt < cooldownMs) {
 			// После handoff новая сессия не должна просить следующий handoff
@@ -205,7 +274,8 @@ async function main() {
 		}
 
 		const previousSessionFile =
-			typeof session.sessionFile === "string" ? session.sessionFile : null;
+			typeof entry.sessionFile === "string" ? entry.sessionFile : null;
+		const identity = { pid: entry.pid, terminal };
 		if (orcaPreflight) {
 			if (logLevel === "debug") log(`[handoff-supervisor] preflight ${terminal}`);
 			const shown = runOrca([
@@ -247,7 +317,7 @@ async function main() {
 			continue;
 		}
 
-		const next = await waitForNewSession(previousSessionFile, 30_000);
+		const next = await waitForNewSession(previousSessionFile, identity, 30_000);
 		if (
 			!next ||
 			typeof next.sessionFile !== "string" ||

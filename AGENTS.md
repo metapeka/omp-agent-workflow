@@ -25,7 +25,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.14`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.16`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -39,11 +39,14 @@ hit rate, этот проект управляет контекстом и см�
   `⚠ HANDOFF`) и `statusEnabled` (13-й ключ); 0.5.13 — `SUP OFF` и
   `T2 verify` в том же ключе; 0.5.14 — безопасный cleanup worktree:
   живой процесс/терминал и текущий worktree блокируют удаление, ветка
-  остаётся, tip в backup-ref.
+  остаётся, tip в backup-ref; 0.5.15 — handoff guards (state 32k,
+  warning без supervisor/terminal handle, повтор запроса без marker);
+  0.5.16 — session info как карта по pid, чтобы одноразовый запуск не
+  затирал handle живой сессии.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm test` — 172 теста; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
+- `npm test` — 190 тестов; `npm run typecheck`; CI в `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
 

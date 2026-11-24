@@ -59,13 +59,15 @@ supervisor запущен (`bin/omp-yoda` или
 
 Поток:
 
-1. Extension на `session_start` пишет `.omp-handoff-session.json`:
-   `terminal`, `sessionFile`, `cwd`, `pid`.
+1. Extension на `session_start` пишет запись текущей сессии в
+   `.omp-handoff-session.json` (`{sessions}`: `terminal`, `sessionFile`,
+   `cwd`, `pid`); другие живые записи в этом cwd не затираются.
 2. На пороге 55% (в `yoda`/`yoda-supervised`) или на границе задачи агент
    получает указание: завершить задачу, обновить `HANDOFF.md`, записать
    `.omp-handoff-request.json` и закончить ход.
-3. Supervisor читает marker и session info, проверяет terminal handle,
-   `sessionFile`, cooldown 300 с и stale grace.
+3. Supervisor читает marker и session info, выбирает запись по
+   `marker.sessionFile`, проверяет terminal handle, `sessionFile`, cooldown
+   300 с и stale grace.
 4. Supervisor отправляет `/handoff-new` через
    `orca terminal send --enter`.
 5. `/handoff-new` открывает новую сессию и внедряет state; ход не

@@ -13,7 +13,15 @@
  * `~/.omp/agent/extensions/context-guard.ts` (одно из двух).
  */
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import type {
 	ExtensionAPI,
@@ -27,6 +35,10 @@ import {
 	type WorkflowSettings,
 } from "./lib/workflow-settings.ts";
 import {
+	mergeSessionInfo,
+	parseSessionInfo,
+} from "./lib/session-info.ts";
+import {
 	readState,
 	STATE_FILE as ORCHESTRATOR_STATE_FILE,
 } from "./lib/orchestrator/state.ts";
@@ -38,12 +50,14 @@ const HANDOFF_INSTRUCTIONS =
 	"инструментов отбрось.";
 
 const SESSION_INFO = ".omp-handoff-session.json";
+const SESSION_LOCK = ".omp-handoff-session.lock";
 const STATE_FILE = "HANDOFF.md";
 const REQUEST_MARKER = ".omp-handoff-request.json";
 /** Ключ статус-строки: режим Yoda и ожидаемый handoff, без context_pct. */
 const STATUS_KEY = "workflow";
 const RUNTIME_PATHS = [
 	SESSION_INFO,
+	SESSION_LOCK,
 	REQUEST_MARKER,
 	".omp-handoff-supervisor.lock",
 	".omp-handoff-supervisor.lock.stale-*",
@@ -682,18 +696,69 @@ function isMainTui(ctx: ExtensionContext): boolean {
 	return ctx.mode === "tui" && ctx.agent.kind === "main";
 }
 
-/** Файл для supervisor: terminal handle и текущая сессия. */
+/**
+ * Сериализовать read-modify-write session info между процессами в одном cwd.
+ * Lock-dir удаляется в finally; зависший lock старше 2 с перехватывается.
+ */
+function withSessionLock<T>(
+	cwd: string,
+	fn: (lockDir: string) => T,
+): T | null {
+	const lockPath = resolve(cwd, SESSION_LOCK);
+	const deadline = Date.now() + 500;
+	for (;;) {
+		try {
+			mkdirSync(lockPath);
+			break;
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== "EEXIST") return null;
+			try {
+				if (Date.now() - statSync(lockPath).mtimeMs > 2_000) {
+					rmSync(lockPath, { recursive: true, force: true });
+					continue;
+				}
+			} catch {
+				continue; // lock исчез между mkdir и stat
+			}
+			if (Date.now() >= deadline) return null;
+			Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+		}
+	}
+	try {
+		return fn(lockPath);
+	} finally {
+		rmSync(lockPath, { recursive: true, force: true });
+	}
+}
+
+/**
+ * Дописать запись текущей сессии, не затирая другие живые сессии в этом cwd:
+ * файл — карта `{sessions}`, мёртвые pid вычищаются при записи.
+ */
 function writeSessionInfo(ctx: ExtensionContext): void {
 	if (!isMainTui(ctx)) return;
+	const path = resolve(ctx.cwd, SESSION_INFO);
+	const next = {
+		terminal: process.env.ORCA_TERMINAL_HANDLE?.trim() || null,
+		sessionFile: ctx.sessionManager.getSessionFile() ?? null,
+		cwd: ctx.cwd,
+		pid: process.pid,
+		updatedAt: new Date().toISOString(),
+	};
 	try {
-		const info = {
-			terminal: process.env.ORCA_TERMINAL_HANDLE?.trim() || null,
-			sessionFile: ctx.sessionManager.getSessionFile() ?? null,
-			cwd: ctx.cwd,
-			pid: process.pid,
-			updatedAt: new Date().toISOString(),
-		};
-		writeFileSync(resolve(ctx.cwd, SESSION_INFO), `${JSON.stringify(info, null, 2)}\n`);
+		withSessionLock(ctx.cwd, (lockDir) => {
+			let current: unknown = null;
+			try {
+				current = JSON.parse(readFileSync(path, "utf8"));
+			} catch {
+				// нет файла или битый JSON — начинаем с пустой карты
+			}
+			const sessions = mergeSessionInfo(parseSessionInfo(current), next);
+			// Атомарно: supervisor не должен прочитать полузаписанный JSON.
+			const temp = resolve(lockDir, "session.json");
+			writeFileSync(temp, `${JSON.stringify({ sessions }, null, 2)}\n`);
+			renameSync(temp, path);
+		});
 	} catch {
 		// readonly cwd или нет прав — supervisor просто не найдёт файл
 	}
@@ -965,6 +1030,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		if (!retryDue && Date.now() < handoffCooldownUntil) return;
 		if (!ctx.isIdle() || ctx.hasPendingMessages()) return;
 
+		// Запись должна существовать до того, как агент поставит marker.
+		writeSessionInfo(ctx);
 		handoffRequested = true;
 		handoffTurnsSinceRequest = 0;
 		handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;

@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-24. Версия: `0.5.15`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-24. Версия: `0.5.16`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings и handoff guards готовы; публичный
 GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
@@ -252,6 +252,16 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
 - [x] README/AGENTS/docs: проценты относительны окна модели, примеры для
       1M и 100k.
 - [x] Тесты на warning/retry/terminal handle, типаж-чек, docs.
+
+## Этап 0.5.16 — session info по сессиям (готово)
+
+- [x] `.omp-handoff-session.json` — карта `{sessions}`; merge по `pid`,
+  живые чужие записи сохраняются, мёртвые вычищаются.
+- [x] Lock `.omp-handoff-session.lock/` и атомарная запись temp+rename.
+- [x] Supervisor выбирает запись по `marker.sessionFile`, dead pid не
+  перехватывает marker живой сессии; flat 0.5.15 читается.
+- [x] `lib/session-info.ts`, тесты двух сессий и одноразового запуска,
+  typecheck, docs/contracts.
 
 ## Этап 0.6 — экономика handoff (P2)
 

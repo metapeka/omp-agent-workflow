@@ -88,8 +88,36 @@ function sessionFileFromInfo(dir: string): string | null {
 			readFileSync(join(dir, SESSION_INFO_FILE), "utf8"),
 		);
 		if (typeof parsed !== "object" || parsed === null) return null;
-		const value = (parsed as Record<string, unknown>).sessionFile;
-		return typeof value === "string" ? value : null;
+		const record = parsed as Record<string, unknown>;
+		const fileOf = (entry: unknown): string | null => {
+			if (typeof entry !== "object" || entry === null) return null;
+			const value = (entry as Record<string, unknown>).sessionFile;
+			return typeof value === "string" ? value : null;
+		};
+		if (Array.isArray(record.sessions)) {
+			// Своя запись точнее всего; CLI без OMP берёт самую свежую.
+			const own = record.sessions.find(
+				(entry) =>
+					typeof entry === "object" &&
+					entry !== null &&
+					(entry as Record<string, unknown>).pid === process.pid,
+			);
+			const ownFile = fileOf(own);
+			if (ownFile) return ownFile;
+			const newest = [...record.sessions].sort((left, right) => {
+				const stamp = (entry: unknown): string =>
+					typeof entry === "object" && entry !== null
+						? String((entry as Record<string, unknown>).updatedAt ?? "")
+						: "";
+				return stamp(right).localeCompare(stamp(left));
+			});
+			for (const entry of newest) {
+				const file = fileOf(entry);
+				if (file) return file;
+			}
+			return null;
+		}
+		return fileOf(record);
 	} catch {
 		return null;
 	}

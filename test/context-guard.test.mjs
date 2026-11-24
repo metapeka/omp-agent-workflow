@@ -242,9 +242,11 @@ describe("context warnings", () => {
 			const info = JSON.parse(
 				readFileSync(join(dir, ".omp-handoff-session.json"), "utf8"),
 			);
-			assert.equal(info.cwd, dir);
-			assert.equal(info.sessionFile, "/tmp/session.jsonl");
-			assert.equal(info.terminal, null);
+			assert.equal(info.sessions.length, 1);
+			assert.equal(info.sessions[0].cwd, dir);
+			assert.equal(info.sessions[0].sessionFile, "/tmp/session.jsonl");
+			assert.equal(info.sessions[0].terminal, null);
+			assert.equal(info.sessions[0].pid, process.pid);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -259,7 +261,73 @@ describe("context warnings", () => {
 			const info = JSON.parse(
 				readFileSync(join(dir, ".omp-handoff-session.json"), "utf8"),
 			);
-			assert.equal(info.terminal, "term_abc");
+			assert.equal(info.sessions[0].terminal, "term_abc");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps other live sessions and prunes dead pids", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-session-info-"));
+		const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30_000)"], {
+			stdio: "ignore",
+		});
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({
+					sessions: [
+						{
+							terminal: "term_live",
+							sessionFile: "/tmp/live.jsonl",
+							cwd: dir,
+							pid: child.pid,
+							updatedAt: "2026-11-24T07:08:00.000Z",
+						},
+						{
+							terminal: "term_oneshot",
+							sessionFile: "/tmp/oneshot.jsonl",
+							cwd: dir,
+							pid: 2_147_483_647,
+							updatedAt: "2026-11-24T07:26:00.000Z",
+						},
+					],
+				}),
+			);
+			const { handlers } = install({ ORCA_TERMINAL_HANDLE: "term_ours" });
+			const main = view(40, { cwd: dir, sessionFile: "/tmp/ours.jsonl" });
+			await fire(handlers, "session_start", {}, main.ctx);
+
+			const info = JSON.parse(
+				readFileSync(join(dir, ".omp-handoff-session.json"), "utf8"),
+			);
+			assert.equal(info.sessions.length, 2);
+			assert.equal(info.sessions.some((entry) => entry.terminal === "term_oneshot"), false);
+			const live = info.sessions.find((entry) => entry.terminal === "term_live");
+			assert.equal(live.sessionFile, "/tmp/live.jsonl");
+			const ours = info.sessions.find((entry) => entry.pid === process.pid);
+			assert.equal(ours.sessionFile, "/tmp/ours.jsonl");
+			assert.equal(ours.terminal, "term_ours");
+		} finally {
+			child.kill();
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("updates the current pid entry on session switch", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-session-info-"));
+		try {
+			const { handlers } = install({ ORCA_TERMINAL_HANDLE: "term_x" });
+			const first = view(40, { cwd: dir, sessionFile: "/tmp/first.jsonl" });
+			await fire(handlers, "session_start", {}, first.ctx);
+			const second = view(40, { cwd: dir, sessionFile: "/tmp/second.jsonl" });
+			await fire(handlers, "session_switch", {}, second.ctx);
+
+			const info = JSON.parse(
+				readFileSync(join(dir, ".omp-handoff-session.json"), "utf8"),
+			);
+			assert.equal(info.sessions.length, 1);
+			assert.equal(info.sessions[0].sessionFile, "/tmp/second.jsonl");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -843,6 +911,54 @@ describe("supervisor", () => {
 			assert.match(result.stdout, /term_test/);
 			assert.match(result.stdout, /\/handoff-new/);
 			assert.match(result.stdout, /task-boundary/);
+			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), true);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("selects the live session from a multi-session map", () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-supervisor-"));
+		try {
+			writeFileSync(
+				join(dir, ".omp-handoff-session.json"),
+				JSON.stringify({
+					sessions: [
+						{
+							terminal: "term_live",
+							sessionFile: "/tmp/live.jsonl",
+							cwd: dir,
+							pid: process.pid,
+							updatedAt: "2026-11-24T07:08:00.000Z",
+						},
+						{
+							terminal: "term_oneshot",
+							sessionFile: "/tmp/oneshot.jsonl",
+							cwd: dir,
+							pid: 2_147_483_647,
+							updatedAt: "2026-11-24T07:26:00.000Z",
+						},
+					],
+				}),
+			);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({
+					reason: "context",
+					sessionFile: "/tmp/live.jsonl",
+				}),
+			);
+
+			const result = spawnSync(
+				process.execPath,
+				[SUPERVISOR, "--dir", dir, "--once", "--dry-run"],
+				{ encoding: "utf8" },
+			);
+
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stdout, /term_live/);
+			assert.doesNotMatch(result.stdout, /term_oneshot/);
+			assert.doesNotMatch(result.stderr, /mismatch|stale/);
 			assert.equal(existsSync(join(dir, ".omp-handoff-request.json")), true);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });

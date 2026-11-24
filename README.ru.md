@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  187 тестов · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
+  190 тестов · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-187%2F187-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-190%2F190-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -132,7 +132,7 @@
 
 1. Агент обновляет `HANDOFF.md`: цель, состояние, решения, файлы, проверки, следующий шаг.
 2. На безопасной границе пишет `.omp-handoff-request.json` (marker).
-3. Supervisor видит marker и отправляет `/handoff-new` в terminal handle из `.omp-handoff-session.json`.
+3. Supervisor видит marker и отправляет `/handoff-new` в terminal handle записи с совпавшим `marker.sessionFile` из `.omp-handoff-session.json`.
 4. `/handoff-new` собирает сообщение новой сессии из `continuePrompt` + state-файла (лимит 32k, маркер обрезки, fallback при ошибке чтения).
 5. Новая сессия читает `HANDOFF.md` и продолжает. Компакции посреди tool-loop нет: плагин ждёт `turn_end` и `ctx.isIdle()`.
 
@@ -354,7 +354,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ```bash
 npm ci
-npm test          # 187 тестов
+npm test          # 190 тестов
 npm run typecheck
 ```
 

@@ -160,7 +160,7 @@ cat .omp-handoff-session.json
 |---|---|---|
 | Marker есть, handoff нет | Supervisor не запущен | `bin/omp-yoda` или `node bin/omp-handoff-supervisor.mjs --dir .` |
 | Supervisor молчит | Нет terminal handle (не Orca) | Запустить в Orca-терминале или вручную `/handoff-new` |
-| Marker игнорируется | `sessionFile` от старой сессии | Удалить stale marker, обновить state |
+| Marker игнорируется | `sessionFile` от старой сессии или запись с мёртвым pid | Проверить `.sessions[]` по `sessionFile`, удалить stale marker, обновить state |
 | Второй supervisor сразу вышел | Lock держит живой supervisor того же `--dir` | Ожидаемо: один supervisor на каталог; смотреть `owner.json` |
 | Цикл handoff | Нет cooldown/старый marker | Проверить `OMP_HANDOFF_COOLDOWN_SECONDS`, логи, stale guard |
 | `/handoff-new` отказывает | Нет `HANDOFF.md` | Обновить файл |
@@ -245,8 +245,9 @@ worktree, ретро-review. Destructive/spend действия требуют c
 - **Handoff без `HANDOFF.md`.** `/handoff-new` откажет.
 - **Ожидание automatic handoff вне Orca.** Нет terminal handle — только
   ручная команда.
-- **Две сессии в одном каталоге.** Один supervisor на `--dir`; вторую сессию
-  запускать в своём worktree, иначе handoff и `HANDOFF.md` конфликтуют.
+- **Две сессии в одном каталоге.** Session info хранит обе записи, но marker
+  и `HANDOFF.md` общие: handoff затрагивает одну сессию. Вторую сессию лучше
+  держать в своём worktree.
 
 ## Логи и артефакты
 
@@ -255,6 +256,7 @@ worktree, ретро-review. Destructive/spend действия требуют c
 | Supervisor | `${TMPDIR:-/tmp}/omp-yoda-supervisor.log` |
 | Session JSONL | `~/.omp/agent/sessions/<cwd-slug>/*.jsonl` |
 | Session info | `<worktree>/.omp-handoff-session.json` |
+| Lock session info | `<worktree>/.omp-handoff-session.lock/` |
 | Marker | `<worktree>/.omp-handoff-request.json` |
 | Lock supervisor | `<worktree>/.omp-handoff-supervisor.lock/owner.json` |
 | State 0.5 | `<control-worktree>/STATE.json` |

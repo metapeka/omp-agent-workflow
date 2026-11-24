@@ -16,6 +16,30 @@ semantic for the plugin contract, not for OMP itself.
   `orca worktree rm` sends SIGTERM to a caller running inside the removed
   worktree.
 
+## [0.5.16] — 2026-11-24
+
+### Changed
+
+- `.omp-handoff-session.json` is now a map
+  `{ "sessions": [{ terminal, sessionFile, cwd, pid, updatedAt }] }` instead
+  of one flat object. Entries merge by `pid` (a second live TUI session no
+  longer loses its terminal handle) and dead pids are pruned on write. The
+  flat 0.5.15 format is still read as a single entry.
+
+### Fixed
+
+- A short-lived `omp "…"` run in the same cwd can no longer overwrite the
+  terminal handle of a live session. The supervisor selects the entry whose
+  `sessionFile` matches the marker and ignores entries with a dead pid;
+  without `sessionFile` it takes the newest live entry.
+- Session info read-modify-write is serialized by
+  `.omp-handoff-session.lock/` and written atomically (temp file + rename),
+  so concurrent sessions cannot drop each other's records.
+- `waitForNewSession` follows the selected entry by `pid`/terminal instead of
+  assuming one global `sessionFile`.
+- Orchestrator spend attribution (`sessionFileFromInfo`) reads the map format,
+  preferring the current pid.
+
 ## [0.5.15] — 2026-11-24
 
 ### Changed
