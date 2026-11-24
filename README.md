@@ -46,7 +46,17 @@
 
 Long agent sessions fail at the seams: context runs out, decisions get lost, cleanup destroys work. This plugin makes those seams explicit and reversible.
 
-> **Explainer:** [Cache, sessions and handoff](https://metapeka.github.io/omp-agent-workflow/) — why a new session is a cold start, where this plugin helps, and the postmortem of a real handoff failure. [RU](https://metapeka.github.io/omp-agent-workflow/ru/) · [中文](https://metapeka.github.io/omp-agent-workflow/zh/)
+<p align="center">
+  <a href="https://metapeka.github.io/omp-agent-workflow/">
+    <img src="docs/assets/explainer-banner.svg" alt="Cache, sessions and handoff — explainer" width="900">
+  </a>
+</p>
+
+<p align="center">
+  <strong>Explainer:</strong> English ·
+  <a href="https://metapeka.github.io/omp-agent-workflow/ru/">Русский</a> ·
+  <a href="https://metapeka.github.io/omp-agent-workflow/zh/">中文</a>
+</p>
 
 <details>
 <summary>▶️ Watch the 13-second demo</summary>

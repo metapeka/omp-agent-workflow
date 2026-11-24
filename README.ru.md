@@ -46,7 +46,18 @@
 
 Долгие сессии агента ломаются на стыках: контекст кончается, решения теряются, cleanup уничтожает работу. Этот плагин делает стыки явными и обратимыми.
 
-> **Разбор:** [Кэш, сессии и handoff](https://metapeka.github.io/omp-agent-workflow/ru/) — почему новая сессия это холодный старт, где помогает плагин и как проходил реальный сбой handoff. [EN](https://metapeka.github.io/omp-agent-workflow/) · [中文](https://metapeka.github.io/omp-agent-workflow/zh/)
+<p align="center">
+  <a href="https://metapeka.github.io/omp-agent-workflow/ru/">
+    <img src="docs/assets/explainer-banner.svg" alt="Кэш, сессии и handoff — разбор" width="900">
+  </a>
+</p>
+
+<p align="center">
+  <strong>Разбор:</strong>
+  <a href="https://metapeka.github.io/omp-agent-workflow/">English</a> ·
+  Русский ·
+  <a href="https://metapeka.github.io/omp-agent-workflow/zh/">中文</a>
+</p>
 
 <details>
 <summary>▶️ Смотреть 13-секундное демо</summary>
