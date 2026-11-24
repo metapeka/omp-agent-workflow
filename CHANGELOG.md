@@ -16,6 +16,15 @@ semantic for the plugin contract, not for OMP itself.
   `orca worktree rm` sends SIGTERM to a caller running inside the removed
   worktree.
 
+## [0.5.17] — 2026-11-24
+
+### Fixed
+
+- Auto-compaction fallback no longer stays blocked after a stalled handoff.
+  It waits while handoff retries remain, or while a marker is held by a live
+  supervisor, then fires at `autoCompactPercent`. A marker with no live
+  supervisor no longer disables the fallback.
+
 ## [0.5.16] — 2026-11-24
 
 ### Changed

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  190 tests · 0 runtime deps · 4 modes · 13 settings · MIT
+  192 tests · 0 runtime deps · 4 modes · 13 settings · MIT
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-190%2F190-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-192%2F192-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -239,6 +239,10 @@ for a 1M window: warn 18% (180k), suggest 25% (250k), handoff 30% (300k),
 auto-compaction 60% (600k). The same percentages on a 100k window mean
 18k / 25k / 30k / 60k.
 
+Auto-compaction is a fallback: it waits while a handoff can still proceed, and
+fires at its threshold after handoff retries are exhausted or when a marker is
+left without a live supervisor.
+
 ### Status line
 
 One extra key; native `context_pct` is not duplicated.
@@ -354,7 +358,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 ```bash
 npm ci
-npm test          # 190 tests
+npm test          # 192 tests
 npm run typecheck
 ```
 

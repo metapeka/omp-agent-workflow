@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  190 тестов · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
+  192 теста · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-190%2F190-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-192%2F192-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -239,6 +239,10 @@ warning 18% (180k), suggestion 25% (250k), handoff 30% (300k),
 авто-компакция 60% (600k). Те же проценты на окне 100k дают
 18k / 25k / 30k / 60k.
 
+Авто-компакция — fallback: она ждёт, пока handoff ещё может сработать, и
+включается на своём пороге после исчерпания повторов или если marker остался
+без живого supervisor.
+
 ### Статус-строка
 
 Один дополнительный ключ; native `context_pct` не дублируется.
@@ -354,7 +358,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ```bash
 npm ci
-npm test          # 190 тестов
+npm test          # 192 теста
 npm run typecheck
 ```
 

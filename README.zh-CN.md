@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  190 个测试 · 0 运行时依赖 · 4 种模式 · 13 项设置 · MIT
+  192 个测试 · 0 运行时依赖 · 4 种模式 · 13 项设置 · MIT
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-190%2F190-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-192%2F192-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -238,6 +238,9 @@ Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境�
 （180k）、建议 25%（250k）、交接 30%（300k）、自动压缩 60%（600k）。
 同样的百分比在 100k 窗口上分别是 18k / 25k / 30k / 60k。
 
+自动压缩是回退方案：在交接仍可能进行时等待；交接重试耗尽或 marker 没有
+存活守护进程后，才按配置阈值执行。
+
 ### 状态栏
 
 只增加一个键；原生 `context_pct` 不会重复。
@@ -353,7 +356,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ```bash
 npm ci
-npm test          # 190 个测试
+npm test          # 192 个测试
 npm run typecheck
 ```
 

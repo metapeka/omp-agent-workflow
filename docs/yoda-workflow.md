@@ -21,10 +21,14 @@ handoff, но не выходит за рамки, которые требуют
 | `yoda` | цикл по плану, handoff на границе задачи | fallback 70% | через supervisor | `YODA` |
 | `yoda-supervised` | то же + supervisor сам меняет сессию | fallback 70% | да | `YODA-SUP` |
 
-`yoda` без supervisor может работать только на компакции. Новую сессию
-из event-handler начать нельзя: OMP 19.1 даёт `ctx.newSession()` только в
-`ExtensionCommandContext`. Поэтому для unattended-смены сессии нужен внешний
-supervisor или команда `/handoff-new`.
+`yoda` без supervisor может работать только на компакции. Авто-компакция —
+fallback: она ждёт, пока handoff ещё actionable (есть повторы или marker у
+живого supervisor), и срабатывает на своём пороге после исчерпания повторов
+или при marker без живого supervisor.
+
+Новую сессию из event-handler начать нельзя: OMP 19.1 даёт `ctx.newSession()`
+только в `ExtensionCommandContext`. Поэтому для unattended-смены сессии нужен
+внешний supervisor или команда `/handoff-new`.
 
 `/handoff-new` внедряет state, но не запускает ход. В Orca supervisor после
 команды отправляет continuation prompt сам. Без Orca после ручного

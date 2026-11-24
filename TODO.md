@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-24. Версия: `0.5.16`.
+Дата: 2026-11-24. Версия: `0.5.17`.
 
 ## Сейчас
 
@@ -77,6 +77,8 @@
 - [x] 0.5.16 — session info как карта по pid: одноразовый запуск не затирает
       handle живой сессии, dead prune, lock + atomic rename, supervisor
       выбирает по `marker.sessionFile`; тесты и docs/contracts.
+- [x] 0.5.17 — fallback-компакция после исчерпания handoff-повторов или при
+      marker без живого supervisor; рекомендация для 1M — compact 40. Тесты.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

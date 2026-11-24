@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-24. Версия: `0.5.16`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-24. Версия: `0.5.17`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings и handoff guards готовы; публичный
 GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
@@ -262,6 +262,15 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
   перехватывает marker живой сессии; flat 0.5.15 читается.
 - [x] `lib/session-info.ts`, тесты двух сессий и одноразового запуска,
   typecheck, docs/contracts.
+
+## Этап 0.5.17 — fallback-компакция (готово)
+
+- [x] `checkAuto` больше не блокируется навсегда после запроса handoff:
+  ждёт только неисчерпанные повторы или marker у живого supervisor.
+- [x] После 3 запросов без marker или при marker без живого supervisor
+  компакция срабатывает на `autoCompactPercent`.
+- [x] Тесты: fallback после повторов и блокировка при живом supervisor;
+  typecheck, docs.
 
 ## Этап 0.6 — экономика handoff (P2)
 

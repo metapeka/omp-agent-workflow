@@ -534,6 +534,63 @@ describe("auto compaction", () => {
 		await fire(handlers, "turn_end", {}, v.ctx);
 		assert.equal(v.compactions.length, 0);
 	});
+
+	it("compacts after handoff retries are exhausted", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-auto-fallback-"));
+		try {
+			const { handlers, sent } = install({
+				OMP_HANDOFF_AT: "30",
+				OMP_CONTEXT_AUTO: "60",
+			});
+			const v = view(61, { cwd: dir });
+			for (let turn = 0; turn < 4; turn += 1) {
+				await fire(handlers, "turn_end", {}, v.ctx);
+			}
+			assert.equal(sent.length, 2);
+			assert.equal(v.compactions.length, 0, "waits while retries remain");
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 3);
+			assert.equal(v.compactions.length, 1);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("waits for a live supervisor that holds the marker", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-auto-sup-"));
+		try {
+			const lockDir = join(dir, ".omp-handoff-supervisor.lock");
+			mkdirSync(lockDir, { recursive: true });
+			writeFileSync(
+				join(lockDir, "owner.json"),
+				JSON.stringify({ pid: process.pid, dir }),
+			);
+			const { handlers, sent } = install({
+				OMP_WORKFLOW_MODE: "yoda-supervised",
+				OMP_HANDOFF_AT: "30",
+				OMP_CONTEXT_AUTO: "60",
+				ORCA_TERMINAL_HANDLE: "term_test",
+			});
+			const v = view(61, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			writeFileSync(
+				join(dir, ".omp-handoff-request.json"),
+				JSON.stringify({ reason: "context", sessionFile: "/tmp/session.jsonl" }),
+			);
+			for (let turn = 0; turn < 6; turn += 1) {
+				await fire(handlers, "turn_end", {}, v.ctx);
+			}
+			assert.equal(v.compactions.length, 0, "supervisor may still act");
+
+			rmSync(lockDir, { recursive: true, force: true });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(v.compactions.length, 1);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("/handoff-new", () => {

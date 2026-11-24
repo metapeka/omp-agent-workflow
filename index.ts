@@ -1059,9 +1059,25 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		}
 	};
 
-	/** Авто-компакция на 60% только после завершения хода и без очереди. */
+	/**
+	 * Авто-компакция на пороге только после завершения хода и без очереди.
+	 * Пока handoff ещё может сработать, компакция ждёт: остались повторы или
+	 * marker уже у живого supervisor. После исчерпания запросов fallback
+	 * обязан сработать, иначе зависший handoff блокирует компакцию навсегда.
+	 */
 	const checkAuto = async (ctx: ExtensionContext): Promise<void> => {
-		if (!isMainTui(ctx) || settings.autoCompactPercent === null || handoffRequested) return;
+		if (!isMainTui(ctx) || settings.autoCompactPercent === null) return;
+		const markerPending = handoffMarkerPending(
+			ctx.cwd,
+			ctx.sessionManager.getSessionFile() ?? null,
+		);
+		const handoffActive =
+			handoffRequested &&
+			(markerPending
+				? settings.workflowMode === "yoda-supervised" &&
+					supervisorAlive(ctx.cwd)
+				: handoffRequestCount < HANDOFF_MAX_REQUESTS);
+		if (handoffActive) return;
 		const usage = readUsage(ctx);
 		if (!usage) return;
 		resetIfBelow(usage.percent);
