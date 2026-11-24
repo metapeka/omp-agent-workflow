@@ -46,7 +46,7 @@
 
 长时间代理工作往往死在接缝处：上下文耗尽、决策丢失、清理毁掉成果。这个插件把这些接缝变成显式且可回滚的步骤。
 
-> **说明：** [缓存、会话与交接](docs/zh/index.html) —— 为什么新会话是冷启动、插件在哪些环节起作用，以及一次真实交接故障的复盘。[EN](docs/index.html) · [RU](docs/ru/index.html)
+> **说明：** [缓存、会话与交接](https://metapeka.github.io/omp-agent-workflow/zh/) —— 为什么新会话是冷启动、插件在哪些环节起作用，以及一次真实交接故障的复盘。[EN](https://metapeka.github.io/omp-agent-workflow/) · [RU](https://metapeka.github.io/omp-agent-workflow/ru/)
 
 <details>
 <summary>▶️ 观看 13 秒演示</summary>
