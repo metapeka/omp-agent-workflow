@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Кэш, сессии и handoff — omp-agent-workflow</title>
+  <meta name="description" content="Почему новая сессия — это холодный старт, что именно переиспользует prompt cache и где помогает omp-agent-workflow. Разбор реального сбоя handoff.">
+  <link rel="canonical" href="https://metapeka.github.io/omp-agent-workflow/ru/">
+  <link rel="alternate" hreflang="en" href="https://metapeka.github.io/omp-agent-workflow/">
+  <link rel="alternate" hreflang="ru" href="https://metapeka.github.io/omp-agent-workflow/ru/">
+  <link rel="alternate" hreflang="zh" href="https://metapeka.github.io/omp-agent-workflow/zh/">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="https://github.com/metapeka/omp-agent-workflow">
+      <span class="brand-mark" aria-hidden="true"></span>
+      omp-agent-workflow
+    </a>
+    <nav class="langs" aria-label="Язык">
+      <a href="../" hreflang="en">EN</a>
+      <span aria-current="page">RU</span>
+      <a href="../zh/" hreflang="zh">中文</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="kicker">Разбор · без воды</p>
+      <h1>Кэш, сессии и handoff</h1>
+      <p class="lede">Новая сессия — это холодный старт. Здесь видно, что кэширует провайдер, чем реально управляет плагин и как одноразовый <code>omp</code> тихо сломал живой handoff.</p>
+      <p class="meta">Замерено на cline-pass/deepseek-v4.1-flash-1017 · окно 1M · 2026-11-24</p>
+    </section>
+
+    <aside class="incident-banner" role="note">
+      <span class="tag">ИНЦИДЕНТ</span>
+      <p><strong>2026-11-24.</strong> Короткий запуск <code>omp "say ok"</code> в том же каталоге перезаписал <code>.omp-handoff-session.json</code>. Supervisor счёл marker живой сессии устаревшим, и handoff завис без единого предупреждения. <a href="#incident">Разбор ниже</a>.</p>
+    </aside>
+
+    <div class="tldr">
+      <h2>Коротко</h2>
+      <ul>
+        <li>Сессия — это JSONL-история на диске. Модель видит только текущее окно контекста.</li>
+        <li>Prompt cache переиспользует <em>неизменённый префикс</em>. Меняешь префикс — всё после него оплачивается заново.</li>
+        <li>Компакция переписывает историю; handoff открывает новую сессию. Оба сбрасывают кэш.</li>
+        <li>Плагин не создаёт кэш. Он выбирает, <em>когда</em> сохранить префикс, а когда сбросить, и переносит state через сброс.</li>
+        <li>Токены измеряются, cache-токены отдаёт провайдер, доллары — оценка по list price.</li>
+      </ul>
+    </div>
+
+    <section id="confuse">
+      <h2>Три сущности, которые путают</h2>
+      <p>Словом «контекст» называют файл, окно и кэш. Ведут они себя по-разному.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th></th><th>Что это</th><th>После <code>/handoff-new</code></th><th>После рестарта OMP</th><th>После смены модели</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Сессия</strong></td>
+              <td>JSONL-история на диске, один файл на сессию.</td>
+              <td>Новый файл; старый можно продолжить.</td>
+              <td>Остаётся; можно продолжить.</td>
+              <td>Остаётся, но токенизируется новой моделью.</td>
+            </tr>
+            <tr>
+              <td><strong>Окно контекста</strong></td>
+              <td>Токены, которые уходят модели сейчас: system prompt, tools, сообщения.</td>
+              <td>Новое, маленькое, собрано из state.</td>
+              <td>Пересобирается из сессии.</td>
+              <td>Пересобирается; размер окна может измениться.</td>
+            </tr>
+            <tr>
+              <td><strong>Prompt cache</strong></td>
+              <td>Переиспользование неизменённого префикса запроса на стороне провайдера.</td>
+              <td>Обычно холодный; одинаковый статический префикс может попасть, зависит от провайдера.</td>
+              <td>Холодный после TTL провайдера.</td>
+              <td>Холодный: кэш привязан к модели/провайдеру.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="cache">
+      <h2>Как работает prompt caching</h2>
+      <p>Запрос — это префикс плюс новые сообщения. Префикс: system prompt, схемы инструментов и вся история. Если провайдер недавно видел ровно такой префикс, он переиспользует вычисления и показывает переиспользованные токены как cache read.</p>
+      <p>Главное про деньги: <strong>cache hit не бесплатный, но намного дешевле</strong>. На этой модели input стоит $0.30 за миллион токенов, cache read — $0.006 за миллион, в 50 раз меньше. Cache write здесь $0, но это свойство конкретной модели.</p>
+      <p>Детали у провайдеров разные: Anthropic использует явные cache breakpoints и TTL, OpenAI и DeepSeek — автоматическое кэширование префикса. Общее правило одно: <em>префикс должен совпасть</em>.</p>
+
+      <div class="callout">
+        <strong>Что считается изменением префикса</strong>
+        Другая модель или провайдер, отредактированный system prompt, изменённые схемы tools, сжатая история или новая сессия с другим диалогом. Добавление сообщения в конец кэш не ломает; перезапись середины диалога — ломает.
+      </div>
+    </section>
+
+    <section id="kills">
+      <h2>Что убивает кэш</h2>
+      <ul>
+        <li><strong>Смена модели или провайдера.</strong> Kimi K3 → DeepSeek — другое пространство кэша, другой токенизатор, часто другое окно.</li>
+        <li><strong>Компакция.</strong> История переписана, у следующего запроса новый префикс.</li>
+        <li><strong>Handoff.</strong> Новый файл сессии и новый диалог. Статический префикс system/tools может попасть, диалог — нет.</li>
+        <li><strong>Правка tools или system prompt</strong> посреди сессии.</li>
+        <li><strong>Простой дольше TTL провайдера.</strong> Кэш истекает, следующий ход холодный.</li>
+      </ul>
+    </section>
+
+    <section id="plugin">
+      <h2>Где помогает этот плагин</h2>
+      <p>Плагин не сидит внутри кэша провайдера. Он сидит в жизненном цикле: следит за заполнением контекста, предупреждает, просит handoff на пороге и не даёт сессии тихо встать. В терминах кэша у него ровно две точки сброса — handoff и fallback-компакция — и обе он старается делать осознанными.</p>
+
+      <div class="lanes" aria-label="Кто чем управляет">
+        <div class="lane">
+          <h3>Провайдер</h3>
+          <ul>
+            <li>Ключ и область кэша</li>
+            <li>TTL и вытеснение</li>
+            <li>Токенизатор и цены</li>
+          </ul>
+        </div>
+        <div class="lane">
+          <h3>OMP</h3>
+          <ul>
+            <li>Session JSONL</li>
+            <li>Окно контекста</li>
+            <li><code>getContextUsage()</code></li>
+          </ul>
+        </div>
+        <div class="lane plugin">
+          <h3>Плагин ← это он</h3>
+          <ul>
+            <li>Warning / suggest</li>
+            <li>Handoff + marker</li>
+            <li>Повторы + fallback-компакция</li>
+          </ul>
+        </div>
+        <div class="lane">
+          <h3>cache-monitor</h3>
+          <ul>
+            <li>Hit rate</li>
+            <li>Суммы токенов</li>
+            <li><code>usage.cost.total</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <p>Ниже тот же цикл как таймлайн. Зелёный — префикс только дописывается, кэш жив. Янтарный — уведомление, prompt не меняется. Синий — осознанный сброс. Красный — сбой из инцидента.</p>
+
+      <div class="timeline" aria-label="Жизненный цикл сессии и состояние кэша">
+        <div class="phase hit"><span class="pct">ходы 1..N</span><strong>Cache hit</strong><small>префикс только дописывается</small></div>
+        <div class="phase notify"><span class="pct">18%</span><strong>Warning</strong><small>только notify; контекст не меняется</small></div>
+        <div class="phase notify"><span class="pct">25%</span><strong>Предложение handoff</strong><small>только notify</small></div>
+        <div class="phase reset"><span class="pct">30%</span><strong>Handoff</strong><small>запрос + marker</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase cold"><span class="pct">новая сессия</span><strong>Холодный старт</strong><small>state ≈10–15k токенов</small></div>
+        <div class="phase hit"><span class="pct">дальше</span><strong>Снова cache hit</strong><small>рабочий набор меньше</small></div>
+      </div>
+      <div class="timeline" aria-label="Путь зависшего handoff">
+        <div class="phase bad"><span class="pct">завис</span><strong>Нет supervisor / marker потерян</strong><small>инцидент</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase hit"><span class="pct">повтор ×3</span><strong>Только дописывание</strong><small>кэш остаётся тёплым</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase reset"><span class="pct">40%</span><strong>Fallback-компакция</strong><small>осознанный сброс</small></div>
+      </div>
+      <div class="legend">
+        <span class="l-hit">cache hit</span>
+        <span class="l-notify">только notify</span>
+        <span class="l-reset">осознанный сброс</span>
+        <span class="l-bad">путь сбоя</span>
+      </div>
+
+      <h3>Покрытие плагина, действие за действием</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Участок</th><th>Что делает плагин</th><th>Влияние на кэш</th><th>Что экономит</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Обычные ходы</td><td>Читает <code>getContextUsage()</code>; в prompt ничего не пишет.</td><td>Нет; префикс только дописывается.</td><td>Не создаёт лишних промахов.</td></tr>
+            <tr><td>18% / 25%</td><td>Предупреждает и предлагает handoff.</td><td>Нет; prompt не меняется.</td><td>Время закончить задачу до принудительной границы.</td></tr>
+            <tr><td>30%</td><td>Просит агента завершиться и поставить marker; supervisor шлёт <code>/handoff-new</code>.</td><td>Один сброс.</td><td>Не тащит рабочий набор 300k+ дальше.</td></tr>
+            <tr><td>Зависший handoff</td><td>Повторяет запрос до 3 раз, затем разрешает fallback-компакцию.</td><td>Повторы только дописывают; компакция — сброс.</td><td>Не даёт тихо зависнуть с мёртвым fallback.</td></tr>
+            <tr><td>Session info</td><td>Держит запись на процесс в <code>.omp-handoff-session.json</code>.</td><td>Нет.</td><td>Не теряет terminal handle живой сессии.</td></tr>
+            <tr><td>cache-monitor</td><td>Внешний плагин: hit rate, токены, стоимость.</td><td>Нет; только чтение.</td><td>Данные для порогов вместо догадок.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout muted">
+        <strong>Вне плагина</strong>
+        TTL и ключ кэша провайдера, токенизатор, смена модели и решение править tools или system prompt. Плагин может сделать сброс осознанным; сделать холодный префикс тёплым он не может.
+      </div>
+    </section>
+
+    <section id="numbers">
+      <h2>На чём замерено</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Модель и окно</h3>
+          <ul>
+            <li><span class="mono">cline-pass/deepseek-v4.1-flash-1017</span></li>
+            <li>Окно контекста: <strong>1 048 576</strong> токенов</li>
+            <li>Max output: <strong>393 216</strong> токенов</li>
+            <li>Thinking: <code>auto</code> — reasoning включён; выбираемых low/medium/high у модели нет</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Цены каталога, за 1M токенов</h3>
+          <ul>
+            <li>Input: <strong>$0.30</strong></li>
+            <li>Output: <strong>$1.20</strong></li>
+            <li>Cache read: <strong>$0.006</strong></li>
+            <li>Cache write: <strong>$0</strong></li>
+          </ul>
+          <p class="muted mono">pricingStatus: fixed</p>
+        </div>
+      </div>
+
+      <h3>Одна реальная сессия на 400 ходов</h3>
+      <p>Анонимизированная сессия от 2026-11-24. Началась на Kimi K3, переключилась на DeepSeek-V4.1-Flash. Цифры — из provider-reported <code>usage</code> на ходах ассистента.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Метрика</th><th class="num">Значение</th><th>Пояснение</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Ходов ассистента</td><td class="num">400</td><td>397 с cache read, 3 холодных</td></tr>
+            <tr><td>Hit rate</td><td class="num">99.2%</td><td><code>cacheRead / (input + cacheRead + cacheWrite)</code></td></tr>
+            <tr><td>Свежий input</td><td class="num">659 440</td><td>по $0.30/M</td></tr>
+            <tr><td>Cache read</td><td class="num">82 500 160</td><td>по $0.006/M</td></tr>
+            <tr><td>Output</td><td class="num">189 289</td><td>по $1.20/M</td></tr>
+            <tr><td>Стоимость диалога</td><td class="num">$2.77</td><td>только ходы ассистента</td></tr>
+            <tr><td>Стоимость сессии</td><td class="num">$3.18</td><td>включая фоновые <code>model_usage</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Событие</th><th class="num">Ход</th><th class="num">Input</th><th class="num">Cache read</th><th>Что показывает</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Kimi K3 → DeepSeek</td><td class="num">14</td><td class="num">35 719</td><td class="num">768</td><td>Новая модель — новый кэш; переиспользован только статический префикс.</td></tr>
+            <tr><td>Холодный ход</td><td class="num">385</td><td class="num">363 693</td><td class="num">0</td><td>Через 2.6 мин после предыдущего; весь prompt оплачен как input. ≈$0.109 по list price.</td></tr>
+            <tr><td>Остальные ходы</td><td class="num">398</td><td class="num">260 028</td><td class="num">82 499 392</td><td>Префикс только дописывался; основную работу делает кэш.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>Что измерено, а что оценено</strong>
+        <ul>
+          <li><strong>Токены</strong> — provider-reported <code>usage</code> завершённого хода. Точны для этого провайдера и модели.</li>
+          <li><strong>Cache-токены</strong> — cache read/write от провайдера. Точны там, где провайдер их отдаёт; отсутствие поля — «не сообщается», а не «кэша нет».</li>
+          <li><strong>USD</strong> — OMP умножает цены каталога на токены (<code>usage.cost.total</code>). Это фиксированный list price, не счёт: подписки, кредиты, скидки и смена цен не учтены.</li>
+          <li><strong>Процент контекста</strong> — OMP якорится на provider usage и досчитывает дельту своим токенизатором. Для порогов годится, для бухгалтерии — нет.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="incident">
+      <h2>Инцидент: handoff, которого не было</h2>
+      <div class="incident-banner" role="note">
+        <span class="tag">2026-11-24</span>
+        <p><strong>Один одноразовый запуск, один перезаписанный файл, одна зависшая сессия.</strong> Без предупреждения supervisor, без повтора, а настроенный fallback-компакции был заблокирован.</p>
+      </div>
+
+      <h3>Настройки на тот момент</h3>
+      <ul>
+        <li><code>workflowMode=yoda-supervised</code>, окно 1M.</li>
+        <li><code>18 / 25 / 30 / 60</code>, <code>handoffCooldownSeconds=900</code>.</li>
+        <li>Лимит state для <code>/handoff-new</code>: 64k символов.</li>
+      </ul>
+
+      <h3>Что сломалось</h3>
+      <ol>
+        <li>В том же каталоге запустился короткий <code>omp "say ok"</code>. Он записал свою запись в <code>.omp-handoff-session.json</code>, заменив terminal handle и session file живой сессии. Его pid затем завершился.</li>
+        <li>Живая сессия поставила marker. Supervisor сравнил <code>marker.sessionFile</code> с единственной записью в файле, увидел расхождение и признал marker устаревшим.</li>
+        <li>Handoff не отправился. <code>handoffRequested</code> остался true, поэтому плагин не повторил запрос, а авто-компакция была заблокирована, пока handoff «запрошен».</li>
+        <li>Комментарий к лимиту state утверждал, что 64k символов ≈ 16k токенов. На русском тексте замер дал 21–30k токенов.</li>
+      </ol>
+
+      <h3>Что изменилось</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Версия</th><th>Исправление</th><th>Эффект</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0.5.15</td><td>Лимит state 32k; warning про supervisor и terminal handle; повторы handoff; trim handle.</td><td>Следующий сбой виден, отсутствие marker вызывает повтор.</td></tr>
+            <tr><td>0.5.16</td><td><code>.omp-handoff-session.json</code> — карта <code>{sessions}</code> по pid; мёртвые pid вычищаются; supervisor выбирает по <code>marker.sessionFile</code>.</td><td>Одноразовый запуск больше не крадёт handle живой сессии. Её marker не считается stale.</td></tr>
+            <tr><td>0.5.17</td><td>Fallback-компакция срабатывает после исчерпания повторов или если marker остался без живого supervisor.</td><td>Сломанный handoff больше не отключает последнюю страховку навсегда.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>После фиксов happy path прежний: handoff на 30%, новая сессия, кэш снова прогревается. Отличается путь сбоя: теперь он даёт warning и fallback, а не тихую остановку.</p>
+    </section>
+
+    <section id="thresholds">
+      <h2>Пороги для окна 1M</h2>
+      <p>Все проценты считаются от окна активной модели, а не в абсолютных токенах. Те же числа на модели с окном 100k означают в десять раз меньше токенов.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Событие</th><th class="num">Процент</th><th class="num">Окно 1M</th><th class="num">Окно 100k</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Warning</td><td class="num">18%</td><td class="num">180k</td><td class="num">18k</td></tr>
+            <tr><td>Предложение handoff</td><td class="num">25%</td><td class="num">250k</td><td class="num">25k</td></tr>
+            <tr><td>Запрос handoff</td><td class="num">30%</td><td class="num">300k</td><td class="num">30k</td></tr>
+            <tr><td>Fallback-компакция</td><td class="num">40%</td><td class="num">400k</td><td class="num">40k</td></tr>
+            <tr><td>Cooldown handoff</td><td class="num">900 с</td><td class="num">—</td><td class="num">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Почему 40%, а не 60%?</strong> Fallback нужен на случай, когда handoff не состоялся. На 1M окне 60% — это уже 600k токенов, глубоко в зоне деградации. 40% — реальная страховка, а в нормальном пути она не срабатывает, потому что handoff происходит на 30%.</p>
+      <pre><code>workflowMode=yoda-supervised
+contextWarnPercent=18
+contextSuggestPercent=25
+handoffAtPercent=30
+autoCompactPercent=40
+handoffCooldownSeconds=900</code></pre>
+    </section>
+
+    <section id="checklist">
+      <h2>Чек-лист</h2>
+      <ul class="checklist">
+        <li>Не менять модель или провайдера посреди задачи, если кэш важен.</li>
+        <li>Держать system prompt и схемы tools стабильными на всю сессию.</li>
+        <li>Делать handoff на границе задачи, не посреди edit и не внутри tool-loop.</li>
+        <li>Запускать supervisor и следить за <code>SUP OFF</code>: marker без supervisor — это не handoff.</li>
+        <li>На окне 1M ставить fallback-компакцию на 40%, а не на 60%.</li>
+        <li>Смотреть hit rate и токены в <code>omp-cache-monitor</code>. USD — оценка по list price, не счёт.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <nav aria-label="Ссылки проекта">
+      <a href="https://github.com/metapeka/omp-agent-workflow">Репозиторий</a>
+      <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/docs/contracts.md">Контракты</a>
+      <a href="https://github.com/metapeka/omp-cache-monitor">omp-cache-monitor</a>
+      <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/HANDOFF.md">Состояние проекта</a>
+    </nav>
+    <p>omp-agent-workflow · MIT · для OMP. Замеры от 2026-11-24; поведение провайдеров может измениться.</p>
+  </footer>
+</body>
+</html>

@@ -15,6 +15,10 @@ semantic for the plugin contract, not for OMP itself.
 - Upstream Orca issue `stablyai/orca#47665` documenting that
   `orca worktree rm` sends SIGTERM to a caller running inside the removed
   worktree.
+- Static HTML explainer `docs/index.html` (EN, plus `ru/` and `zh/`) on
+  prompt caching, sessions, handoff, and the 2026-11-24 incident; measured
+  on a real 400-turn session. Linked from all three READMEs and served by
+  GitHub Pages from `main /docs`.
 
 ## [0.5.17] — 2026-11-24
 

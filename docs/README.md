@@ -52,6 +52,7 @@ marker без живого supervisor; рекомендация для 1M — `a
 | Реализуешь 0.5 | [orchestrator.md](orchestrator.md) → [decisions.md](decisions.md) → [AUTOPLAN.example.md](AUTOPLAN.example.md) |
 | Разбираешь сбой в TUI/Orca | [operations.md](operations.md) |
 | Разбираешься, как проходит handoff | [handoff-flow.md](handoff-flow.md) → [contracts.md](contracts.md) |
+| Понимаешь кэш, сессии и цену сброса | [index.html](index.html) (EN) → [ru/](ru/index.html) → [zh/](zh/index.html) |
 | Принимаешь решение по продукту | [decisions.md](decisions.md) |
 
 ## Страницы
@@ -67,6 +68,7 @@ marker без живого supervisor; рекомендация для 1M — `a
 | [decisions.md](decisions.md) | Подтверждённые решения D1–D10, отклонённые альтернативы, открытые вопросы |
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |
 | [research/market-landscape.md](research/market-landscape.md) | Рынок на 2026-11-23: PI, OMP и GitHub; ближайшие аналоги, чего нет ни у кого, выводы для позиционирования; переводы [RU](research/market-landscape.ru.md), [ZH](research/market-landscape.zh-CN.md) |
+| [index.html](index.html) | HTML-разбор: prompt cache, сессии, где помогает плагин, инцидент 2026-11-24, пороги; EN + [RU](ru/index.html) + [ZH](zh/index.html) |
 
 ## Правила этой вики
 

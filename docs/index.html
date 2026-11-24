@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cache, sessions and handoff — omp-agent-workflow</title>
+  <meta name="description" content="Why a new session is a cold start, what prompt caching actually reuses, and where omp-agent-workflow helps. A postmortem of a real handoff failure.">
+  <link rel="canonical" href="https://metapeka.github.io/omp-agent-workflow/">
+  <link rel="alternate" hreflang="en" href="https://metapeka.github.io/omp-agent-workflow/">
+  <link rel="alternate" hreflang="ru" href="https://metapeka.github.io/omp-agent-workflow/ru/">
+  <link rel="alternate" hreflang="zh" href="https://metapeka.github.io/omp-agent-workflow/zh/">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="https://github.com/metapeka/omp-agent-workflow">
+      <span class="brand-mark" aria-hidden="true"></span>
+      omp-agent-workflow
+    </a>
+    <nav class="langs" aria-label="Language">
+      <span aria-current="page">EN</span>
+      <a href="ru/" hreflang="ru">RU</a>
+      <a href="zh/" hreflang="zh">中文</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="kicker">Explainer · no fluff</p>
+      <h1>Cache, sessions and handoff</h1>
+      <p class="lede">A new session is a cold start. This page shows what the provider caches, what the plugin actually controls, and how a one-shot <code>omp</code> run silently broke a live handoff.</p>
+      <p class="meta">Measured on cline-pass/deepseek-v4.1-flash-1017 · 1M window · 2026-11-24</p>
+    </section>
+
+    <aside class="incident-banner" role="note">
+      <span class="tag">INCIDENT</span>
+      <p><strong>2026-11-24.</strong> A short <code>omp "say ok"</code> run in the same directory overwrote <code>.omp-handoff-session.json</code>. The supervisor then treated the live session's handoff marker as stale, and the handoff stalled without a single warning. <a href="#incident">Read the postmortem</a>.</p>
+    </aside>
+
+    <div class="tldr">
+      <h2>TL;DR</h2>
+      <ul>
+        <li>A session is a JSONL history on disk. The model only sees the current context window.</li>
+        <li>Prompt caching reuses an <em>unchanged prefix</em>. Change the prefix, and everything after it is billed again.</li>
+        <li>Compaction rewrites history; handoff starts a new session. Both reset the cache.</li>
+        <li>The plugin does not create cache. It chooses <em>when</em> to keep the prefix and when to reset it, and it preserves state across the reset.</li>
+        <li>Tokens are measured, cache tokens are provider-reported, dollars are list-price estimates.</li>
+      </ul>
+    </div>
+
+    <section id="confuse">
+      <h2>Three things people confuse</h2>
+      <p>The same word “context” is used for a file, a window, and a cache. They behave differently.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th></th><th>What it is</th><th>After <code>/handoff-new</code></th><th>After OMP restart</th><th>After model switch</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Session</strong></td>
+              <td>JSONL history on disk, one file per session.</td>
+              <td>New file; the old one stays resumable.</td>
+              <td>Stays; can be resumed.</td>
+              <td>Stays, but is tokenized by the new model.</td>
+            </tr>
+            <tr>
+              <td><strong>Context window</strong></td>
+              <td>The tokens sent to the model right now: system prompt, tools, messages.</td>
+              <td>New, small context built from the handoff state.</td>
+              <td>Rebuilt from the session.</td>
+              <td>Rebuilt; the window size may change.</td>
+            </tr>
+            <tr>
+              <td><strong>Prompt cache</strong></td>
+              <td>Provider-side reuse of an unchanged request prefix.</td>
+              <td>Usually cold; an identical static prefix may still hit, depending on the provider.</td>
+              <td>Cold after the provider TTL.</td>
+              <td>Cold: cache is keyed by model/provider.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="cache">
+      <h2>How prompt caching works</h2>
+      <p>A request is a prefix plus new messages. The prefix is the system prompt, tool schemas, and the conversation so far. If the provider has seen that exact prefix recently, it reuses the computation and reports the reused tokens as cache reads.</p>
+      <p>The important part for cost: <strong>a cache hit is not free, but it is much cheaper</strong>. On this model, input costs $0.30 per million tokens and a cache read costs $0.006 per million — 50× less. Cache writes are $0 here, but that is model-specific.</p>
+      <p>Providers differ in the details: Anthropic uses explicit cache breakpoints and a TTL, OpenAI and DeepSeek use automatic prefix caching. The common rule is the same: <em>the prefix must match</em>.</p>
+
+      <div class="callout">
+        <strong>What counts as a prefix change</strong>
+        A different model or provider, an edited system prompt, changed tool schemas, compacted history, or a new session with a different conversation. Appending a message does not break the cache; rewriting the middle of the conversation does.
+      </div>
+    </section>
+
+    <section id="kills">
+      <h2>What kills the cache</h2>
+      <ul>
+        <li><strong>Model or provider switch.</strong> Kimi K3 → DeepSeek is a different cache namespace, a different tokenizer, and often a different window.</li>
+        <li><strong>Compaction.</strong> The history is rewritten, so the next request has a new prefix.</li>
+        <li><strong>Handoff.</strong> A new session file and a new conversation. The static system/tools prefix may hit, but the conversation does not.</li>
+        <li><strong>Editing tools or the system prompt</strong> in the middle of a session.</li>
+        <li><strong>Idle time beyond the provider TTL.</strong> The cache expires; the next turn is cold.</li>
+      </ul>
+    </section>
+
+    <section id="plugin">
+      <h2>Where this plugin helps</h2>
+      <p>The plugin does not sit inside the provider cache. It sits in the lifecycle: it watches context usage, warns, requests a handoff at a threshold, and keeps the session from stalling silently. In cache terms, it has exactly two reset points — handoff and fallback compaction — and it tries to make both deliberate.</p>
+
+      <div class="lanes" aria-label="Who controls what">
+        <div class="lane">
+          <h3>Provider</h3>
+          <ul>
+            <li>Cache key and scope</li>
+            <li>TTL and eviction</li>
+            <li>Tokenizer and pricing</li>
+          </ul>
+        </div>
+        <div class="lane">
+          <h3>OMP</h3>
+          <ul>
+            <li>Session JSONL</li>
+            <li>Context window</li>
+            <li><code>getContextUsage()</code></li>
+          </ul>
+        </div>
+        <div class="lane plugin">
+          <h3>Plugin ← this</h3>
+          <ul>
+            <li>Warn / suggest</li>
+            <li>Handoff + marker</li>
+            <li>Retries + fallback compaction</li>
+          </ul>
+        </div>
+        <div class="lane">
+          <h3>cache-monitor</h3>
+          <ul>
+            <li>Hit rate</li>
+            <li>Token totals</li>
+            <li><code>usage.cost.total</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <p>Below is the same lifecycle as a timeline. Green means the prefix is append-only and cache-friendly. Amber is a notification: the prompt does not change. Blue is a deliberate reset. Red is the failure mode from the incident.</p>
+
+      <div class="timeline" aria-label="Session lifecycle and cache state">
+        <div class="phase hit"><span class="pct">turns 1..N</span><strong>Cache hit</strong><small>prefix append-only</small></div>
+        <div class="phase notify"><span class="pct">18%</span><strong>Warning</strong><small>notify only; context unchanged</small></div>
+        <div class="phase notify"><span class="pct">25%</span><strong>Suggest handoff</strong><small>notify only</small></div>
+        <div class="phase reset"><span class="pct">30%</span><strong>Handoff</strong><small>request + marker</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase cold"><span class="pct">new session</span><strong>Cold start</strong><small>state ≈10–15k tokens</small></div>
+        <div class="phase hit"><span class="pct">after</span><strong>Cache hit again</strong><small>smaller working set</small></div>
+      </div>
+      <div class="timeline" aria-label="Stalled handoff path">
+        <div class="phase bad"><span class="pct">stalled</span><strong>No supervisor / marker lost</strong><small>the incident</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase hit"><span class="pct">retry ×3</span><strong>Append-only</strong><small>cache stays warm</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase reset"><span class="pct">40%</span><strong>Fallback compaction</strong><small>deliberate reset</small></div>
+      </div>
+      <div class="legend">
+        <span class="l-hit">cache hit</span>
+        <span class="l-notify">notify only</span>
+        <span class="l-reset">deliberate reset</span>
+        <span class="l-bad">failure path</span>
+      </div>
+
+      <h3>Plugin coverage, action by action</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Area</th><th>What the plugin does</th><th>Effect on cache</th><th>What it saves</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Normal turns</td><td>Reads <code>getContextUsage()</code>; writes nothing to the prompt.</td><td>None; prefix stays append-only.</td><td>No extra misses.</td></tr>
+            <tr><td>18% / 25%</td><td>Warns and suggests a handoff.</td><td>None; prompt unchanged.</td><td>Time to finish the task before the forced boundary.</td></tr>
+            <tr><td>30%</td><td>Asks the agent to wrap up and write a marker; the supervisor sends <code>/handoff-new</code>.</td><td>One reset.</td><td>Does not carry a 300k+ working set forward.</td></tr>
+            <tr><td>Stalled handoff</td><td>Retries the request up to 3 times, then allows fallback compaction.</td><td>Retries are append-only; compaction is a reset.</td><td>Prevents a silent stall with a dead fallback.</td></tr>
+            <tr><td>Session info</td><td>Keeps a record per process in <code>.omp-handoff-session.json</code>.</td><td>None.</td><td>Does not lose the terminal handle of a live session.</td></tr>
+            <tr><td>cache-monitor</td><td>External plugin: hit rate, tokens, cost.</td><td>None; read-only.</td><td>Data for thresholds instead of guesses.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout muted">
+        <strong>Outside the plugin</strong>
+        Provider TTL, cache key, tokenizer, model switching, and the decision to edit tools or the system prompt. The plugin can make a reset deliberate; it cannot make a cold prefix warm.
+      </div>
+    </section>
+
+    <section id="numbers">
+      <h2>Measured on</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Model and window</h3>
+          <ul>
+            <li><span class="mono">cline-pass/deepseek-v4.1-flash-1017</span></li>
+            <li>Context window: <strong>1,048,576</strong> tokens</li>
+            <li>Max output: <strong>393,216</strong> tokens</li>
+            <li>Thinking: <code>auto</code> — reasoning on; this model exposes no selectable low/medium/high effort</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Catalog prices, per 1M tokens</h3>
+          <ul>
+            <li>Input: <strong>$0.30</strong></li>
+            <li>Output: <strong>$1.20</strong></li>
+            <li>Cache read: <strong>$0.006</strong></li>
+            <li>Cache write: <strong>$0</strong></li>
+          </ul>
+          <p class="muted mono">pricingStatus: fixed</p>
+        </div>
+      </div>
+
+      <h3>One real 400-turn session</h3>
+      <p>Anonymized session from 2026-11-24. It started on Kimi K3 and switched to DeepSeek-V4.1-Flash. The numbers come from provider-reported <code>usage</code> on assistant turns.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Metric</th><th class="num">Value</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Assistant turns</td><td class="num">400</td><td>397 with cache reads, 3 cold</td></tr>
+            <tr><td>Hit rate</td><td class="num">99.2%</td><td><code>cacheRead / (input + cacheRead + cacheWrite)</code></td></tr>
+            <tr><td>Fresh input</td><td class="num">659,440</td><td>billed at $0.30/M</td></tr>
+            <tr><td>Cache reads</td><td class="num">82,500,160</td><td>billed at $0.006/M</td></tr>
+            <tr><td>Output</td><td class="num">189,289</td><td>billed at $1.20/M</td></tr>
+            <tr><td>Dialog cost</td><td class="num">$2.77</td><td>assistant turns only</td></tr>
+            <tr><td>Session cost</td><td class="num">$3.18</td><td>includes background <code>model_usage</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Event</th><th class="num">Turn</th><th class="num">Input</th><th class="num">Cache read</th><th>What it shows</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Kimi K3 → DeepSeek switch</td><td class="num">14</td><td class="num">35,719</td><td class="num">768</td><td>New model = new cache; only the static prefix was reused.</td></tr>
+            <tr><td>Cold turn</td><td class="num">385</td><td class="num">363,693</td><td class="num">0</td><td>2.6 min after the previous turn; full prompt billed at input price. ≈$0.109 at list.</td></tr>
+            <tr><td>All other turns</td><td class="num">398</td><td class="num">260,028</td><td class="num">82,499,392</td><td>Append-only prefix; cache does the heavy lifting.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>What is measured vs estimated</strong>
+        <ul>
+          <li><strong>Tokens</strong> — provider-reported <code>usage</code> on a completed turn. Exact for that provider and model.</li>
+          <li><strong>Cache tokens</strong> — provider-reported cache read/write. Exact where the provider exposes them; a missing field is “not reported”, not “no cache”.</li>
+          <li><strong>USD</strong> — OMP multiplies catalog prices by tokens (<code>usage.cost.total</code>). Fix list price, not an invoice: subscriptions, credits, discounts, and price changes are not included.</li>
+          <li><strong>Context percent</strong> — OMP anchors on provider usage and counts the delta with its own tokenizer. Useful for thresholds, not a billing number.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="incident">
+      <h2>Incident: the handoff that never happened</h2>
+      <div class="incident-banner" role="note">
+        <span class="tag">2026-11-24</span>
+        <p><strong>One-shot run, one overwritten file, one stalled session.</strong> No supervisor warning, no retry, and the configured compaction fallback was blocked.</p>
+      </div>
+
+      <h3>Configuration at the time</h3>
+      <ul>
+        <li><code>workflowMode=yoda-supervised</code>, 1M window.</li>
+        <li><code>18 / 25 / 30 / 60</code>, <code>handoffCooldownSeconds=900</code>.</li>
+        <li><code>/handoff-new</code> state limit: 64k characters.</li>
+      </ul>
+
+      <h3>What broke</h3>
+      <ol>
+        <li>A short <code>omp "say ok"</code> run started in the same directory. It wrote its own entry to <code>.omp-handoff-session.json</code>, replacing the live session's terminal handle and session file. Its pid then exited.</li>
+        <li>The live session wrote a handoff marker. The supervisor compared <code>marker.sessionFile</code> with the single record in the file, saw a mismatch, and classified the marker as stale.</li>
+        <li>The handoff was never sent. <code>handoffRequested</code> stayed true, so the plugin did not retry, and auto-compaction was blocked while a handoff was “requested”.</li>
+        <li>The state limit comment claimed 64k characters ≈ 16k tokens. Measured on Russian text it was 21–30k tokens.</li>
+      </ol>
+
+      <h3>What changed</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Version</th><th>Fix</th><th>Effect</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0.5.15</td><td>32k state limit; supervisor and terminal-handle warnings; handoff retries; trimmed handle.</td><td>The next stall is visible, and a missing marker triggers a retry.</td></tr>
+            <tr><td>0.5.16</td><td><code>.omp-handoff-session.json</code> is a <code>{sessions}</code> map keyed by pid; dead pids are pruned; supervisor selects by <code>marker.sessionFile</code>.</td><td>A one-shot run can no longer steal a live session's handle. The live marker is not stale.</td></tr>
+            <tr><td>0.5.17</td><td>Compaction fallback fires after retries are exhausted, or when a marker has no live supervisor.</td><td>A broken handoff cannot disable the last-resort compaction forever.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>After the fixes the happy path is unchanged: handoff at 30%, new session, cache warms again. The difference is the failure path: it now produces a warning and a fallback instead of a silent stop.</p>
+    </section>
+
+    <section id="thresholds">
+      <h2>Thresholds for a 1M window</h2>
+      <p>All percentages are relative to the active model's window, not absolute token counts. The same numbers on a 100k model mean ten times fewer tokens.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Event</th><th class="num">Percent</th><th class="num">1M window</th><th class="num">100k window</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Warning</td><td class="num">18%</td><td class="num">180k</td><td class="num">18k</td></tr>
+            <tr><td>Suggest a handoff</td><td class="num">25%</td><td class="num">250k</td><td class="num">25k</td></tr>
+            <tr><td>Request a handoff</td><td class="num">30%</td><td class="num">300k</td><td class="num">30k</td></tr>
+            <tr><td>Fallback compaction</td><td class="num">40%</td><td class="num">400k</td><td class="num">40k</td></tr>
+            <tr><td>Handoff cooldown</td><td class="num">900 s</td><td class="num">—</td><td class="num">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Why 40%, not 60%?</strong> The fallback exists for the case where handoff does not happen. At 60% of a 1M window it is already 600k tokens — deep into the range where quality degrades. At 40% it is a real safety net, and in the normal path it never fires because handoff happens at 30%.</p>
+      <pre><code>workflowMode=yoda-supervised
+contextWarnPercent=18
+contextSuggestPercent=25
+handoffAtPercent=30
+autoCompactPercent=40
+handoffCooldownSeconds=900</code></pre>
+    </section>
+
+    <section id="checklist">
+      <h2>Checklist</h2>
+      <ul class="checklist">
+        <li>Do not switch model or provider in the middle of a cache-sensitive task.</li>
+        <li>Keep the system prompt and tool schemas stable for the length of the session.</li>
+        <li>Handoff at a task boundary, not mid-edit and not mid-tool-loop.</li>
+        <li>Run the supervisor and watch for <code>SUP OFF</code>; a marker without a supervisor is not a handoff.</li>
+        <li>On a 1M window, set the fallback compaction to 40%, not 60%.</li>
+        <li>Use <code>omp-cache-monitor</code> for hit rate and tokens. Treat USD as a list-price estimate, not an invoice.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <nav aria-label="Project links">
+      <a href="https://github.com/metapeka/omp-agent-workflow">Repository</a>
+      <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/docs/contracts.md">Contracts</a>
+      <a href="https://github.com/metapeka/omp-cache-monitor">omp-cache-monitor</a>
+      <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/HANDOFF.md">Project handoff</a>
+    </nav>
+    <p>omp-agent-workflow · MIT · built for OMP. Numbers measured on 2026-11-24; provider behavior may change.</p>
+  </footer>
+</body>
+</html>

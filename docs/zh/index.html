@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>缓存、会话与交接 — omp-agent-workflow</title>
+  <meta name="description" content="为什么新会话是冷启动，prompt cache 到底复用什么，以及 omp-agent-workflow 在哪些环节起作用。一次真实交接故障的复盘。">
+  <link rel="canonical" href="https://metapeka.github.io/omp-agent-workflow/zh/">
+  <link rel="alternate" hreflang="en" href="https://metapeka.github.io/omp-agent-workflow/">
+  <link rel="alternate" hreflang="ru" href="https://metapeka.github.io/omp-agent-workflow/ru/">
+  <link rel="alternate" hreflang="zh" href="https://metapeka.github.io/omp-agent-workflow/zh/">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="https://github.com/metapeka/omp-agent-workflow">
+      <span class="brand-mark" aria-hidden="true"></span>
+      omp-agent-workflow
+    </a>
+    <nav class="langs" aria-label="语言">
+      <a href="../" hreflang="en">EN</a>
+      <a href="../ru/" hreflang="ru">RU</a>
+      <span aria-current="page">中文</span>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="kicker">说明 · 不废话</p>
+      <h1>缓存、会话与交接</h1>
+      <p class="lede">新会话就是冷启动。这里说明提供方到底缓存什么、插件实际控制什么，以及一次性的 <code>omp</code> 运行如何悄悄破坏了正在进行的交接。</p>
+      <p class="meta">实测于 cline-pass/deepseek-v4.1-flash-1017 · 1M 窗口 · 2026-11-24</p>
+    </section>
+
+    <aside class="incident-banner" role="note">
+      <span class="tag">事故</span>
+      <p><strong>2026-11-24。</strong> 同一目录下的短命令 <code>omp "say ok"</code> 覆盖了 <code>.omp-handoff-session.json</code>。守护进程因此把活跃会话的交接 marker 当成过期，交接静默停住，没有任何警告。<a href="#incident">查看复盘</a>。</p>
+    </aside>
+
+    <div class="tldr">
+      <h2>要点</h2>
+      <ul>
+        <li>会话是磁盘上的 JSONL 历史。模型只看到当前上下文窗口。</li>
+        <li>Prompt cache 复用<em>未变化的前缀</em>。前缀一变，后面的内容重新计费。</li>
+        <li>压缩会重写历史；交接会打开新会话。两者都会重置缓存。</li>
+        <li>插件不制造缓存。它决定<em>何时</em>保留前缀、何时重置，并把状态带过重置点。</li>
+        <li>Token 是实测的，缓存 token 是提供方上报的，美元是按目录价估算的。</li>
+      </ul>
+    </div>
+
+    <section id="confuse">
+      <h2>容易混淆的三样东西</h2>
+      <p>“上下文”这个词同时指文件、窗口和缓存，但它们的行为完全不同。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th></th><th>是什么</th><th><code>/handoff-new</code> 之后</th><th>OMP 重启之后</th><th>切换模型之后</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>会话</strong></td>
+              <td>磁盘上的 JSONL 历史，一个会话一个文件。</td>
+              <td>新文件；旧文件仍可恢复。</td>
+              <td>保留，可恢复。</td>
+              <td>保留，但按新模型重新分词。</td>
+            </tr>
+            <tr>
+              <td><strong>上下文窗口</strong></td>
+              <td>此刻发给模型的 token：system prompt、tools、消息。</td>
+              <td>新的小上下文，由交接状态构建。</td>
+              <td>从会话重建。</td>
+              <td>重建；窗口大小可能改变。</td>
+            </tr>
+            <tr>
+              <td><strong>Prompt cache</strong></td>
+              <td>提供方复用未变化的请求前缀。</td>
+              <td>通常为冷；相同的静态前缀可能命中，取决于提供方。</td>
+              <td>超过提供方 TTL 后为冷。</td>
+              <td>冷：缓存按模型/提供方区分。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="cache">
+      <h2>Prompt caching 如何工作</h2>
+      <p>一次请求由前缀加新消息组成。前缀包括 system prompt、工具 schema 和已有对话。如果提供方最近见过完全相同的前缀，它会复用计算结果，并把复用的 token 报告为 cache read。</p>
+      <p>成本上的关键：<strong>cache hit 不是免费，但便宜得多</strong>。这个模型 input 每百万 token $0.30，cache read 每百万 $0.006，便宜 50 倍。这里 cache write 为 $0，但这是模型特定的。</p>
+      <p>各提供方细节不同：Anthropic 使用显式 cache breakpoints 和 TTL，OpenAI、DeepSeek 使用自动前缀缓存。共同规则只有一条：<em>前缀必须匹配</em>。</p>
+
+      <div class="callout">
+        <strong>什么算前缀变化</strong>
+        换模型或提供方、修改 system prompt、改动工具 schema、压缩历史，或者新会话带着不同对话。追加消息不会破坏缓存；重写对话中间部分会。
+      </div>
+    </section>
+
+    <section id="kills">
+      <h2>什么会杀死缓存</h2>
+      <ul>
+        <li><strong>切换模型或提供方。</strong> Kimi K3 → DeepSeek 是不同缓存命名空间、不同分词器，通常窗口也不同。</li>
+        <li><strong>压缩。</strong> 历史被重写，下一次请求就是新前缀。</li>
+        <li><strong>交接。</strong> 新会话文件、新对话。静态 system/tools 前缀可能命中，对话不会。</li>
+        <li><strong>会话中途修改 tools 或 system prompt。</strong></li>
+        <li><strong>空闲超过提供方 TTL。</strong> 缓存过期，下一轮为冷。</li>
+      </ul>
+    </section>
+
+    <section id="plugin">
+      <h2>这个插件在哪里起作用</h2>
+      <p>插件不在提供方的缓存内部。它位于生命周期上：观察上下文占用、发出警告、在阈值处请求交接，并防止会话静默卡死。用缓存的话说，它只有两个重置点——交接和回退压缩——并且尽量让两者都是有意的。</p>
+
+      <div class="lanes" aria-label="谁控制什么">
+        <div class="lane">
+          <h3>提供方</h3>
+          <ul>
+            <li>缓存键与范围</li>
+            <li>TTL 与淘汰</li>
+            <li>分词器与价格</li>
+          </ul>
+        </div>
+        <div class="lane">
+          <h3>OMP</h3>
+          <ul>
+            <li>Session JSONL</li>
+            <li>上下文窗口</li>
+            <li><code>getContextUsage()</code></li>
+          </ul>
+        </div>
+        <div class="lane plugin">
+          <h3>插件 ← 本页主角</h3>
+          <ul>
+            <li>Warning / suggest</li>
+            <li>交接 + marker</li>
+            <li>重试 + 回退压缩</li>
+          </ul>
+        </div>
+        <div class="lane">
+          <h3>cache-monitor</h3>
+          <ul>
+            <li>命中率</li>
+            <li>Token 汇总</li>
+            <li><code>usage.cost.total</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <p>下面是同一生命周期的时间线。绿色表示前缀只追加，缓存友好；琥珀色只是通知，prompt 不变；蓝色是有意重置；红色是事故中的失败路径。</p>
+
+      <div class="timeline" aria-label="会话生命周期与缓存状态">
+        <div class="phase hit"><span class="pct">第 1..N 轮</span><strong>Cache hit</strong><small>前缀只追加</small></div>
+        <div class="phase notify"><span class="pct">18%</span><strong>警告</strong><small>仅通知；上下文不变</small></div>
+        <div class="phase notify"><span class="pct">25%</span><strong>建议交接</strong><small>仅通知</small></div>
+        <div class="phase reset"><span class="pct">30%</span><strong>交接</strong><small>请求 + marker</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase cold"><span class="pct">新会话</span><strong>冷启动</strong><small>状态 ≈10–15k token</small></div>
+        <div class="phase hit"><span class="pct">之后</span><strong>再次 cache hit</strong><small>工作集更小</small></div>
+      </div>
+      <div class="timeline" aria-label="交接卡死的路径">
+        <div class="phase bad"><span class="pct">卡住</span><strong>无守护进程 / marker 丢失</strong><small>事故</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase hit"><span class="pct">重试 ×3</span><strong>仅追加</strong><small>缓存保持温暖</small></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="phase reset"><span class="pct">40%</span><strong>回退压缩</strong><small>有意重置</small></div>
+      </div>
+      <div class="legend">
+        <span class="l-hit">cache hit</span>
+        <span class="l-notify">仅通知</span>
+        <span class="l-reset">有意重置</span>
+        <span class="l-bad">失败路径</span>
+      </div>
+
+      <h3>插件的覆盖范围，逐项说明</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>环节</th><th>插件做什么</th><th>对缓存的影响</th><th>节省什么</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>普通轮次</td><td>读取 <code>getContextUsage()</code>；不向 prompt 写入内容。</td><td>无；前缀只追加。</td><td>不制造额外 miss。</td></tr>
+            <tr><td>18% / 25%</td><td>警告并建议交接。</td><td>无；prompt 不变。</td><td>在强制边界前完成任务的时间。</td></tr>
+            <tr><td>30%</td><td>要求 agent 收尾并写 marker；守护进程发送 <code>/handoff-new</code>。</td><td>一次重置。</td><td>不把 300k+ 工作集继续带着走。</td></tr>
+            <tr><td>交接卡住</td><td>最多重试 3 次，然后允许回退压缩。</td><td>重试只追加；压缩是重置。</td><td>避免静默卡死且回退失效。</td></tr>
+            <tr><td>Session info</td><td>按进程在 <code>.omp-handoff-session.json</code> 中保留记录。</td><td>无。</td><td>不丢失活跃会话的 terminal handle。</td></tr>
+            <tr><td>cache-monitor</td><td>外部插件：命中率、token、成本。</td><td>无；只读。</td><td>用数据而非猜测来设阈值。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout muted">
+        <strong>插件之外</strong>
+        提供方 TTL、缓存键、分词器、模型切换，以及是否修改 tools 或 system prompt。插件可以让重置变得有意；它无法让冷前缀变热。
+      </div>
+    </section>
+
+    <section id="numbers">
+      <h2>实测环境</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>模型与窗口</h3>
+          <ul>
+            <li><span class="mono">cline-pass/deepseek-v4.1-flash-1017</span></li>
+            <li>上下文窗口：<strong>1,048,576</strong> token</li>
+            <li>最大输出：<strong>393,216</strong> token</li>
+            <li>Thinking：<code>auto</code> — 开启推理；该模型没有可选的 low/medium/high 档位</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>目录价，每 1M token</h3>
+          <ul>
+            <li>Input：<strong>$0.30</strong></li>
+            <li>Output：<strong>$1.20</strong></li>
+            <li>Cache read：<strong>$0.006</strong></li>
+            <li>Cache write：<strong>$0</strong></li>
+          </ul>
+          <p class="muted mono">pricingStatus: fixed</p>
+        </div>
+      </div>
+
+      <h3>一个真实的 400 轮会话</h3>
+      <p>2026-11-24 的匿名会话。从 Kimi K3 开始，切换到 DeepSeek-V4.1-Flash。数字来自助手轮次的 provider-reported <code>usage</code>。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>指标</th><th class="num">值</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>助手轮次</td><td class="num">400</td><td>397 轮有 cache read，3 轮为冷</td></tr>
+            <tr><td>命中率</td><td class="num">99.2%</td><td><code>cacheRead / (input + cacheRead + cacheWrite)</code></td></tr>
+            <tr><td>新鲜 input</td><td class="num">659,440</td><td>按 $0.30/M</td></tr>
+            <tr><td>Cache read</td><td class="num">82,500,160</td><td>按 $0.006/M</td></tr>
+            <tr><td>Output</td><td class="num">189,289</td><td>按 $1.20/M</td></tr>
+            <tr><td>对话成本</td><td class="num">$2.77</td><td>仅助手轮次</td></tr>
+            <tr><td>会话成本</td><td class="num">$3.18</td><td>包含后台 <code>model_usage</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>事件</th><th class="num">轮次</th><th class="num">Input</th><th class="num">Cache read</th><th>说明了什么</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Kimi K3 → DeepSeek</td><td class="num">14</td><td class="num">35,719</td><td class="num">768</td><td>新模型 = 新缓存；只复用了静态前缀。</td></tr>
+            <tr><td>冷轮次</td><td class="num">385</td><td class="num">363,693</td><td class="num">0</td><td>距上一轮 2.6 分钟；整个 prompt 按 input 计费。按目录价约 $0.109。</td></tr>
+            <tr><td>其余轮次</td><td class="num">398</td><td class="num">260,028</td><td class="num">82,499,392</td><td>前缀只追加；主要工作由缓存承担。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>哪些是实测，哪些是估算</strong>
+        <ul>
+          <li><strong>Token</strong> — 完成轮次的 provider-reported <code>usage</code>。对应该提供方和模型是准确的。</li>
+          <li><strong>缓存 token</strong> — 提供方上报的 cache read/write。提供方有该字段时准确；字段缺失表示“未上报”，不是“没有缓存”。</li>
+          <li><strong>USD</strong> — OMP 用目录价乘以 token（<code>usage.cost.total</code>）。这是固定目录价，不是账单：订阅、额度、折扣和调价都不包含。</li>
+          <li><strong>上下文百分比</strong> — OMP 以 provider usage 为锚点，用本地分词器补算增量。适合做阈值，不适合对账。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="incident">
+      <h2>事故：没有发生的交接</h2>
+      <div class="incident-banner" role="note">
+        <span class="tag">2026-11-24</span>
+        <p><strong>一次一次性运行，一个被覆盖的文件，一个卡住的会话。</strong> 没有守护进程警告，没有重试，配置好的回退压缩也被阻塞。</p>
+      </div>
+
+      <h3>当时的配置</h3>
+      <ul>
+        <li><code>workflowMode=yoda-supervised</code>，1M 窗口。</li>
+        <li><code>18 / 25 / 30 / 60</code>，<code>handoffCooldownSeconds=900</code>。</li>
+        <li><code>/handoff-new</code> 的状态上限：64k 字符。</li>
+      </ul>
+
+      <h3>出了什么问题</h3>
+      <ol>
+        <li>同一目录启动了一个短命令 <code>omp "say ok"</code>，向 <code>.omp-handoff-session.json</code> 写入自己的记录，覆盖了活跃会话的 terminal handle 和 session file。随后它的 pid 退出。</li>
+        <li>活跃会话写入交接 marker。守护进程把 <code>marker.sessionFile</code> 与文件里唯一的记录比较，发现不一致，判定 marker 过期。</li>
+        <li>交接从未发送。<code>handoffRequested</code> 保持 true，插件不再重试；而自动压缩在“已请求交接”时被阻塞。</li>
+        <li>状态上限的注释声称 64k 字符 ≈ 16k token。俄语文本实测为 21–30k token。</li>
+      </ol>
+
+      <h3>改了什么</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>版本</th><th>修复</th><th>效果</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0.5.15</td><td>状态上限 32k；守护进程和 terminal handle 警告；交接重试；handle trim。</td><td>下一次卡住可见；marker 缺失会触发重试。</td></tr>
+            <tr><td>0.5.16</td><td><code>.omp-handoff-session.json</code> 改为按 pid 的 <code>{sessions}</code> 映射；清理死 pid；守护进程按 <code>marker.sessionFile</code> 选择记录。</td><td>一次性运行不能再抢走活跃会话的 handle，活跃 marker 不再被判过期。</td></tr>
+            <tr><td>0.5.17</td><td>重试耗尽后，或 marker 没有存活守护进程时，回退压缩生效。</td><td>损坏的交接不能永久禁用最后一道保险。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>修复后正常路径不变：30% 交接、新会话、缓存重新变热。区别在失败路径：现在会给出警告和回退，而不是静默停住。</p>
+    </section>
+
+    <section id="thresholds">
+      <h2>1M 窗口的阈值</h2>
+      <p>所有百分比都相对于当前模型的窗口，不是绝对 token 数。同样的数字在 100k 模型上意味着十分之一的 token。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>事件</th><th class="num">百分比</th><th class="num">1M 窗口</th><th class="num">100k 窗口</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>警告</td><td class="num">18%</td><td class="num">180k</td><td class="num">18k</td></tr>
+            <tr><td>建议交接</td><td class="num">25%</td><td class="num">250k</td><td class="num">25k</td></tr>
+            <tr><td>请求交接</td><td class="num">30%</td><td class="num">300k</td><td class="num">30k</td></tr>
+            <tr><td>回退压缩</td><td class="num">40%</td><td class="num">400k</td><td class="num">40k</td></tr>
+            <tr><td>交接冷却</td><td class="num">900 秒</td><td class="num">—</td><td class="num">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>为什么是 40%，不是 60%？</strong> 回退是为“交接没有发生”准备的。在 1M 窗口上，60% 已经是 600k token，早就进入质量下降区。40% 才是真正的保险；正常路径下它在 30% 交接后就轮不到触发。</p>
+      <pre><code>workflowMode=yoda-supervised
+contextWarnPercent=18
+contextSuggestPercent=25
+handoffAtPercent=30
+autoCompactPercent=40
+handoffCooldownSeconds=900</code></pre>
+    </section>
+
+    <section id="checklist">
+      <h2>检查清单</h2>
+      <ul class="checklist">
+        <li>对缓存敏感的任务，不要中途切换模型或提供方。</li>
+        <li>整个会话期间保持 system prompt 和工具 schema 稳定。</li>
+        <li>在任务边界交接，不要在编辑中途或工具循环里交接。</li>
+        <li>运行守护进程并留意 <code>SUP OFF</code>：没有守护进程的 marker 不是交接。</li>
+        <li>1M 窗口上把回退压缩设为 40%，不要设 60%。</li>
+        <li>用 <code>omp-cache-monitor</code> 看命中率和 token。USD 是目录价估算，不是账单。</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <nav aria-label="项目链接">
+      <a href="https://github.com/metapeka/omp-agent-workflow">仓库</a>
+      <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/docs/contracts.md">契约</a>
+      <a href="https://github.com/metapeka/omp-cache-monitor">omp-cache-monitor</a>
+      <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/HANDOFF.md">项目状态</a>
+    </nav>
+    <p>omp-agent-workflow · MIT · 为 OMP 构建。数据测于 2026-11-24；提供方行为可能变化。</p>
+  </footer>
+</body>
+</html>

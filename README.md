@@ -46,6 +46,8 @@
 
 Long agent sessions fail at the seams: context runs out, decisions get lost, cleanup destroys work. This plugin makes those seams explicit and reversible.
 
+> **Explainer:** [Cache, sessions and handoff](docs/index.html) — why a new session is a cold start, where this plugin helps, and the postmortem of a real handoff failure. [RU](docs/ru/index.html) · [中文](docs/zh/index.html)
+
 <details>
 <summary>▶️ Watch the 13-second demo</summary>
 
