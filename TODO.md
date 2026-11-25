@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-25. Версия: `0.5.18`.
+Дата: 2026-11-25. Версия: `0.5.19`.
 
 ## Сейчас
 
@@ -21,8 +21,10 @@
       влияние на hit rate; без TTL/warming без данных провайдера.
       Вход готов: `docs/research/model-modes.md` — цены 9 моделей, замеры
       reasoning (n=3) и handoff-payload (20 сессий), цена границы, режим v1.
-- [ ] Пресеты workflow (`routine`/`plan`/`review`/`budget`) и advisory
-      `next-session:` в launcher — дизайн и варианты:
+- [x] F1 advisory `next-session:` + launcher (0.5.19, D14): parser,
+      `bin/omp-next-session`, `--model`/`--thinking` при старте, показ в
+      preflight; тесты.
+- [ ] F2 пресеты (`routine`/`plan`/`review`/`budget`) — дизайн и варианты:
       `docs/research/workflow-presets.md`; ждёт выбора владельца.
 - [ ] Интеграция с Orca orchestration Runs/gates — `[future]` 0.6+.
 - [ ] Параллельные задачи и multi-repo — `[future]`.
@@ -87,6 +89,9 @@
 - [x] 0.5.18 — `workflowMode: off`: плагин молчит, OMP на дефолтах; env `off`
       побеждает Settings; launcher делает exec omp без supervisor. Тесты и
       docs (contracts, README EN/RU/ZH, yoda-workflow).
+- [x] 0.5.19 — advisory `next-session:`: fail-closed парсер, каталог моделей,
+      launcher `--model`/`--thinking` при старте (явные флаги выигрывают),
+      показ в preflight, D14; 31 новый тест.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

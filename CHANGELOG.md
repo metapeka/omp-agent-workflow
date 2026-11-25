@@ -24,6 +24,20 @@ semantic for the plugin contract, not for OMP itself.
   on a real 400-turn session. Linked from all three READMEs and served by
   GitHub Pages from `main /docs`.
 
+## [0.5.19] — 2026-11-25
+
+### Added
+
+- `next-session:` advisory line: an agent may put one line at the head of
+  `HANDOFF.md` (`v=1 ts=… model=… thinking=… mode=… reason=…`). `bin/omp-yoda`
+  validates it (format, 24 h freshness, model against `omp models --json`,
+  thinking normalized to `auto` when outside the model catalog) and adds
+  `--model`/`--thinking` at process start unless the user passed them
+  explicitly. Explicit user flags win; invalid, stale, duplicated, or
+  misplaced lines change nothing. `/handoff-preflight` shows the line and its
+  validity but never switches anything; the plugin never changes the model
+  inside a session.
+
 ## [0.5.18] — 2026-11-25
 
 ### Fixed

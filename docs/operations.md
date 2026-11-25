@@ -52,6 +52,11 @@ Launcher:
   «automatic handoff не сработает»; OMP всё равно запускается;
 - путь к Orca CLI — Settings `orcaCli` (нет в UI MVP) или `ORCA_CLI_COMMAND`
   (default `orca`).
+- если первая строка `HANDOFF.md` — валидная `next-session:` (свежая, модель
+  из `omp models --json`), добавляет `--model`/`--thinking` перед аргументами
+  пользователя; явные флаги выигрывают, невалидная/устаревшая строка ничего
+  не меняет. В режиме `off` строка не читается. Подробности —
+  [contracts.md](contracts.md#handoffmd-advisory-next-session-0519).
 
 Проверить, что supervisor жив:
 
@@ -248,6 +253,10 @@ worktree, ретро-review. Destructive/spend действия требуют c
 - **Две сессии в одном каталоге.** Session info хранит обе записи, но marker
   и `HANDOFF.md` общие: handoff затрагивает одну сессию. Вторую сессию лучше
   держать в своём worktree.
+- **Advisory не применилась.** Проверить `/handoff-preflight`: строка должна
+  быть первой, `v=1`, `ts` не старше 24 ч, `model` из `omp models --json`.
+  Явные `--model`/`--thinking` в команде launcher'а отменяют advisory; `off`
+  отключает чтение. Пустой вывод `bin/omp-next-session` — строка отброшена.
 
 ## Логи и артефакты
 

@@ -1,11 +1,12 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-25. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.18`; последний код-коммит `5d4c016`; ветки
-`feat/handoff-preflight`, `feat/preflight-fixes`, `feat/handoff-state-embed`,
-`feat/preflight-checklist`, `feat/preflight-actions`,
-`feat/preflight-flow`, `feat/workflow-status-key`,
-`feat/workflow-status-p2` и `feat/safe-worktree-remove` слиты ff-only,
+`main`, версия `0.5.19`; последний код-коммит — advisory `next-session:`;
+ветки `feat/handoff-preflight`, `feat/preflight-fixes`,
+`feat/handoff-state-embed`, `feat/preflight-checklist`,
+`feat/preflight-actions`, `feat/preflight-flow`,
+`feat/workflow-status-key`, `feat/workflow-status-p2`,
+`feat/safe-worktree-remove` и `feat/next-session-advisory` слиты ff-only,
 worktrees удалены. GitHub: `metapeka/omp-agent-workflow` (public), тег и
 release `v0.5.14`, CI на Node 22 зелёный. Вики — `docs/README.md`;
 backlog — `TODO.md`.
@@ -36,6 +37,7 @@ backlog — `TODO.md`.
 | Session info 0.5.16 | `{sessions}` по pid, dead prune, lock + atomic rename; supervisor выбирает по `marker.sessionFile` |
 | Fallback 0.5.17 | авто-компакция срабатывает после исчерпания handoff-повторов или при marker без живого supervisor |
 | Kill switch 0.5.18 | `workflowMode: off` (`OMP_WORKFLOW_MODE=off`): плагин молчит, OMP на дефолтах, launcher делает exec omp без supervisor; env off побеждает Settings |
+| Advisory 0.5.19 | `next-session:` первой строкой `HANDOFF.md`: launcher добавляет `--model`/`--thinking` при старте (явные флаги выигрывают), preflight показывает валидность; модель в сессии не меняется (D14) |
 | Имена команд 0.5.18 | `/handoff` убран (builtin OMP); `npm run check:names` сверяет 105 builtin-имён с нашими 5 в `verify`; коллизий 0 |
 | Гид по командам | `docs/commands.md`: слэш-команды, tool `orchestrator`, меню preflight, карточки `/wrap`, CLI launcher/supervisor/orchestrate, владельцы имён |
 | Замеры 2026-11-24/25 | `docs/research/model-modes.md`: цены 9 моделей, reasoning flash/pro, handoff-payload 20 сессий, цена границы, рекомендации R1–R8 |
@@ -43,7 +45,7 @@ backlog — `TODO.md`.
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; не реализовано |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
-| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 193/193, `npm run typecheck`, extension load exit 0, HTML tag/link check + browser screenshots |
+| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 224/224, `npm run typecheck`, extension load exit 0, HTML tag/link check + browser screenshots |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
@@ -200,6 +202,33 @@ state-файла; prompt без состояния больше не перед�
   (400k вместо 600k): fallback должен быть до заметной деградации модели.
   Настройки через `omp plugin config`; код их не меняет.
 
+## Advisory `next-session:` 0.5.19
+
+Первая строка `HANDOFF.md`, до H1:
+`next-session: v=1 ts=2026-11-25T00:40Z model=… thinking=… mode=plan reason=slug`.
+Формат — аддитивный и опциональный; без строки ничего не меняется.
+
+- `lib/next-session.ts` — fail-closed разбор: две строки, неверная позиция,
+  повтор ключа, `v≠1`, `ts` не ISO-8601 UTC или старше 24 ч (и больше чем на
+  24 ч в будущем) — рекомендации нет целиком. Значения без пробелов, `=` и
+  `#`; неизвестные ключи сохраняются в порядке.
+- `model` проверяется по `omp models --json`; неизвестная модель
+  отбрасывается, остальные ключи действуют. Каталог недоступен — модель
+  сохраняется с пометкой, но launcher её не применяет.
+- `thinking` нормализуется по массиву каталога: вне массива (в том числе
+  `null` у flash) → `auto`; строка не отбрасывается. Невалидный уровень,
+  `mode` или `reason` — ключ игнорируется с проблемой.
+- `bin/omp-next-session` печатает флаги, `bin/omp-yoda` добавляет
+  `--model`/`--thinking` перед аргументами пользователя; явные
+  `--model`/`--thinking` отменяют advisory. Exit code 0 всегда: запуск не
+  ломается. В режиме `off` advisory не читается (exec omp).
+- `/handoff-preflight` показывает строку и валидность; каталог читается
+  только если в строке есть `model`. Ничего не переключает.
+- Обрезка state до 32 000 символов сохраняет строку: она в голове файла —
+  закреплено тестом.
+- D14: Settings-ключ `workflowPreset` и статус-строка не меняются;
+  F2-пресеты — отдельное решение.
+
 ## Статус-строка 0.5.12–0.5.13
 
 Один ключ `workflow`, только main TUI. Текст: `YODA` / `YODA-SUP` по
@@ -243,10 +272,13 @@ supervisor — stderr; `--dry-run` JSON остаётся чистым stdout.
 | Supervisor | `bin/omp-handoff-supervisor.mjs` |
 | Supervisor lock | `lib/supervisor-lock.mjs` |
 | Launcher | `bin/omp-yoda` |
+| Advisory parser | `lib/next-session.ts` |
+| Advisory CLI | `bin/omp-next-session` |
 | Тесты guard/preflight | `test/context-guard.test.mjs` |
+| Тесты advisory | `test/next-session.test.mjs` |
 | Тесты settings | `test/workflow-settings.test.mjs` |
 | Тесты safe remove | `test/worktree-remove.test.mjs` |
-| Решения | `docs/decisions.md` (D11, D12, D13) |
+| Решения | `docs/decisions.md` (D11–D14) |
 | Runbook | `docs/operations.md` |
 
 ## Explainer site 2026-11-24
@@ -276,7 +308,7 @@ source `main /docs`, `.nojekyll`; homepage репозитория указыва
 ```bash
 cd ~/projects/omp-agent-workflow
 npm run check:names                       # 105 builtin, 5 наших, 0 конфликтов
-npm test                                  # 193/193
+npm test                                  # 224/224
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
@@ -289,12 +321,15 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.18; проверить `omp plugin list`, отсутствие
-   `/handoff` в наших командах (builtin работает), `/handoff-preflight`,
-   `SUP OFF` в TUI и `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor.
-2. Решение владельца по пресетам и advisory: `docs/research/workflow-presets.md`
-   (F1 `next-session:` → launcher, F2 `routine/plan/review/budget`). Начать с
-   F1: парсер уже специфицирован с 9 тест-кейсами.
+1. Новая сессия загрузит 0.5.19; проверить `omp plugin list`, отсутствие
+   `/handoff` в наших командах (builtin работает), `/handoff-preflight`
+   с advisory-строкой, `SUP OFF` в TUI и `OMP_WORKFLOW_MODE=off bin/omp-yoda`
+   без supervisor. Advisory без строки в `HANDOFF.md` ничего не меняет —
+   для проверки добавить строку временно.
+2. Решение владельца по F2-пресетам `routine/plan/review/budget`:
+   `docs/research/workflow-presets.md`. F1 (`next-session:` → launcher)
+   реализован в 0.5.19, D14; имя `--preset`/`workflowPreset` и наборы —
+   открыты.
 3. Решение владельца по `execution: omp|external` в `AUTOPLAN.md`: additive,
    stop-reason `external-run`, тест на старый файл; контракт меняется (D10).
 4. `doctor` — ТЗ согласовано с соседним проектом (16 проверок, `--json`,
@@ -324,6 +359,14 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   команды — только через `npm run check:names`.
 - Модель при `/handoff-new` не меняется: пресеты выбирают модель только при
   запуске процесса; TTL кэша и размер блока не проверены.
+- Advisory `next-session:` — совет, не контракт поведения: устаревшая,
+  невалидная или чужая строка игнорируется целиком; непроверенная модель не
+  применяется. `thinking` вне каталога модели нормализуется в `auto`
+  (для flash `null` означает «нет выбираемых уровней», поэтому запрошенный
+  `off` тоже станет `auto`); F2-пресеты, если понадобится `off`, должны
+  задавать его флагом launcher'а, а не advisory.
+- Launcher при каждом старте может вызвать `omp models --json` (только если
+  в строке есть `model`); при зависшем CLI это до 10 с.
 - Launcher читает Settings при старте; extension — на
   `session_start`/`session_switch`.
 - `orcaEnabled=false` отключает automatic handoff.

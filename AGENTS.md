@@ -25,7 +25,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.18`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.19`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -45,11 +45,13 @@ hit rate, этот проект управляет контекстом и см�
   затирал handle живой сессии; 0.5.17 — fallback-компакция срабатывает
   после исчерпания handoff-повторов или при marker без живого supervisor;
   0.5.18 — режим `off`: выключатель плагина, OMP на дефолтах, launcher не
-  поднимает supervisor.
+  поднимает supervisor; 0.5.19 — advisory `next-session:`: launcher добавляет
+  `--model`/`--thinking` при старте, preflight показывает валидность, модель
+  внутри сессии не меняется (D14).
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm run verify` — `check:names`, 193 теста и typecheck; CI в
+- `npm run verify` — `check:names`, 224 теста и typecheck; CI в
   `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).

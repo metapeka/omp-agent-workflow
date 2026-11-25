@@ -1,0 +1,45 @@
+#!/usr/bin/env -S node --experimental-strip-types --disable-warning=ExperimentalWarning
+/**
+ * Advisory-флаги `next-session:` для `bin/omp-yoda`.
+ *
+ *   node --experimental-strip-types bin/omp-next-session --dir DIR -- omp-args...
+ *
+ * Печатает по одному флагу на строку: `--model`, selector, `--thinking`,
+ * level. Явные флаги пользователя (всё после `--`) выигрывают. Пустой вывод —
+ * рекомендации нет, она невалидна или устарела; launcher тогда ничего не
+ * добавляет. `--omp` — путь к бинарю для `models --json`.
+ */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { parseArgs } from "node:util";
+
+import {
+	loadModelCatalog,
+	nextSessionArgs,
+	parseNextSession,
+} from "../lib/next-session.ts";
+
+const { values, positionals } = parseArgs({
+	allowPositionals: true,
+	options: {
+		dir: { type: "string", default: process.cwd() },
+		state: { type: "string", default: "HANDOFF.md" },
+		omp: { type: "string", default: "omp" },
+	},
+});
+
+let text;
+try {
+	text = readFileSync(resolve(values.dir, values.state), "utf8");
+} catch {
+	process.exit(0);
+}
+
+let parsed = parseNextSession(text);
+if (parsed.advice?.model !== undefined) {
+	parsed = parseNextSession(text, { catalog: loadModelCatalog(values.omp) });
+}
+
+for (const arg of nextSessionArgs(parsed, positionals)) {
+	console.log(arg);
+}

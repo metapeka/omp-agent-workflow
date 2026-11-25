@@ -1585,6 +1585,44 @@ describe("/handoff-preflight", () => {
 		}
 	});
 
+	it("shows a valid next-session advisory without switching anything", async () => {
+		const ts = `${new Date().toISOString().slice(0, 16)}Z`;
+		const { dir } = preflightRepo({
+			"HANDOFF.md": `next-session: v=1 ts=${ts} mode=plan reason=seams\n# state\n`,
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(
+				v.notes[0].text,
+				/✓ next-session: v=1 ts=.* mode=plan reason=seams/,
+			);
+			assert.match(v.notes[0].text, /preflight: OK/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("warns about an invalid next-session line", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "next-session: v=2 ts=2026-11-25T00:40Z mode=plan\n# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const v = view(40, { cwd: dir });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(v.notes[0].text, /⚠ next-session: версия v=2/);
+			assert.match(v.notes[0].text, /preflight: OK/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("ignores handoff runtime files in the worktree check", async () => {
 		const { dir } = preflightRepo({
 			"HANDOFF.md": "# state\n",

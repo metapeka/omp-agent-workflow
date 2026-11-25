@@ -1,6 +1,6 @@
 # Команды и CLI
 
-Статус: `[готово]`, версия `0.5.18`. Источник истины — код
+Статус: `[готово]`, версия `0.5.19`. Источник истины — код
 (`index.ts`, `orchestrator.ts`, `bin/`); этот файл — подробный гид.
 Контракт режимов и файлов — [contracts.md](contracts.md).
 
@@ -26,6 +26,7 @@
 | Проверка | Провал/предупреждение |
 |---|---|
 | `HANDOFF.md` существует | fail — сначала обнови state |
+| advisory `next-session:` | warn: строка невалидна/устарела; валидная — pass (ничего не переключает) |
 | git-репозиторий и коммиты | fail; не-репозиторий — warn и git-проверки пропускаются |
 | worktree чистый | fail со списком файлов (runtime-файлы исключены) |
 | ветка не detached | fail |
@@ -146,6 +147,21 @@ bin/omp-yoda [флаги omp]
 | `OMP_YODA_DIR` | каталог, который обслуживает supervisor (по умолчанию `$PWD`) |
 | `OMP_YODA_LOG` | лог supervisor (по умолчанию `$TMPDIR/omp-yoda-supervisor.log`) |
 | Аргументы | передаются `omp` как есть (`--model`, `--thinking`, `--version`, …) |
+| Advisory | `next-session:` из `HANDOFF.md` → `--model`/`--thinking`; явные флаги пользователя выигрывают |
+
+### `bin/omp-next-session` — advisory для launcher
+
+Внутренний helper `bin/omp-yoda`; печатает по одному флагу на строку.
+
+| Флаг | По умолчанию | Что делает |
+|---|---|---|
+| `--dir` | `$PWD` | каталог с `HANDOFF.md` |
+| `--state` | `HANDOFF.md` | имя state-файла |
+| `--omp` | `omp` | бинарь для `omp models --json` |
+| `--` | — | дальше — аргументы omp; явные `--model`/`--thinking` отменяют advisory |
+
+Пустой вывод — строки нет, она невалидна/устарела или модель не прошла
+каталог. Exit code 0 во всех случаях: запуск не ломается.
 
 ### `bin/omp-handoff-supervisor.mjs`
 
@@ -172,7 +188,7 @@ bin/omp-yoda [флаги omp]
 
 | Путь | Кто пишет | Кто читает |
 |---|---|---|
-| `HANDOFF.md` | агент/человек | `/handoff-preflight`, `/handoff-new`, `/wrap`, supervisor prompt |
+| `HANDOFF.md` | агент/человек; первая строка может быть advisory `next-session:` | `/handoff-preflight`, `/handoff-new`, `/wrap`, supervisor prompt, `bin/omp-yoda` |
 | `AUTOPLAN.md` | агент/человек | `/orchestrate`, tool `orchestrator`, `/wrap` |
 | `STATE.json` | tool `orchestrator`, `/orchestrate-stop` | policy, статус, `/wrap` |
 | `.omp-handoff-request.json` | агент по запросу плагина | supervisor |
@@ -185,7 +201,8 @@ preflight и из `.gitignore`.
 
 ## Чего команды не делают
 
-- не переключают модель и не меняют провайдера;
+- не переключают модель внутри сессии: `/handoff-new` остаётся в том же
+  процессе; `next-session:` применяет только `bin/omp-yoda` при старте;
 - не пушат и не публикуют (publish — только решение владельца);
 - не форсируют merge и не удаляют ветки (`-d` только после merged);
 - не начинают новую сессию из event-handler — только `/handoff-new`;

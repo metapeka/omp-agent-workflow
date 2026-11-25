@@ -208,6 +208,32 @@ Legacy-имя в `.gitignore`; текущий supervisor его не пишет.
 как признак завершённого handoff — источник истины: удалённый marker и
 новая `sessionFile` в session info.
 
+### `HANDOFF.md`: advisory `next-session:` (0.5.19)
+
+Опциональная строка первой строкой state-файла, до заголовка H1:
+
+```text
+next-session: v=1 ts=2026-11-25T00:40Z model=cline-pass/deepseek-v4-pro thinking=auto mode=plan reason=seams
+```
+
+| Ключ | Обяз. | Допустимые значения |
+|---|---|---|
+| `v` | да | `1` |
+| `ts` | да | ISO-8601 UTC `YYYY-MM-DDTHH:MMZ`, не старше 24 ч |
+| `model` | нет | selector из `omp models --json` |
+| `thinking` | нет | `off`/`auto`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`; вне каталога модели нормализуется в `auto` |
+| `mode` | нет | `routine`/`plan`/`review` |
+| `reason` | нет | slug `[a-z0-9._-]{1,32}` |
+
+- Fail-closed: две строки, неверная позиция, повтор ключа, `v≠1` или
+  устаревший `ts` — рекомендации нет целиком; файл не переписывается.
+- Значения без пробелов, `=` и `#`; неизвестные ключи сохраняются парсером.
+- Extension только показывает строку и её валидность в
+  `/handoff-preflight`; модель внутри сессии не меняется. `bin/omp-yoda`
+  добавляет `--model`/`--thinking` при запуске; явные флаги пользователя
+  выигрывают, непроверенная модель не применяется.
+- Без строки ничего не меняется: формат аддитивен и опционален.
+
 ## Supervisor
 
 Запуск:

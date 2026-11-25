@@ -51,6 +51,22 @@ if [ "$mode_value" = "off" ]; then
   OMP_WORKFLOW_MODE=off exec "$omp_bin" "$@"
 fi
 
+# Advisory `next-session:` из HANDOFF.md: launcher добавляет --model/--thinking,
+# только если пользователь не передал их сам. Невалидная или устаревшая строка
+# ничего не меняет; модель уже проверена по `omp models --json`.
+advisory_args=()
+if [ -f "$dir/HANDOFF.md" ] && [ -f "$here/omp-next-session" ]; then
+  advisory_out="$(node --experimental-strip-types --disable-warning=ExperimentalWarning \
+    "$here/omp-next-session" --dir "$dir" --omp "$omp_bin" -- "$@" 2>/dev/null)" || advisory_out=""
+  if [ -n "$advisory_out" ]; then
+    set -f
+    # shellcheck disable=SC2206
+    advisory_args=($advisory_out)
+    set +f
+    echo "Yoda: next-session → ${advisory_args[*]}" >&2
+  fi
+fi
+
 # Settings > env > default.
 supervisor_value="${supervisor_setting:-${OMP_SUPERVISOR_ENABLED:-true}}"
 orca_enabled_value="${orca_enabled_setting:-${OMP_ORCA_ENABLED:-true}}"
@@ -115,7 +131,7 @@ trap cleanup EXIT INT TERM
 OMP_WORKFLOW_MODE="${OMP_WORKFLOW_MODE:-yoda-supervised}" \
 OMP_HANDOFF_AT="${OMP_HANDOFF_AT:-55}" \
 OMP_CONTEXT_AUTO="${OMP_CONTEXT_AUTO:-off}" \
-"$omp_bin" "$@"
+"$omp_bin" "${advisory_args[@]}" "$@"
 status=$?
 
 cleanup

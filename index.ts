@@ -42,6 +42,11 @@ import {
 	readState,
 	STATE_FILE as ORCHESTRATOR_STATE_FILE,
 } from "./lib/orchestrator/state.ts";
+import {
+	describeNextSession,
+	loadModelCatalog,
+	parseNextSession,
+} from "./lib/next-session.ts";
 
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
 const HANDOFF_INSTRUCTIONS =
@@ -155,6 +160,42 @@ function commits(n: number): string {
 	return `${n} коммитов`;
 }
 
+/**
+ * Advisory `next-session:` в state-файле: показываем строку и её валидность,
+ * ничего не переключаем (контракт preflight — read-only). Каталог моделей
+ * читается только если в строке есть `model`; иначе вызов `omp` не нужен.
+ */
+function advisoryCheck(
+	statePath: string,
+): { status: PreflightStatus; text: string } | null {
+	let text: string;
+	try {
+		text = readFileSync(statePath, "utf8");
+	} catch {
+		return null;
+	}
+	let parsed = parseNextSession(text);
+	if (parsed.status === "none") return null;
+	if (parsed.advice?.model !== undefined) {
+		parsed = parseNextSession(text, { catalog: loadModelCatalog() });
+	}
+	const problems = parsed.problems.map((problem) =>
+		problem.text.replace(/^next-session:\s*/, ""),
+	);
+	if (parsed.status === "invalid") {
+		return {
+			status: "warn",
+			text: `next-session: ${problems.join("; ")}`,
+		};
+	}
+	if (parsed.advice === null) return null;
+	const details = problems.length ? ` — ${problems.join("; ")}` : "";
+	return {
+		status: parsed.problems.length ? "warn" : "pass",
+		text: `next-session: ${describeNextSession(parsed.advice)}${details}`,
+	};
+}
+
 /** Read-only проверка перед `/handoff-new`: ничего не пишет и не чинит. */
 export function runPreflight(
 	cwd: string,
@@ -166,8 +207,14 @@ export function runPreflight(
 		checks.push(id ? { status, id, text } : { status, text });
 	};
 
-	if (existsSync(resolve(cwd, stateFile))) add("pass", `${stateFile}: есть`, "state");
-	else add("fail", `${stateFile}: нет — сначала обнови state`, "state");
+	const statePath = resolve(cwd, stateFile);
+	if (existsSync(statePath)) {
+		add("pass", `${stateFile}: есть`, "state");
+		const advisory = advisoryCheck(statePath);
+		if (advisory) add(advisory.status, advisory.text, "next-session");
+	} else {
+		add("fail", `${stateFile}: нет — сначала обнови state`, "state");
+	}
 
 	const repo = git(cwd, ["rev-parse", "--is-inside-work-tree"]);
 	if (!repo.ok || repo.out !== "true") {

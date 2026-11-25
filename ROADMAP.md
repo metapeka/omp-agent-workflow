@@ -1,10 +1,10 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-25. Версия: `0.5.18`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-25. Версия: `0.5.19`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
-Orca-интеграция, Settings, handoff guards и kill switch готовы; публичный
-GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
-владельца.
+Orca-интеграция, Settings, handoff guards, kill switch и advisory
+`next-session:` готовы; публичный GitHub-репозиторий и release `v0.5.14`
+есть; npm/marketplace — по решению владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -282,6 +282,20 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
   env-порогов.
 - [x] Тесты: разрешение настроек, тишина статуса, отсутствие side effects;
   docs/contracts, README (EN/RU/ZH), yoda-workflow.
+
+## Этап 0.5.19 — advisory `next-session:` (готово)
+
+- [x] `lib/next-session.ts`: fail-closed разбор строки (`v=1`, `ts` 24 ч,
+      модель по `omp models --json`, `thinking` → `auto` вне каталога,
+      `mode`/`reason` с валидацией, неизвестные ключи сохраняются).
+- [x] `bin/omp-next-session` + `bin/omp-yoda`: `--model`/`--thinking`
+      добавляются при старте; явные флаги пользователя выигрывают,
+      непроверенная модель не применяется; пустой вывод — no-op.
+- [x] `/handoff-preflight` показывает строку и валидность, ничего не
+      переключает; модель внутри сессии не меняется.
+- [x] D14: Settings-ключ и статус-строка не меняются; F2-пресеты —
+      отдельное решение.
+- [x] Тесты: 9 специфицированных кейсов + CLI/launcher; docs/contracts.
 
 ## Этап 0.6 — экономика handoff (P2)
 

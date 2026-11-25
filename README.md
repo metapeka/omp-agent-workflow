@@ -148,6 +148,8 @@ The public landscape study behind this claim — PI, OMP and GitHub, 2026-11-23:
 4. `/handoff-new` builds a new session message from `continuePrompt` + the state file (32k limit, truncation marker, read-error fallback).
 5. The new session reads `HANDOFF.md` and continues. No compact event in the middle of a tool loop; the plugin waits for `turn_end` and `ctx.isIdle()`.
 
+Optional **`next-session:` advisory** — the first line of `HANDOFF.md` may carry `v=1 ts=… model=… thinking=… mode=… reason=…`. `bin/omp-yoda` validates it (syntax, 24 h freshness, model against `omp models --json`) and adds `--model`/`--thinking` at process start; explicit flags win, and an invalid, stale, duplicated, or misplaced line changes nothing. `/handoff-preflight` shows the line and its validity. The model is never switched inside a running session.
+
 ```text
 OMP session A ── marker ──▶ supervisor ── /handoff-new ──▶ OMP session B
       │                                                        │

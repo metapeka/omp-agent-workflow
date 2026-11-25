@@ -149,6 +149,8 @@
 4. `/handoff-new` 用 `continuePrompt` + 状态文件构造新会话消息（32k 上限、截断标记、读取失败回退）。
 5. 新会话读取 `HANDOFF.md` 并继续。不会在工具循环中间压缩；插件等待 `turn_end` 和 `ctx.isIdle()`。
 
+可选的 **`next-session:` 建议行** — `HANDOFF.md` 的第一行可写 `v=1 ts=… model=… thinking=… mode=… reason=…`。`bin/omp-yoda` 会校验（语法、24 小时新鲜度、按 `omp models --json` 校验模型），并在启动进程时追加 `--model`/`--thinking`；显式参数优先，无效、过期、重复或不在首行的建议不产生任何变化。`/handoff-preflight` 显示该行及其有效性。运行中的会话绝不会切换模型。
+
 ```text
 OMP 会话 A ── marker ──▶ 守护进程 ── /handoff-new ──▶ OMP 会话 B
       │                                                   │
