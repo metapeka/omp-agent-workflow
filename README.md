@@ -287,7 +287,7 @@ YODA · ⚠ HANDOFF      handoff threshold reached
 - **Orca kills PTYs of the removed worktree.** Cleanup from inside the target is a hard error: that is exactly the 2026-11-23 incident where `orca worktree rm` sent SIGTERM to a live OMP session.
 - **No runtime dependencies.** Only Node built-ins; dev dependencies are typescript and type definitions.
 
-Detailed engineering notes: [`docs/operations.md`](docs/operations.md), [`docs/decisions.md`](docs/decisions.md) (Russian).
+Detailed engineering notes: [`docs/commands.md`](docs/commands.md), [`docs/operations.md`](docs/operations.md), [`docs/decisions.md`](docs/decisions.md) (Russian).
 
 ---
 
@@ -341,6 +341,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 |---|---|
 | [`docs/README.md`](docs/README.md) | Engineering wiki (Russian): architecture, contracts, runbook |
 | [`docs/orchestrator.md`](docs/orchestrator.md) | `AUTOPLAN.md`, `STATE.json`, budgets, stop gates |
+| [`docs/commands.md`](docs/commands.md) | Command guide: slash commands, orchestrator tool, launcher and supervisor CLI |
 | [`docs/operations.md`](docs/operations.md) | Install, supervisor, worktrees, incidents |
 | [`docs/decisions.md`](docs/decisions.md) | Accepted decisions and rejected alternatives |
 | [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | Copy-paste plan template |

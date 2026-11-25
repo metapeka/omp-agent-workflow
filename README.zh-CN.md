@@ -286,7 +286,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 - **Orca 会杀掉被删除 worktree 的 PTY。** 从目标内部清理是硬错误：这正是 2026-11-23 事故中 `orca worktree rm` 向活着的 OMP 会话发送 SIGTERM 的原因。
 - **没有运行时依赖。** 只用 Node 内置模块；开发依赖是 typescript 和类型定义。
 
-详细工程笔记（俄语）：[`docs/operations.md`](docs/operations.md)、[`docs/decisions.md`](docs/decisions.md)。
+详细工程笔记（俄语）：[`docs/commands.md`](docs/commands.md)、[`docs/operations.md`](docs/operations.md)、[`docs/decisions.md`](docs/decisions.md)。
 
 ---
 
@@ -340,6 +340,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 |---|---|
 | [`docs/README.md`](docs/README.md) | 工程 wiki（俄语）：架构、契约、runbook |
 | [`docs/orchestrator.md`](docs/orchestrator.md) | `AUTOPLAN.md`、`STATE.json`、预算、停止门控 |
+| [`docs/commands.md`](docs/commands.md) | 命令指南：斜杠命令、orchestrator 工具、启动器与守护进程 CLI |
 | [`docs/operations.md`](docs/operations.md) | 安装、守护进程、worktree、事故 |
 | [`docs/decisions.md`](docs/decisions.md) | 已接受决策与被拒方案 |
 | [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | 可复制的计划模板 |

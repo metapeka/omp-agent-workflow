@@ -8,6 +8,10 @@ semantic for the plugin contract, not for OMP itself.
 
 ### Added
 
+- `docs/commands.md` — full command guide: slash commands, the
+  `orchestrator` tool actions, preflight menu, `/wrap` cards, launcher and
+  supervisor CLI, and the files each command touches. Linked from the wiki,
+  the contracts and all three READMEs.
 - `docs/research/market-landscape.md` (+ Russian and Chinese translations):
   public landscape of PI, OMP and GitHub, closest analogues, feature
   prevalence, and positioning conclusions. Linked from the READMEs, the

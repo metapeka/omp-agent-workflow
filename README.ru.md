@@ -289,7 +289,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 - **Orca убивает PTY удаляемого worktree.** Cleanup изнутри target — жёсткая ошибка: это ровно инцидент 2026-11-23, когда `orca worktree rm` прислал SIGTERM живой OMP-сессии.
 - **Нет runtime-зависимостей.** Только встроенные модули Node; dev-зависимости — typescript и типы.
 
-Подробные инженерные заметки: [`docs/operations.md`](docs/operations.md), [`docs/decisions.md`](docs/decisions.md).
+Подробные инженерные заметки: [`docs/commands.md`](docs/commands.md), [`docs/operations.md`](docs/operations.md), [`docs/decisions.md`](docs/decisions.md).
 
 ---
 
@@ -343,6 +343,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 |---|---|
 | [`docs/README.md`](docs/README.md) | Инженерная вики: архитектура, контракты, runbook |
 | [`docs/orchestrator.md`](docs/orchestrator.md) | `AUTOPLAN.md`, `STATE.json`, бюджеты, stop-gates |
+| [`docs/commands.md`](docs/commands.md) | Гид по командам, tool `orchestrator`, CLI launcher и supervisor |
 | [`docs/operations.md`](docs/operations.md) | Установка, supervisor, worktree, инциденты |
 | [`docs/decisions.md`](docs/decisions.md) | Принятые решения и отклонённые альтернативы |
 | [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | Шаблон плана для копирования |

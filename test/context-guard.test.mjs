@@ -457,7 +457,7 @@ describe("automatic handoff request", () => {
 
 			const warnings = v.notes.filter((note) => /Supervisor не запущен/.test(note.text));
 			assert.equal(warnings.length, 1);
-			assert.match(warnings[0].text, /bash bin\/omp-yoda --dir /);
+			assert.match(warnings[0].text, /OMP_YODA_DIR=.*bin\/omp-yoda/);
 			assert.equal(sent.length, 1);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });

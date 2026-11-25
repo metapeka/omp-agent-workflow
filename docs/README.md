@@ -63,6 +63,7 @@ marker без живого supervisor; рекомендация для 1M — `a
 |---|---|
 | [architecture.md](architecture.md) | Компоненты, потоки данных, факты OMP API 19.1.0, что extension может и не может, источники истины, границы проекта |
 | [contracts.md](contracts.md) | Стабильный контракт 0.3: режимы, env, файлы marker/session, команды, инварианты; что нельзя менять |
+| [commands.md](commands.md) | Гид по командам: `/handoff`, `/handoff-preflight`, `/handoff-new`, `/wrap`, `/orchestrate`, tool `orchestrator`, CLI launcher и supervisor, файлы |
 | [orchestrator.md](orchestrator.md) | Дизайн 0.5: роли, `AUTOPLAN.md`, `STATE.json`, действия, политика, бюджеты, stop-gates, handoff на границе, этапы A–D |
 | [wrap.md](wrap.md) | `/wrap` 0.5.1: карточки, safety для cleanup, handoff, следующая задача |
 | [operations.md](operations.md) | Runbook: установка, запуск, supervisor, worktree, проверки, типовые сбои |

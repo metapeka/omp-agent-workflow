@@ -984,7 +984,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 			notify(
 				ctx,
 				"Supervisor не запущен: automatic handoff не сработает. " +
-					`Запусти \`bash bin/omp-yoda --dir ${ctx.cwd}\`.`,
+					`Запусти \`OMP_YODA_DIR=${ctx.cwd} bin/omp-yoda\`.`,
 				"warning",
 			);
 		}
