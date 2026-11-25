@@ -170,6 +170,9 @@ reasoning при фиксированном output 2k; эмпирический 
 context, event-handler не может ни начать сессию, ни сменить модель;
 preflight read-only по контракту 0.3.
 
+Пресеты (`routine`/`plan`/`review`/`budget`), `next-session:` в launcher и
+метрики выбора — [workflow-presets.md](workflow-presets.md).
+
 ## Синтаксис advisory-строки (предложение)
 
 Одна строка первой строкой state-файла (`HANDOFF.md`), до заголовка H1:
