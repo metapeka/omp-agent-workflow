@@ -38,6 +38,19 @@ continue_prompt_setting="$(plugin_setting continuePrompt)"
 supervisor_retries_setting="$(plugin_setting supervisorRetries)"
 supervisor_log_setting="$(plugin_setting supervisorLogLevel)"
 
+# Kill switch: off — OMP как есть, без supervisor и без наших порогов.
+# env `off` побеждает Settings, чтобы выключение работало в аварии.
+mode_setting="$(plugin_setting workflowMode)"
+if [ "${OMP_WORKFLOW_MODE:-}" = "off" ]; then
+  mode_value="off"
+else
+  mode_value="${mode_setting:-${OMP_WORKFLOW_MODE:-assisted}}"
+fi
+if [ "$mode_value" = "off" ]; then
+  echo "Yoda: off — дефолты OMP, supervisor не запускается" >&2
+  OMP_WORKFLOW_MODE=off exec "$omp_bin" "$@"
+fi
+
 # Settings > env > default.
 supervisor_value="${supervisor_setting:-${OMP_SUPERVISOR_ENABLED:-true}}"
 orca_enabled_value="${orca_enabled_setting:-${OMP_ORCA_ENABLED:-true}}"

@@ -778,6 +778,49 @@ describe("workflow status key", () => {
 		}
 	});
 
+	it("stays silent in off mode: no status, warnings, handoff or session info", async () => {
+		const dir = temp();
+		try {
+			const { handlers, sent } = install({ OMP_WORKFLOW_MODE: "off" });
+			const v = view(95, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+			await fire(handlers, "agent_end", {}, v.ctx);
+			assert.deepEqual(v.statuses.at(-1), {
+				key: "workflow",
+				text: undefined,
+			});
+			assert.equal(v.notes.length, 0);
+			assert.equal(v.compactions.length, 0);
+			assert.equal(sent.length, 0);
+			assert.equal(existsSync(join(dir, ".omp-handoff-session.json")), false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("ignores explicit thresholds in off mode", async () => {
+		const dir = temp();
+		try {
+			const { handlers, sent } = install({
+				OMP_WORKFLOW_MODE: "off",
+				OMP_HANDOFF_AT: "10",
+				OMP_CONTEXT_AUTO: "20",
+				OMP_CONTEXT_WARN: "5",
+				OMP_CONTEXT_SUGGEST: "6",
+			});
+			const v = view(95, { cwd: dir });
+			await fire(handlers, "session_start", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(v.notes.length, 0);
+			assert.equal(v.compactions.length, 0);
+			assert.equal(sent.length, 0);
+			assert.equal(v.statuses.at(-1).text, undefined);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("stays empty in assisted mode", async () => {
 		const dir = temp();
 		try {

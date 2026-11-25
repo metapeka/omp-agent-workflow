@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-24. Версия: `0.5.17`.
+Дата: 2026-11-25. Версия: `0.5.18`.
 
 ## Сейчас
 
@@ -84,6 +84,9 @@
       выбирает по `marker.sessionFile`; тесты и docs/contracts.
 - [x] 0.5.17 — fallback-компакция после исчерпания handoff-повторов или при
       marker без живого supervisor; рекомендация для 1M — compact 40. Тесты.
+- [x] 0.5.18 — `workflowMode: off`: плагин молчит, OMP на дефолтах; env `off`
+      побеждает Settings; launcher делает exec omp без supervisor. Тесты и
+      docs (contracts, README EN/RU/ZH, yoda-workflow).
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

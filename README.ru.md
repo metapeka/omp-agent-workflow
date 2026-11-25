@@ -220,7 +220,7 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 
 | Ключ | Default | Смысл |
 |---|---|---|
-| `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `workflowMode` | `assisted` | `off` / `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | `statusEnabled` | `true` | Ключ `workflow` в статус-строке |
 | `handoffAtPercent` | `55` (yoda) / off | Порог handoff; `0` = off |
 | `handoffCooldownSeconds` | `300` | Пауза после handoff |
@@ -240,10 +240,16 @@ Env fallback: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP_
 
 | Режим | Авто-компакция | Handoff | Supervisor |
 |---|---|---|---|
+| `off` | дефолт OMP | выкл | выкл |
 | `manual` | выкл | выкл | выкл |
 | `assisted` (default) | 60% | выкл | выкл |
 | `yoda` | 70% fallback | 55% | выкл |
 | `yoda-supervised` | 70% fallback | 55% | ✅ |
+
+`off` — выключатель: плагин не публикует статус-ключ, не шлёт предупреждения,
+не пишет session info и не запускает supervisor; OMP работает на своих
+дефолтах. Явные пороги в этом режиме игнорируются, а `OMP_WORKFLOW_MODE=off`
+побеждает Settings — на случай аварии.
 
 **Проценты считаются от окна активной модели**
 (`ctx.getContextUsage().percent`), а не в абсолютных токенах. При окне 1M

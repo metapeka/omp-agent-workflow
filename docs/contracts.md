@@ -10,10 +10,17 @@
 
 | Режим | Авто-компакция | Handoff | Supervisor |
 |---|---|---|---|
+| `off` | дефолт OMP | выкл | нет |
 | `manual` | выкл | выкл | нет |
 | `assisted` (default) | 60% | выкл | нет |
 | `yoda` | 70% fallback | 55% | нет |
 | `yoda-supervised` | 70% fallback | 55% | да |
+
+`off` — выключатель: статус-ключ не публикуется, предупреждения и авто-действия
+выключены, `.omp-handoff-session.json` не пишется, supervisor launcher'ом не
+запускается. Явные пороги игнорируются; `OMP_WORKFLOW_MODE=off` побеждает
+Settings (аварийное выключение). Команды остаются доступными: это явные
+действия пользователя.
 
 `yoda` без supervisor не может начать новую сессию: marker останется
 необработанным. Clean-window handoff требует `yoda-supervised` или ручного

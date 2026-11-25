@@ -20,6 +20,16 @@ semantic for the plugin contract, not for OMP itself.
   on a real 400-turn session. Linked from all three READMEs and served by
   GitHub Pages from `main /docs`.
 
+## [0.5.18] — 2026-11-25
+
+### Added
+
+- `workflowMode: off` — kill switch that leaves OMP on its own defaults.
+  The plugin publishes no status key, sends no warnings, writes no session
+  info, and runs no handoff or compaction; explicit thresholds are ignored.
+  `bin/omp-yoda` execs OMP unchanged (no supervisor, no env overrides), and
+  `OMP_WORKFLOW_MODE=off` overrides Settings for emergencies.
+
 ## [0.5.17] — 2026-11-24
 
 ### Fixed

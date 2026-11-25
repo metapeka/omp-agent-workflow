@@ -218,7 +218,7 @@ Settings → Plugins → `omp-agent-workflow`. Priority: **Settings > env > mode
 
 | Key | Default | Meaning |
 |---|---|---|
-| `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `workflowMode` | `assisted` | `off` / `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | `statusEnabled` | `true` | Show the `workflow` status key |
 | `handoffAtPercent` | `55` (yoda) / off | Handoff threshold; `0` = off |
 | `handoffCooldownSeconds` | `300` | Cooldown after a handoff |
@@ -238,10 +238,16 @@ Env fallbacks: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP
 
 | Mode | Auto-compaction | Handoff | Supervisor |
 |---|---|---|---|
+| `off` | OMP default | off | off |
 | `manual` | off | off | off |
 | `assisted` (default) | 60% | off | off |
 | `yoda` | 70% fallback | 55% | off |
 | `yoda-supervised` | 70% fallback | 55% | ✅ |
+
+`off` is the kill switch: the plugin publishes no status key, sends no
+warnings, writes no session info, and starts no supervisor; OMP runs with its
+own defaults. Explicit thresholds are ignored in this mode, and
+`OMP_WORKFLOW_MODE=off` overrides Settings for emergencies.
 
 **Percentages are relative to the active model's context window**
 (`ctx.getContextUsage().percent`), not absolute token counts. With a 1M

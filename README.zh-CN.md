@@ -240,10 +240,15 @@ Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境�
 
 | 模式 | 自动压缩 | 交接 | 守护进程 |
 |---|---|---|---|
+| `off` | OMP 默认 | 关 | 关 |
 | `manual` | 关 | 关 | 关 |
 | `assisted`（默认） | 60% | 关 | 关 |
 | `yoda` | 70% 回退 | 55% | 关 |
 | `yoda-supervised` | 70% 回退 | 55% | ✅ |
+
+`off` 是总开关：插件不发布状态键、不发送警告、不写 session info、不启动
+守护进程；OMP 按自身默认值运行。该模式下显式阈值被忽略，且
+`OMP_WORKFLOW_MODE=off` 会覆盖 Settings，用于紧急关闭。
 
 **百分比相对于当前模型的上下文窗口**
 （`ctx.getContextUsage().percent`），不是绝对 token 数。1M 窗口下 55% 是

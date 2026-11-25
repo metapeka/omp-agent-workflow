@@ -1,8 +1,8 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-24. Версия: `0.5.17`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-25. Версия: `0.5.18`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
-Orca-интеграция, Settings и handoff guards готовы; публичный
+Orca-интеграция, Settings, handoff guards и kill switch готовы; публичный
 GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
 владельца.
 Оперативный список — `TODO.md`.
@@ -271,6 +271,17 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
   компакция срабатывает на `autoCompactPercent`.
 - [x] Тесты: fallback после повторов и блокировка при живом supervisor;
   typecheck, docs.
+
+## Этап 0.5.18 — kill switch (готово)
+
+- [x] `workflowMode: off` в Settings и `OMP_WORKFLOW_MODE=off`; env `off`
+  побеждает Settings, явные пороги игнорируются.
+- [x] В off плагин молчит: без статус-ключа, предупреждений, session info,
+  handoff-запросов и авто-компакции; команды остаются явными действиями.
+- [x] `bin/omp-yoda` при off делает `exec omp` без supervisor и без
+  env-порогов.
+- [x] Тесты: разрешение настроек, тишина статуса, отсутствие side effects;
+  docs/contracts, README (EN/RU/ZH), yoda-workflow.
 
 ## Этап 0.6 — экономика handoff (P2)
 

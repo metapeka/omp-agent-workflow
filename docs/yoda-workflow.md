@@ -4,8 +4,9 @@
 Дата: 2026-11-22. Статус: context guard 0.3.0, `/handoff-new`, marker и
 supervisor реализованы; automatic handoff проверен end-to-end в Orca.
 Cooldown 300 с и stale-marker guard не дают новой сессии уйти в цикл.
-Режимы `manual`/`assisted`/`yoda`/`yoda-supervised` реализованы через
-`OMP_WORKFLOW_MODE`; оркестратор и subagent-петля — следующий этап.
+Режимы `off`/`manual`/`assisted`/`yoda`/`yoda-supervised` реализованы через
+`OMP_WORKFLOW_MODE`; `off` оставляет OMP на его дефолтах. Оркестратор и
+subagent-петля — следующий этап.
 Цель: агент сам двигается по глобальному плану, сам тестирует и делает
 handoff, но не выходит за рамки, которые требуют решения владельца.
 
@@ -16,6 +17,7 @@ handoff, но не выходит за рамки, которые требуют
 
 | Режим | Что делает | Авто-компакция | Авто-новая сессия | Статус |
 |---|---|---|---|---|
+| `off` | плагин молчит, дефолты OMP | нет | нет | — |
 | `manual` | warnings, `/handoff` вручную | нет | нет | — |
 | `assisted` | warnings + авто-компакция | 60% | нет | — |
 | `yoda` | цикл по плану, handoff на границе задачи | fallback 70% | через supervisor | `YODA` |
@@ -95,7 +97,7 @@ fallback: она ждёт, пока handoff ещё actionable (есть повт
 
 ```yaml
 workflow:
-  mode: yoda              # manual | assisted | yoda | yoda-supervised
+  mode: yoda              # off | manual | assisted | yoda | yoda-supervised
   context:
     warn: 35
     suggest: 50

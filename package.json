@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.5.17",
+  "version": "0.5.18",
   "type": "module",
   "description": "Deterministic context guard, session handoff, and worktree orchestration for OMP (oh-my-pi)",
   "keywords": [
@@ -59,6 +59,7 @@
       "workflowMode": {
         "type": "enum",
         "values": [
+          "off",
           "manual",
           "assisted",
           "yoda",
@@ -66,7 +67,7 @@
         ],
         "default": "assisted",
         "env": "OMP_WORKFLOW_MODE",
-        "description": "Режим workflow: manual — без авто-действий; assisted — авто-компакция; yoda — handoff 55%; yoda-supervised — handoff + внешний supervisor"
+        "description": "Режим workflow: off — выключить плагин и оставить дефолты OMP; manual — без авто-действий; assisted — авто-компакция; yoda — handoff 55%; yoda-supervised — handoff + внешний supervisor"
       },
       "statusEnabled": {
         "type": "boolean",

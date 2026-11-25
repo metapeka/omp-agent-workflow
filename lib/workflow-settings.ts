@@ -5,7 +5,12 @@
  * `getPluginSettings` приходят только для явно заданных ключей, поэтому
  * режим (`assisted`/`yoda`) сохраняет свои дефолты, пока ключ не задан.
  */
-export type WorkflowMode = "manual" | "assisted" | "yoda" | "yoda-supervised";
+export type WorkflowMode =
+	| "off"
+	| "manual"
+	| "assisted"
+	| "yoda"
+	| "yoda-supervised";
 export type SupervisorLogLevel = "quiet" | "info" | "debug";
 
 export const DEFAULT_CONTINUE_PROMPT =
@@ -37,6 +42,7 @@ export type EnvLike = Record<string, string | undefined>;
 export const PLUGIN_NAME = "omp-agent-workflow";
 
 const MODES: readonly WorkflowMode[] = [
+	"off",
 	"manual",
 	"assisted",
 	"yoda",
@@ -44,7 +50,7 @@ const MODES: readonly WorkflowMode[] = [
 ];
 
 export function defaultAutoPercent(mode: WorkflowMode): number | null {
-	if (mode === "manual") return null;
+	if (mode === "off" || mode === "manual") return null;
 	return mode === "assisted" ? 60 : 70;
 }
 
@@ -123,10 +129,16 @@ export function resolveSettings(
 	raw: Record<string, unknown> = {},
 	env: EnvLike = process.env,
 ): WorkflowSettings {
-	const workflowMode =
-		(isMode(raw.workflowMode) ? raw.workflowMode : undefined) ??
-		(isMode(env.OMP_WORKFLOW_MODE) ? env.OMP_WORKFLOW_MODE : undefined) ??
-		"assisted";
+	// `off` из env — аварийный выключатель: побеждает даже явные Settings.
+	const envMode = isMode(env.OMP_WORKFLOW_MODE)
+		? env.OMP_WORKFLOW_MODE
+		: undefined;
+	const workflowMode: WorkflowMode =
+		envMode === "off"
+			? "off"
+			: ((isMode(raw.workflowMode) ? raw.workflowMode : undefined) ??
+				envMode ??
+				"assisted");
 
 	const contextWarnPercent =
 		numberIn(raw.contextWarnPercent, 1, 99) ??
@@ -137,16 +149,22 @@ export function resolveSettings(
 		envNumber(env, "OMP_CONTEXT_SUGGEST", 1, 99) ??
 		50;
 
-	const handoffAtPercent = percentOff(
-		raw.handoffAtPercent,
-		envOffNumber(env, "OMP_HANDOFF_AT", 1, 100),
-		defaultHandoffPercent(workflowMode),
-	);
-	const autoCompactPercent = percentOff(
-		raw.autoCompactPercent,
-		envOffNumber(env, "OMP_CONTEXT_AUTO", 1, 100),
-		defaultAutoPercent(workflowMode),
-	);
+	// `off` — kill switch: автоматика выключена независимо от явных порогов.
+	const offMode = workflowMode === "off";
+	const handoffAtPercent = offMode
+		? null
+		: percentOff(
+				raw.handoffAtPercent,
+				envOffNumber(env, "OMP_HANDOFF_AT", 1, 100),
+				defaultHandoffPercent(workflowMode),
+			);
+	const autoCompactPercent = offMode
+		? null
+		: percentOff(
+				raw.autoCompactPercent,
+				envOffNumber(env, "OMP_CONTEXT_AUTO", 1, 100),
+				defaultAutoPercent(workflowMode),
+			);
 
 	const cooldownRaw = numberIn(raw.handoffCooldownSeconds, 0, 86_400);
 	const handoffCooldownSeconds =

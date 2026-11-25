@@ -735,8 +735,12 @@ function withSessionLock<T>(
  * Дописать запись текущей сессии, не затирая другие живые сессии в этом cwd:
  * файл — карта `{sessions}`, мёртвые pid вычищаются при записи.
  */
-function writeSessionInfo(ctx: ExtensionContext): void {
+function writeSessionInfo(
+	ctx: ExtensionContext,
+	settings?: WorkflowSettings,
+): void {
 	if (!isMainTui(ctx)) return;
+	if (settings?.workflowMode === "off") return;
 	const path = resolve(ctx.cwd, SESSION_INFO);
 	const next = {
 		terminal: process.env.ORCA_TERMINAL_HANDLE?.trim() || null,
@@ -842,6 +846,7 @@ function workflowStatusText(
 		task: string | undefined;
 	},
 ): string | undefined {
+	if (settings.workflowMode === "off") return undefined;
 	if (!settings.statusEnabled) return undefined;
 	const parts: string[] = [];
 	if (settings.workflowMode === "yoda") parts.push("YODA");
@@ -937,6 +942,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	/** Warning на 35% и предложение HANDOFF на 50%, по одному разу. */
 	const checkWarnings = (ctx: ExtensionContext): void => {
 		if (!isMainTui(ctx)) return;
+		if (settings.workflowMode === "off") return;
 		const usage = readUsage(ctx);
 		if (!usage) return;
 		resetIfBelow(usage.percent);
@@ -1031,7 +1037,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		if (!ctx.isIdle() || ctx.hasPendingMessages()) return;
 
 		// Запись должна существовать до того, как агент поставит marker.
-		writeSessionInfo(ctx);
+		writeSessionInfo(ctx, settings);
 		handoffRequested = true;
 		handoffTurnsSinceRequest = 0;
 		handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;
@@ -1120,7 +1126,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		} catch {
 			// старый runner без getHeader
 		}
-		writeSessionInfo(ctx);
+		writeSessionInfo(ctx, settings);
 		checkWarnings(ctx);
 		updateStatus(ctx);
 	});
@@ -1151,7 +1157,9 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		compacting = false;
 		if (event.errorMessage) {
 			autoCompacted = false;
-			notify(ctx, `Компакция не удалась: ${event.errorMessage}`, "warning");
+			if (settings.workflowMode !== "off") {
+				notify(ctx, `Компакция не удалась: ${event.errorMessage}`, "warning");
+			}
 		}
 	});
 
@@ -1161,7 +1169,9 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		suggested = false;
 		autoCompacted = false;
 		resetHandoff();
-		notify(ctx, "Контекст сжат.", "info");
+		if (settings.workflowMode !== "off") {
+			notify(ctx, "Контекст сжат.", "info");
+		}
 		updateStatus(ctx);
 	});
 
@@ -1172,7 +1182,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		autoCompacted = false;
 		compacting = false;
 		resetHandoff();
-		writeSessionInfo(ctx);
+		writeSessionInfo(ctx, settings);
 		checkWarnings(ctx);
 		updateStatus(ctx);
 	});

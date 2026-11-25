@@ -47,6 +47,37 @@ describe("workflow settings", () => {
 		assert.equal(yoda.handoffAtPercent, 55);
 	});
 
+	it("turns automation off in off mode, overriding explicit thresholds", () => {
+		assert.equal(defaultAutoPercent("off"), null);
+		assert.equal(defaultHandoffPercent("off"), null);
+
+		const fromEnv = resolveSettings(EMPTY, {
+			OMP_WORKFLOW_MODE: "off",
+			OMP_HANDOFF_AT: "10",
+			OMP_CONTEXT_AUTO: "20",
+		});
+		assert.equal(fromEnv.workflowMode, "off");
+		assert.equal(fromEnv.handoffAtPercent, null);
+		assert.equal(fromEnv.autoCompactPercent, null);
+
+		const explicit = resolveSettings(
+			{ workflowMode: "off", handoffAtPercent: 40, autoCompactPercent: 50 },
+			EMPTY,
+		);
+		assert.equal(explicit.workflowMode, "off");
+		assert.equal(explicit.handoffAtPercent, null);
+		assert.equal(explicit.autoCompactPercent, null);
+
+		// Аварийный выключатель: env `off` побеждает явные Settings.
+		const pinned = resolveSettings(
+			{ workflowMode: "yoda-supervised" },
+			{ OMP_WORKFLOW_MODE: "off" },
+		);
+		assert.equal(pinned.workflowMode, "off");
+		assert.equal(pinned.handoffAtPercent, null);
+		assert.equal(pinned.autoCompactPercent, null);
+	});
+
 	it("falls back to environment values", () => {
 		const s = resolveSettings(EMPTY, {
 			OMP_WORKFLOW_MODE: "yoda-supervised",
