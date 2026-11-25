@@ -1,8 +1,8 @@
 # Передача: omp-agent-workflow
 
-Дата: 2026-11-24. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.18`; ветки `feat/handoff-preflight`,
-`feat/preflight-fixes`, `feat/handoff-state-embed`,
+Дата: 2026-11-25. Основной репозиторий: `~/projects/omp-agent-workflow`.
+`main`, версия `0.5.18`; последний код-коммит `5d4c016`; ветки
+`feat/handoff-preflight`, `feat/preflight-fixes`, `feat/handoff-state-embed`,
 `feat/preflight-checklist`, `feat/preflight-actions`,
 `feat/preflight-flow`, `feat/workflow-status-key`,
 `feat/workflow-status-p2` и `feat/safe-worktree-remove` слиты ff-only,
@@ -14,8 +14,8 @@ backlog — `TODO.md`.
 
 | Что | Состояние |
 |---|---|
-| Context guard | warning 35%, HANDOFF 50%, `/handoff`, `/handoff-new`, `/handoff-preflight` |
-| Workflow modes | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| Context guard | warning 35%, HANDOFF 50%, `/handoff-new`, `/handoff-preflight`; `/handoff` — builtin OMP |
+| Workflow modes | `off` / `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | Automatic handoff | session info, marker, supervisor, continuation prompt |
 | Supervisor singleton | lock, stale reclaim, identity guard, release на сигналах |
 | Launcher | читает Settings; supervisor гейт; warning по Orca |
@@ -37,6 +37,10 @@ backlog — `TODO.md`.
 | Fallback 0.5.17 | авто-компакция срабатывает после исчерпания handoff-повторов или при marker без живого supervisor |
 | Kill switch 0.5.18 | `workflowMode: off` (`OMP_WORKFLOW_MODE=off`): плагин молчит, OMP на дефолтах, launcher делает exec omp без supervisor; env off побеждает Settings |
 | Имена команд 0.5.18 | `/handoff` убран (builtin OMP); `npm run check:names` сверяет 105 builtin-имён с нашими 5 в `verify`; коллизий 0 |
+| Гид по командам | `docs/commands.md`: слэш-команды, tool `orchestrator`, меню preflight, карточки `/wrap`, CLI launcher/supervisor/orchestrate, владельцы имён |
+| Замеры 2026-11-24/25 | `docs/research/model-modes.md`: цены 9 моделей, reasoning flash/pro, handoff-payload 20 сессий, цена границы, рекомендации R1–R8 |
+| Пресеты (design) | `docs/research/workflow-presets.md`: `routine/plan/review/budget`, `next-session:` в launcher, метрики выбора; ждёт решения владельца |
+| Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; не реализовано |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
 | Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 193/193, `npm run typecheck`, extension load exit 0, HTML tag/link check + browser screenshots |
@@ -271,10 +275,12 @@ source `main /docs`, `.nojekyll`; homepage репозитория указыва
 
 ```bash
 cd ~/projects/omp-agent-workflow
-npm test                                  # 192/192
+npm run check:names                       # 105 builtin, 5 наших, 0 конфликтов
+npm test                                  # 193/193
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
   --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
+OMP_WORKFLOW_MODE=off bin/omp-yoda --version           # без supervisor
 omp plugin config list omp-agent-workflow --json | jq '.schema | keys'
 node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 curl -sS -o /dev/null -w '%{http_code}\n' \
@@ -283,21 +289,24 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.18; проверить `omp plugin list`, `/handoff`,
-   `/handoff-preflight` и `SUP OFF` в TUI; отдельно — `OMP_WORKFLOW_MODE=off
-   bin/omp-yoda` не поднимает supervisor.
-2. Настройки пока `autoCompactPercent=60`; для окна 1M рекомендуется 40
-   (`omp plugin config set omp-agent-workflow autoCompactPercent 40`) —
-   решение владельца, код настройки не меняет.
-3. Issue в Orca заведён: [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
-   — `orca worktree rm` штатно останавливает PTY удаляемого worktree и
-   убивает caller, если он внутри; workflow-guard — обход, не замена
-   решения Orca. Ждём ответа maintainers.
-4. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
+1. Новая сессия загрузит 0.5.18; проверить `omp plugin list`, отсутствие
+   `/handoff` в наших командах (builtin работает), `/handoff-preflight`,
+   `SUP OFF` в TUI и `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor.
+2. Решение владельца по пресетам и advisory: `docs/research/workflow-presets.md`
+   (F1 `next-session:` → launcher, F2 `routine/plan/review/budget`). Начать с
+   F1: парсер уже специфицирован с 9 тест-кейсами.
+3. Решение владельца по `execution: omp|external` в `AUTOPLAN.md`: additive,
+   stop-reason `external-run`, тест на старый файл; контракт меняется (D10).
+4. `doctor` — ТЗ согласовано с соседним проектом (16 проверок, `--json`,
+   `--strict`, план опционален); реализовать в `bin/omp-orchestrate` после
+   решения, начать с read-only версии без схем.
+5. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
-5. Решение владельца: npm/marketplace; английский README, GitHub и CI уже
-   сделаны.
-6. Опционально: TUI E2E `/wrap`; Settings для orchestrator-бюджетов.
+6. Настройки: `autoCompactPercent=60`; для окна 1M рекомендуется 40 —
+   решение владельца.
+7. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
+   (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
+8. Решение владельца: npm/marketplace; опционально TUI E2E `/wrap`.
 
 ## Риски
 
@@ -310,6 +319,11 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.
+- Имена команд: builtin OMP исполняется первым, extension с занятым именем
+  хост отбрасывает; между плагинами побеждает загруженный позже. Новые
+  команды — только через `npm run check:names`.
+- Модель при `/handoff-new` не меняется: пресеты выбирают модель только при
+  запуске процесса; TTL кэша и размер блока не проверены.
 - Launcher читает Settings при старте; extension — на
   `session_start`/`session_switch`.
 - `orcaEnabled=false` отключает automatic handoff.
