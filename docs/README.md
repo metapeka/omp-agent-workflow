@@ -43,7 +43,8 @@ handle живой сессии, dead prune, lock + atomic rename, supervisor в�
 `0.5.17` — fallback-компакция после исчерпания handoff-повторов или при
 marker без живого supervisor; рекомендация для 1M — `autoCompactPercent=40`.
 `0.5.18` — `workflowMode: off`: выключатель плагина, OMP работает на своих
-дефолтах; `OMP_WORKFLOW_MODE=off` побеждает Settings.
+дефолтах; `OMP_WORKFLOW_MODE=off` побеждает Settings. `/handoff` не
+регистрируется (builtin OMP); имена команд проверяет `npm run check:names`.
 
 ## С чего начать
 

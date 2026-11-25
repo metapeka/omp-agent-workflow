@@ -11,7 +11,8 @@ state — это контекст, а не ход: без user-message аген�
 
 ## Общая часть
 
-- `/handoff` — компакция в текущей сессии; `HANDOFF.md` не пишет.
+- `/handoff` — builtin OMP (алиас `/compact handoff`): компакция в текущей
+  сессии; `HANDOFF.md` не пишет.
 - `/handoff-new [файл]` — новая сессия: ждёт idle, проверяет state, вызывает
   `ctx.newSession({ parentSession, setup })`, добавляет `custom_message`:
   `continuePrompt` + содержимое state-файла. Лимит — 32 000 символов; при

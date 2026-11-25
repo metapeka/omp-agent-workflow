@@ -29,7 +29,8 @@
   "scripts": {
     "test": "node --experimental-strip-types --test test/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "verify": "npm test && npm run typecheck",
+    "check:names": "node scripts/check-command-names.mjs",
+    "verify": "npm run check:names && npm test && npm run typecheck",
     "supervisor": "node bin/omp-handoff-supervisor.mjs",
     "orchestrate": "node --experimental-strip-types bin/omp-orchestrate"
   },

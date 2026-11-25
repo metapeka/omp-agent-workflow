@@ -1511,33 +1511,6 @@ describe("supervisor lock", () => {
 	});
 });
 
-describe("/handoff", () => {
-	it("compacts with the supplied instructions", async () => {
-		const { commands } = install();
-		const v = view(40);
-		await command(commands, "handoff", v.ctx, "custom instructions");
-
-		assert.equal(v.compactions.length, 1);
-		assert.equal(v.compactions[0], "custom instructions");
-		assert.match(v.notes[0].text, /HANDOFF 40%/);
-	});
-
-	it("does not start a second compaction while one is in flight", async () => {
-		const { commands } = install();
-		const v = view(40, { complete: false });
-
-		const first = command(commands, "handoff", v.ctx);
-		await Promise.resolve();
-		await command(commands, "handoff", v.ctx);
-
-		assert.equal(v.compactions.length, 1);
-		assert.match(v.notes.at(-1).text, /Сжатие уже идёт/);
-
-		v.finish();
-		await first;
-	});
-});
-
 /** Временный git-репозиторий: все файлы в одном коммите. */
 function preflightRepo(files) {
 	const dir = mkdtempSync(join(tmpdir(), "cg-preflight-"));

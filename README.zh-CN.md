@@ -205,7 +205,7 @@ OMP_WORKFLOW_MODE=yoda omp
 然后使用：
 
 ```text
-/handoff              # 更新 HANDOFF.md 并请求交接
+/handoff              # OMP builtin：压缩并生成交接摘要
 /handoff-preflight    # 新会话前检查阻断项/警告
 /handoff-new          # 启动嵌入状态的新会话
 /wrap                 # 收尾：清理、下一个 worktree、回顾评审
@@ -295,11 +295,11 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 | 命令 | 作用 |
 |---|---|
-| `/handoff` | 在安全边界更新状态并请求交接 |
+| `/handoff [focus]` | OMP builtin：后台压缩并生成交接摘要（`/compact handoff` 的别名） |
 | `/handoff-preflight [file]` | 只读检查 + 仅列出未解决动作的菜单 |
 | `/handoff-new [file]` | 用 `continuePrompt` + 状态文件启动新会话 |
 | `/wrap` | 人工确认收尾：清理、下一个 worktree、评审、交接 |
-| `/orchestrate status\|next\|start\|verify\|finish\|rebase\|stop\|resume` | 编排控制 |
+| `/orchestrate [plan]` | 启动/继续 `AUTOPLAN.md`；按任务的动作在 `orchestrator` 工具中 |
 | `bin/omp-yoda` | 启动器：守护进程 + OMP（`yoda-supervised`） |
 | `bin/omp-handoff-supervisor.mjs` | 外部 marker watcher（不是 LLM） |
 | `bin/omp-orchestrate` | 相同动作的无头 CLI |

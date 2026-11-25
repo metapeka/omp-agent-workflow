@@ -4,15 +4,17 @@
 (`index.ts`, `orchestrator.ts`, `bin/`); этот файл — подробный гид.
 Контракт режимов и файлов — [contracts.md](contracts.md).
 
-Все slash-команды работают только в main TUI: в sub-agent, `print` и `json`
-они молча возвращаются. В режиме `off` команды остаются доступными: это
-явные действия оператора, автоматика при этом выключена.
+Наши slash-команды (`/handoff-preflight`, `/handoff-new`, `/wrap`,
+`/orchestrate`, `/orchestrate-stop`) работают только в main TUI: в sub-agent,
+`print` и `json` они молча возвращаются. В режиме `off` команды остаются
+доступными: это явные действия оператора, автоматика при этом выключена.
+`/handoff` — builtin OMP, к плагину не относится.
 
 ## Slash-команды
 
 | Команда | Аргументы | Что делает | Побочные эффекты |
 |---|---|---|---|
-| `/handoff` | `[инструкции]` | Сжимает контекст: решения, файлы, проверки, блокеры, следующие шаги. Свои инструкции заменяют встроенные | Пишет только журнал сжатия; `HANDOFF.md` не создаёт и не правит |
+| `/handoff` | `[фокус]` | **Builtin OMP**, не наш: алиас `/compact handoff` — сжатие в фоне с handoff-резюме | Пишет журнал сжатия; `HANDOFF.md` не создаёт и не правит |
 | `/handoff-preflight` | `[файл state]` | Read-only проверка готовности: state, git, ветка, upstream, merge в base, актуальность state, marker. Затем меню только незакрытых действий | Меняет файлы только выбранными действиями (см. ниже) |
 | `/handoff-new` | `[файл state]` | Ждёт idle, открывает новую сессию с `continuePrompt` + содержимым state (лимит 32 000 символов, при обрезке — маркер и путь) | Новая сессия; `parentSession` связывает её с текущей; без файла — отказ |
 | `/wrap` | — | Интерактивное завершение: карточки handoff, обновление `HANDOFF.md`, cleanup merged worktree, следующий worktree, ретро-review, выйти | Действия только после подтверждения; merge/publish не делает |
@@ -73,7 +75,61 @@
 | Publish / remote | — | Всегда выключена: только по решению владельца |
 | Выйти | всегда | Ничего не меняет |
 
+## Пространство имён и коллизии
+
+Проверено 2026-11-25 на OMP 19.1.1 (`@oh-my-pi/pi-coding-agent` 19.1.0).
+
+| Имя | Владелец | Статус |
+|---|---|---|
+| `/handoff` | OMP builtin (`/compact handoff`) | наш плагин его **не регистрирует** |
+| `/handoff-preflight` | omp-agent-workflow | свободно |
+| `/handoff-new` | omp-agent-workflow | свободно |
+| `/wrap` | omp-agent-workflow | свободно |
+| `/orchestrate` | omp-agent-workflow | свободно |
+| `/orchestrate-stop` | omp-agent-workflow | свободно |
+| tool `orchestrator` | omp-agent-workflow | свободно среди установленных плагинов |
+| `/cache-monitor` | omp-cache-monitor | чужое, не пересекается |
+| `/orca-model` | orca-agent-status extension | чужое, не пересекается |
+
+Правила OMP, на которые опираемся:
+
+1. Builtin-команды исполняются первыми
+   (`input-controller` → `executeBuiltinSlashCommand`).
+2. Extension-команда, чьё имя занято builtin, **отбрасывается** с warning
+   «conflicts with built-in commands. Skipping» (`ExtensionRunner.getRegisteredCommands`).
+   Именно поэтому `/handoff` в 0.5.18 убран из плагина.
+3. Между двумя расширениями с одинаковым именем побеждает загруженное позже
+   (Map по имени), без предупреждения — поэтому имена держим с префиксами
+   `handoff-*`/`orchestrate*`.
+
+Проверка в CI: `npm run check:names` читает реестр builtin'ов из
+установленного пакета OMP и падает при пересечении. Входит в `npm run verify`.
+
+При добавлении команды: запустить `npm run check:names`; если имя занято —
+выбрать префикс, а не переименовывать builtin.
+
 ## CLI
+
+### `bin/omp-orchestrate` — headless orchestrator
+
+```
+bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit SHA|rebase [TASK]|stop --reason R|resume
+```
+
+| Флаг | Назначение |
+|---|---|
+| `--dir PATH` | control worktree (по умолчанию cwd) |
+| `--plan PATH` | `AUTOPLAN.md` |
+| `--mode MODE` | режим для политики |
+| `--session-file PATH` | JSONL для spend |
+| `--handoff-at N` | порог boundary handoff |
+| `--context N` | текущий процент контекста |
+| `--backend orca\|git` | backend worktree |
+| `--verify-timeout SEC` | таймаут verify (по умолчанию 900) |
+| `--json` | машинный вывод |
+
+Требует `node --experimental-strip-types` (шим в `bin/` уже содержит shebang).
+
 
 ### `bin/omp-yoda` — launcher
 

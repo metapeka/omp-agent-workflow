@@ -1,5 +1,5 @@
 /**
- * context-guard — предупреждения о заполнении контекста и команда `/handoff`.
+ * context-guard — предупреждения о заполнении контекста и handoff-команды.
  *
  * Status line: один ключ `workflow` — режим Yoda и ожидаемый handoff. Процент
  * контекста не дублируем: native `context_pct` уже показывает его. Задача
@@ -1270,30 +1270,6 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		},
 	});
 
-	pi.registerCommand("handoff", {
-		description: "Сжать контекст, сохранив решения и следующие шаги",
-		handler: async (args, ctx) => {
-			if (!isMainTui(ctx)) return;
-			if (compacting) {
-				notify(ctx, "Сжатие уже идёт.", "info");
-				return;
-			}
-			const usage = readUsage(ctx);
-			const custom = args.trim() || HANDOFF_INSTRUCTIONS;
-			compacting = true;
-			notify(
-				ctx,
-				`HANDOFF${usage ? ` ${usageText(usage)}` : ""}: сжимаю контекст; обнови HANDOFF.md.`,
-				"info",
-			);
-			try {
-				await ctx.compact(custom);
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				notify(ctx, `HANDOFF не удался: ${message}`, "warning");
-			} finally {
-				compacting = false;
-			}
-		},
-	});
+	// `/handoff` не регистрируем: имя занято builtin OMP (`/compact handoff`),
+	// а extension-команда с builtin-именем отбрасывается хостом с warning.
 }

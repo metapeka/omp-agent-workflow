@@ -26,6 +26,14 @@ semantic for the plugin contract, not for OMP itself.
 
 ## [0.5.18] — 2026-11-25
 
+### Fixed
+
+- `/handoff` is not registered by the plugin anymore: the name belongs to an
+  OMP builtin (alias of `/compact handoff`), and OMP drops extension commands
+  that shadow builtins. Command names are now guarded by
+  `npm run check:names`, which parses the builtin registry from the pinned OMP
+  package and fails `npm run verify` on a collision.
+
 ### Added
 
 - `workflowMode: off` — kill switch that leaves OMP on its own defaults.

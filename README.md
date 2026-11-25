@@ -203,7 +203,7 @@ OMP_WORKFLOW_MODE=yoda omp
 Then use:
 
 ```text
-/handoff              # update HANDOFF.md + request a handoff
+/handoff              # OMP builtin: compact with a handoff summary
 /handoff-preflight    # check blockers/warnings before a new session
 /handoff-new          # start a new session with the state embedded
 /wrap                 # finish the task: cleanup, next worktree, retro-review
@@ -296,11 +296,11 @@ Detailed engineering notes: [`docs/commands.md`](docs/commands.md), [`docs/opera
 
 | Command | What it does |
 |---|---|
-| `/handoff` | Update state and request a handoff at a safe boundary |
+| `/handoff [focus]` | OMP builtin: compact in the background with a handoff summary (alias of `/compact handoff`) |
 | `/handoff-preflight [file]` | Read-only checks + a menu of only unresolved actions |
 | `/handoff-new [file]` | Start a new session with `continuePrompt` + state file |
 | `/wrap` | Human-in-the-loop finish: cleanup, next worktree, review, handoff |
-| `/orchestrate status\|next\|start\|verify\|finish\|rebase\|stop\|resume` | Orchestrator control |
+| `/orchestrate [plan]` | Start or continue `AUTOPLAN.md`; per-task actions live in the `orchestrator` tool |
 | `bin/omp-yoda` | Launcher: supervisor + OMP in `yoda-supervised` |
 | `bin/omp-handoff-supervisor.mjs` | External marker watcher (not an LLM) |
 | `bin/omp-orchestrate` | Headless CLI for the same actions |

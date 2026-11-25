@@ -20,9 +20,13 @@ and focused fixes with tests.
 
 ```bash
 npm ci
+npm run check:names
 npm test
 npm run typecheck
 ```
+
+`npm run check:names` fails when a plugin slash command shadows an OMP
+builtin; builtin names win and the extension command is dropped.
 
 Extension smoke test:
 
@@ -48,7 +52,7 @@ worktree removal need extra care:
 
 1. Describe the user-visible behavior and the failure mode.
 2. Add or update the narrowest test that catches it.
-3. Run `npm test` and `npm run typecheck`.
+3. Run `npm run check:names`, `npm test` and `npm run typecheck`.
 4. Keep unrelated refactors out of the PR.
 
 ## Reporting issues

@@ -205,7 +205,7 @@ OMP_WORKFLOW_MODE=yoda omp
 Дальше:
 
 ```text
-/handoff              # обновить HANDOFF.md и запросить handoff
+/handoff              # builtin OMP: сжатие с handoff-резюме
 /handoff-preflight    # проверить блокеры/предупреждения перед новой сессией
 /handoff-new          # новая сессия со встроенным state
 /wrap                 # завершение: cleanup, следующий worktree, ретро-review
@@ -298,11 +298,11 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 | Команда | Что делает |
 |---|---|
-| `/handoff` | Обновить state и запросить handoff на безопасной границе |
+| `/handoff [фокус]` | Builtin OMP: сжатие в фоне с handoff-резюме (алиас `/compact handoff`) |
 | `/handoff-preflight [file]` | Read-only проверки + меню только незакрытых действий |
 | `/handoff-new [file]` | Новая сессия с `continuePrompt` + state-файлом |
 | `/wrap` | Завершение с подтверждением: cleanup, следующий worktree, review, handoff |
-| `/orchestrate status\|next\|start\|verify\|finish\|rebase\|stop\|resume` | Управление оркестратором |
+| `/orchestrate [план]` | Старт/продолжение `AUTOPLAN.md`; действия по задачам — tool `orchestrator` |
 | `bin/omp-yoda` | Launcher: supervisor + OMP в `yoda-supervised` |
 | `bin/omp-handoff-supervisor.mjs` | Внешний marker-watcher (не LLM) |
 | `bin/omp-orchestrate` | Headless CLI для тех же действий |

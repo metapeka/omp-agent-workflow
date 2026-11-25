@@ -36,9 +36,10 @@ backlog — `TODO.md`.
 | Session info 0.5.16 | `{sessions}` по pid, dead prune, lock + atomic rename; supervisor выбирает по `marker.sessionFile` |
 | Fallback 0.5.17 | авто-компакция срабатывает после исчерпания handoff-повторов или при marker без живого supervisor |
 | Kill switch 0.5.18 | `workflowMode: off` (`OMP_WORKFLOW_MODE=off`): плагин молчит, OMP на дефолтах, launcher делает exec omp без supervisor; env off побеждает Settings |
+| Имена команд 0.5.18 | `/handoff` убран (builtin OMP); `npm run check:names` сверяет 105 builtin-имён с нашими 5 в `verify`; коллизий 0 |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
-| Проверки | `npm test` 195/195, `npm run typecheck`, extension load exit 0, HTML tag/link check + browser screenshots |
+| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 193/193, `npm run typecheck`, extension load exit 0, HTML tag/link check + browser screenshots |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
