@@ -188,8 +188,7 @@ cd omp-agent-workflow
 
 # 2. install dependencies and verify
 npm ci
-npm test
-npm run typecheck
+npm run verify
 
 # 3. link it as an OMP plugin
 omp plugin link "$PWD"
@@ -370,8 +369,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 ```bash
 npm ci
-npm test          # 192 tests
-npm run typecheck
+npm run verify    # 192 tests + typecheck
 ```
 
 Tests use real temporary git repositories, no live Orca or model calls. The extension smoke test:
