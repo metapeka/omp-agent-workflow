@@ -16,7 +16,7 @@ OAW — короткое имя продукта; `workflow` — только е
 для 0.6 сформулирован и ждёт cache-monitor (в 0.10.1 CLI нет — только
 `/cache-monitor costs` в TUI).
 
-`main` впереди `origin/main` на 8 коммитов, push не делался.
+`main` впереди `origin/main` на несколько коммитов; push не делался (D10).
 
 ## Что готово
 
