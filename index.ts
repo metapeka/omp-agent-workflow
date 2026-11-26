@@ -60,6 +60,7 @@ import {
 	readSessionMetrics,
 } from "./lib/session-metrics.ts";
 import { readCostsSummary } from "./lib/costs-client.ts";
+import { readSessionCost } from "./lib/orchestrator/cost.ts";
 
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
 const HANDOFF_INSTRUCTIONS =
@@ -1596,6 +1597,10 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	let handoffRequestCount = 0;
 	let handoffTurnsSinceRequest = 0;
 	let handoffCooldownUntil = 0;
+	/** Измеренный `usage.cost.total` текущей сессии и offsets его JSONL. */
+	let sessionSpendUsd = 0;
+	let spendOffsets: Record<string, number> = {};
+	let spendSessionFile: string | null = null;
 	let supervisorWarned = false;
 	let terminalWarned = false;
 
@@ -1618,6 +1623,37 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		}
 	};
 
+	/** Обнулить spend на границе сессии; offsets принадлежат прошлому файлу. */
+	const resetSpend = (ctx: ExtensionContext): void => {
+		sessionSpendUsd = 0;
+		spendOffsets = {};
+		try {
+			spendSessionFile = ctx.sessionManager.getSessionFile() ?? null;
+		} catch {
+			spendSessionFile = null;
+		}
+	};
+
+	/**
+	 * Дочитать только новый хвост session JSONL (offsets из прошлого чтения).
+	 * Файла нет или он не читается — spend не меняется. Смена session file
+	 * (switch или файл появился после `session_start`) начинает счёт с нуля.
+	 */
+	const refreshSpend = (ctx: ExtensionContext): void => {
+		let sessionFile: string | null = null;
+		try {
+			sessionFile = ctx.sessionManager.getSessionFile() ?? null;
+		} catch {
+			sessionFile = null;
+		}
+		if (sessionFile !== spendSessionFile) resetSpend(ctx);
+		if (sessionFile === null) return;
+		const read = readSessionCost(sessionFile, spendOffsets);
+		if (!read.available) return;
+		spendOffsets = read.offsets;
+		if (read.deltaUsd > 0) sessionSpendUsd += read.deltaUsd;
+	};
+
 	/** Обновить ключ `workflow`: режим + ожидаемый handoff. */
 	const updateStatus = (ctx: ExtensionContext): void => {
 		if (!isMainTui(ctx)) return;
@@ -1627,6 +1663,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 				usage !== null &&
 				usage.percent !== null &&
 				usage.percent >= settings.handoffAtPercent) ||
+			(settings.handoffAtSpendUsd !== null &&
+				sessionSpendUsd >= settings.handoffAtSpendUsd) ||
 			handoffMarkerPending(
 				ctx.cwd,
 				ctx.sessionManager.getSessionFile() ?? null,
@@ -1719,10 +1757,26 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	 * с предупреждением, чтобы сессия не зависла молча.
 	 */
 	const checkHandoff = async (ctx: ExtensionContext): Promise<void> => {
-		if (!isMainTui(ctx) || settings.handoffAtPercent === null) return;
+		if (!isMainTui(ctx)) return;
+		if (
+			settings.handoffAtPercent === null &&
+			settings.handoffAtSpendUsd === null
+		) {
+			resetHandoff();
+			return;
+		}
+		// Свежий spend — перед каждой проверкой; читается только новый хвост.
+		refreshSpend(ctx);
 		const usage = readUsage(ctx);
-		if (!usage) return;
-		if (usage.percent < settings.handoffAtPercent) {
+		const contextTriggered =
+			settings.handoffAtPercent !== null &&
+			usage !== null &&
+			usage.percent !== null &&
+			usage.percent >= settings.handoffAtPercent;
+		const spendTriggered =
+			settings.handoffAtSpendUsd !== null &&
+			sessionSpendUsd >= settings.handoffAtSpendUsd;
+		if (!contextTriggered && !spendTriggered) {
 			resetHandoff();
 			return;
 		}
@@ -1746,10 +1800,22 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		handoffRequested = true;
 		handoffTurnsSinceRequest = 0;
 		handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;
-		const marker = JSON.stringify({ reason: "context", sessionFile });
+		const markerReason = contextTriggered ? "context" : "spend";
+		const marker = JSON.stringify({ reason: markerReason, sessionFile });
 		const tree = workingTreeSnapshot(ctx.cwd);
+		const spendText =
+			settings.handoffAtSpendUsd === null
+				? null
+				: `spend ${formatUsd(sessionSpendUsd)} из порога ${formatUsd(settings.handoffAtSpendUsd)}`;
+		const contextText = usage === null ? null : `контекст ${usageText(usage)}`;
+		const triggerText = [
+			spendTriggered ? spendText : null,
+			contextTriggered ? contextText : null,
+		]
+			.filter((part): part is string => part !== null)
+			.join("; ");
 		const text =
-			`HANDOFF: контекст ${usageText(usage)}. Заверши текущую задачу, обнови HANDOFF.md, ` +
+			`HANDOFF: ${triggerText}. Заверши текущую задачу, обнови HANDOFF.md, ` +
 			`запиши .omp-handoff-request.json с ${marker} и заверши ход. ` +
 			(tree ? `${tree} ` : "") +
 			"Не начинай новую задачу.";
@@ -1825,6 +1891,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		autoCompacted = false;
 		compacting = false;
 		resetHandoff();
+		resetSpend(ctx);
 		try {
 			// Дочерняя сессия после /handoff-new не должна сразу уйти в новый handoff.
 			if (ctx.sessionManager.getHeader()?.parentSession) {
@@ -1889,6 +1956,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		autoCompacted = false;
 		compacting = false;
 		resetHandoff();
+		resetSpend(ctx);
 		writeSessionInfo(ctx, settings);
 		checkWarnings(ctx);
 		updateStatus(ctx);

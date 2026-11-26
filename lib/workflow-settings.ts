@@ -31,6 +31,8 @@ export interface WorkflowSettings {
 	statusEnabled: boolean;
 	/** null — handoff выключен. */
 	handoffAtPercent: number | null;
+	/** null — handoff по spend выключен. */
+	handoffAtSpendUsd: number | null;
 	handoffCooldownSeconds: number;
 	contextWarnPercent: number;
 	contextSuggestPercent: number;
@@ -133,6 +135,24 @@ function percentOff(
 	return fallback;
 }
 
+/**
+ * 0 (или `off` в env) означает «выключено». Порог в долларах, поэтому
+ * диапазон начинается с нуля, а дробные значения (step 0.1) допустимы.
+ */
+function spendOff(
+	rawValue: unknown,
+	envValue: number | null | undefined,
+	fallback: number | null,
+): number | null {
+	if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+		if (rawValue === 0) return null;
+		const clamped = numberIn(rawValue, 0, 10_000);
+		if (clamped !== undefined) return clamped;
+	}
+	if (envValue !== undefined) return envValue;
+	return fallback;
+}
+
 /** Свести манифест-настройки, env и режимные дефолты в один объект. */
 export function resolveSettings(
 	raw: Record<string, unknown> = {},
@@ -171,6 +191,13 @@ export function resolveSettings(
 				raw.handoffAtPercent,
 				envOffNumber(env, "OMP_HANDOFF_AT", 1, 100),
 				preset?.handoffAtPercent ?? defaultHandoffPercent(workflowMode),
+			);
+	const handoffAtSpendUsd = offMode
+		? null
+		: spendOff(
+				raw.handoffAtSpendUsd,
+				envOffNumber(env, "OMP_HANDOFF_AT_USD", 0, 10_000),
+				null,
 			);
 	const autoCompactPercent = offMode
 		? null
@@ -215,6 +242,7 @@ export function resolveSettings(
 			boolFromEnv(env, "OMP_STATUS_ENABLED") ??
 			true,
 		handoffAtPercent,
+		handoffAtSpendUsd,
 		handoffCooldownSeconds,
 		contextWarnPercent,
 		contextSuggestPercent,

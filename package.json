@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "type": "module",
   "description": "Deterministic context guard, session handoff, and worktree orchestration for OMP (oh-my-pi)",
   "keywords": [
@@ -90,6 +90,15 @@
         "step": 5,
         "env": "OMP_HANDOFF_AT",
         "description": "Порог HANDOFF, %: yoda/yoda-supervised — 55, иначе off; 0 = выключено"
+      },
+      "handoffAtSpendUsd": {
+        "type": "number",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 0.1,
+        "env": "OMP_HANDOFF_AT_USD",
+        "description": "Порог HANDOFF по spend, $ за сессию; 0 = выключено; фактические usage.cost.total"
       },
       "handoffCooldownSeconds": {
         "type": "number",
