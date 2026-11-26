@@ -704,7 +704,10 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 		return { id: "commit", status: "skipped", text: "коммит: пропущено — нечего коммитить" };
 	}
 	const placeholder = "handoff: перед сменой сессии";
-	const answer = await ctx.ui.input("Сообщение коммита", placeholder);
+	const answer = await ctx.ui.input(
+		"Сообщение коммита (git commit -m; пусто = handoff: перед сменой сессии)",
+		placeholder,
+	);
 	if (answer === undefined) {
 		return {
 			id: "commit",
