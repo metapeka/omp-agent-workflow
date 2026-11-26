@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  192 tests · 0 runtime deps · 4 modes · 13 settings · MIT
+  200+ tests · 0 runtime deps · 4 modes · 13 settings · MIT
 </p>
 
 <p align="center">
@@ -383,7 +383,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 ```bash
 npm ci
-npm run verify    # 192 tests + typecheck
+npm run verify    # 200+ tests + typecheck
 ```
 
 Tests use real temporary git repositories, no live Orca or model calls. The extension smoke test:

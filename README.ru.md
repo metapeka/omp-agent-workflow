@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  192 теста · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
+  200+ тестов · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
 </p>
 
 <p align="center">
@@ -385,7 +385,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 ```bash
 npm ci
-npm test          # 192 теста
+npm test          # 200+ тестов
 npm run typecheck
 ```
 

@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  192 个测试 · 0 运行时依赖 · 4 种模式 · 13 项设置 · MIT
+  200+ 个测试 · 0 运行时依赖 · 4 种模式 · 13 项设置 · MIT
 </p>
 
 <p align="center">
@@ -382,7 +382,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 ```bash
 npm ci
-npm test          # 192 个测试
+npm test          # 200+ 个测试
 npm run typecheck
 ```
 

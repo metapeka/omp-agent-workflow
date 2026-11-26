@@ -32,6 +32,9 @@ semantic for the plugin contract, not for OMP itself.
 
 ### Docs
 
+- Contract tests for the hub: `status --json` envelope and stable plan/state
+  fields (with and without `STATE.json`), unknown additive plan fields, and
+  the `doctor --json` envelope/check shape.
 - Short product name **OAW** (`omp-agent-workflow`) is defined once in
   `AGENTS.md` (terms table), all three READMEs, the wiki and `HANDOFF.md`.
   `workflow` keeps meaning the modes/keys (`workflowMode`, status key), not
