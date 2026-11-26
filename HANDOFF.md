@@ -3,22 +3,20 @@
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.5.22`; последний код-коммит `b7de1f3` — пресеты запуска.
-Ветки 0.5.1–0.5.22 (включая `feat/doctor`, `feat/oaw-name`,
+`main`, версия `0.5.23`; последний код-коммит `4eeff3d` — метрики preflight.
+Ветки 0.5.1–0.5.23 (включая `feat/doctor`, `feat/oaw-name`,
 `feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`)
 слиты ff-only, worktrees удалены. GitHub: `metapeka/omp-agent-workflow`
 (public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
 `docs/README.md`; backlog — `TODO.md`.
 
-Сессия 2026-11-26 закрыта: D15 (`execution`) и D16 (пресеты) приняты и
-реализованы; `autoCompactPercent=40` применён в Settings владельца;
-публикация остаётся локальной (D10); запрос `costs --json` для 0.6
-сформулирован и ждёт cache-monitor. Handoff запрошен по контексту (38%).
+Сессия 2026-11-26 (вторая) закрыта: F3-метрики preflight проверены
+(`npm test` 275/275, `typecheck`, `check:names`) и закоммичены `4eeff3d`;
+дерево чистое. Публикация остаётся локальной (D10); запрос `costs --json`
+для 0.6 сформулирован и ждёт cache-monitor (в 0.10.1 CLI нет — только
+`/cache-monitor costs` в TUI).
 
-Состояние на момент handoff: в дереве незакоммиченная F3-работа
-(`index.ts`, `lib/session-metrics.ts`, `test/session-metrics.test.mjs`,
-docs/README и research) — не потерять и разобрать в следующей сессии;
-`main` впереди `origin/main` на 6 коммитов, push не делался.
+`main` впереди `origin/main` на 8 коммитов, push не делался.
 
 ## Что готово
 
@@ -53,13 +51,14 @@ docs/README и research) — не потерять и разобрать в сл
 | Имена команд 0.5.18 | `/handoff` убран (builtin OMP); `npm run check:names` сверяет 105 builtin-имён с нашими 5 в `verify`; коллизий 0 |
 | Гид по командам | `docs/commands.md`: слэш-команды, tool `orchestrator`, меню preflight, карточки `/wrap`, CLI launcher/supervisor/orchestrate, владельцы имён |
 | Замеры 2026-11-24/25 | `docs/research/model-modes.md`: цены 9 моделей, reasoning flash/pro, handoff-payload 20 сессий, цена границы, рекомендации R1–R8 |
-| Пресеты 0.5.22 | `docs/research/workflow-presets.md`: F1/F2 сделаны; F3 метрики — `[design]`, F4 `--plan-yolo` — только после замера |
-| Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md`: `costs --json` v1 для 0.6 economics; ждёт реализации у соседнего проекта |
+| Пресеты 0.5.22 | `docs/research/workflow-presets.md`: F1/F2 сделаны; F4 `--plan-yolo` — только после замера |
+| Метрики 0.5.23 | `lib/session-metrics.ts` + строки preflight: размер state против 32k, cache hit, reasoning share и spend сессии из root JSONL, прогресс плана с gate/deps, attempts, run spend; цена границы — `[blocked]` до `costs --json` |
+| Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md`: `costs --json` v1 для 0.6 economics; в cache-monitor 0.10.1 CLI нет (только `/cache-monitor costs` в TUI) |
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; Ф1 реализован в 0.5.20 |
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
-| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 265/265, `npm run typecheck`, extension load exit 0, launcher `--preset`/`--preset=`, HTML tag/link check + browser screenshots |
+| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 275/275, `npm run typecheck`, extension load exit 0, launcher `--preset`/`--preset=`, HTML tag/link check + browser screenshots |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
@@ -342,17 +341,17 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.22; проверить `omp plugin list`, отсутствие
+1. Новая сессия загрузит 0.5.23; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
-   с advisory-строкой, `SUP OFF` в TUI, `OMP_WORKFLOW_MODE=off bin/omp-yoda`
-   без supervisor и `bin/omp-yoda --preset plan --version` (флаги модели,
-   supervisor, exit 0). `doctor --json` на чистом репо — exit 0, без Orca —
-   warn; `--strict` — exit 1.
+   с advisory-строкой и метриками (state/usage/plan), `SUP OFF` в TUI,
+   `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и
+   `bin/omp-yoda --preset plan --version` (флаги модели, supervisor,
+   exit 0). `doctor --json` на чистом репо — exit 0, без Orca — warn;
+   `--strict` — exit 1.
 2. 0.6 economics: запрос `costs --json` сформулирован в
    `docs/research/cache-monitor-costs-api.md`; реализация — у
-   cache-monitor. OAW не парсит его внутренности.
-3. F3-метрики preflight (`docs/research/workflow-presets.md`) — можно
-   делать без решения; F4 `--plan-yolo` — только после замера.
+   cache-monitor (в 0.10.1 ещё нет). OAW не парсит его внутренности.
+3. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
 4. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
 5. TUI E2E `/wrap` — опционально. Публикация остаётся локальной (D10).
