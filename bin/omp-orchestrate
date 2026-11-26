@@ -11,6 +11,7 @@
  *   bin/omp-orchestrate stop --reason gate
  *   bin/omp-orchestrate resume
  *   bin/omp-orchestrate doctor [--json] [--strict]
+ *   bin/omp-orchestrate economics [--session FILE] [--turns N] [--json]
  */
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -26,6 +27,12 @@ import {
 	stop,
 	verify,
 } from "../lib/orchestrator/actions.ts";
+import {
+	EconomicsSessionError,
+	buildEconomicsReport,
+	renderEconomics,
+	resolveLatestSession,
+} from "../lib/handoff-economics.ts";
 import { doctor, renderDoctor } from "../lib/orchestrator/doctor.ts";
 import { PlanError } from "../lib/orchestrator/plan.ts";
 import { LockError, StateError } from "../lib/orchestrator/state.ts";
@@ -41,6 +48,7 @@ const USAGE = `Использование:
   omp-orchestrate stop --reason REASON [--detail TEXT] [--json]
   omp-orchestrate resume [--json]
   omp-orchestrate doctor [--json] [--strict]
+  omp-orchestrate economics [--session FILE] [--turns N] [--json]
 
 Общие флаги:
   --dir PATH            control worktree (default: cwd)
@@ -70,6 +78,8 @@ const { values, positionals } = parseArgs({
 		reason: { type: "string" },
 		detail: { type: "string" },
 		strict: { type: "boolean", default: false },
+		session: { type: "string" },
+		turns: { type: "string" },
 		json: { type: "boolean", default: false },
 		help: { type: "boolean", short: "h", default: false },
 	},
@@ -172,6 +182,38 @@ function render(result) {
 	}
 }
 
+function runEconomics() {
+	const file = values.session ?? resolveLatestSession(resolve(values.dir));
+	if (!file) {
+		console.error(
+			"omp-orchestrate: economics: сессия не найдена; передайте --session FILE",
+		);
+		process.exitCode = 1;
+		return;
+	}
+	let turns;
+	if (values.turns !== undefined) {
+		turns = Number(values.turns);
+		if (!Number.isInteger(turns)) {
+			console.error(
+				`omp-orchestrate: --turns: expected integer, got "${values.turns}"`,
+			);
+			process.exitCode = 2;
+			return;
+		}
+	}
+	try {
+		const report = buildEconomicsReport({ sessionFile: file, turns });
+		console.log(
+			values.json ? JSON.stringify(report, null, 2) : renderEconomics(report),
+		);
+	} catch (error) {
+		if (!(error instanceof EconomicsSessionError)) throw error;
+		console.error(`omp-orchestrate: economics: ${error.message}`);
+		process.exitCode = 1;
+	}
+}
+
 async function main() {
 	if (values.help) {
 		console.log(USAGE);
@@ -181,6 +223,10 @@ async function main() {
 	if (!command) {
 		console.error(USAGE);
 		process.exitCode = 2;
+		return;
+	}
+	if (command === "economics") {
+		runEconomics();
 		return;
 	}
 	const task = positionals[1];
