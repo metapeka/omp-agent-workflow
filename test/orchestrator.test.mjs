@@ -166,6 +166,28 @@ describe("AUTOPLAN parsing", () => {
 		assert.equal(hashPlan(a.config, a.tasks), a.hash);
 	});
 
+	it("keeps the legacy hash without execution and hashes an explicit value", () => {
+		const legacy = compile();
+		assert.equal(legacy.config.execution, undefined);
+		assert.equal(
+			legacy.hash,
+			"sha256:bfb8852c8425e9d2686bd35a5f7cad5bddf05cd6626ae817b0e376c65b1b80fa",
+		);
+		const external = compile({ ...BASE_PLAN, execution: "external" });
+		assert.equal(external.config.execution, "external");
+		assert.notEqual(external.hash, legacy.hash);
+		const omp = compile({ ...BASE_PLAN, execution: "omp" });
+		assert.equal(omp.config.execution, "omp");
+		assert.notEqual(omp.hash, legacy.hash);
+	});
+
+	it("rejects an unknown execution value", () => {
+		assert.throws(
+			() => compile({ ...BASE_PLAN, execution: "svn" }),
+			/plan.execution: expected "omp" or "external"/,
+		);
+	});
+
 	it("rejects a missing plan block, duplicate ids and bad JSON", () => {
 		assert.throws(
 			() => parsePlan("# no blocks\n"),
@@ -763,6 +785,44 @@ describe("actions on a real git repo", () => {
 		assert.equal(readState(join(s.control, STATE_FILE)).stop, null);
 		stop(s.ctx, "human", "pause");
 		assert.equal(readState(join(s.control, STATE_FILE)).stop.reason, "human");
+	});
+
+	it("refuses task actions when execution is external", async () => {
+		const s = await scenario({ plan: { execution: "external" } });
+		const results = [
+			await start(s.ctx),
+			await verify(s.ctx),
+			await finish(s.ctx, "T1", "deadbeef", "ok"),
+			await rebase(s.ctx),
+		];
+		for (const result of results) {
+			assert.equal(result.kind, "stop");
+			assert.equal(result.reason, "external-run");
+		}
+		assert.equal(existsSync(join(s.control, STATE_FILE)), false);
+		assert.deepEqual(readdirSync(s.worktreeRoot), []);
+		assert.equal(statusAction(s.ctx).plan.tasks, 1);
+		assert.equal(nextAction(s.ctx).kind, "task");
+	});
+
+	it("runs the CLI start as a stop for external execution", async () => {
+		const s = await scenario({ plan: { execution: "external" } });
+		const result = await runCommand(
+			process.execPath,
+			[
+				"--experimental-strip-types",
+				join(ROOT, "bin/omp-orchestrate"),
+				"start",
+				"--json",
+				"--dir",
+				s.control,
+			],
+			{ cwd: s.control, timeoutMs: 120_000 },
+		);
+		assert.equal(result.code, 0, result.stderr);
+		const parsed = JSON.parse(result.stdout);
+		assert.equal(parsed.kind, "stop");
+		assert.equal(parsed.reason, "external-run");
 	});
 
 	it("reports status and next without mutating state", async () => {

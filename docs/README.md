@@ -4,10 +4,10 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.20` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.21` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
-`next-session:` + CLI JSON v1 и `doctor`).
+`next-session:` + CLI JSON v1 и `doctor` + `execution`).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -54,6 +54,10 @@ marker без живого supervisor; рекомендация для 1M — `a
 порядок, каждый проб ≤ 2 с, без сети), `--strict` повышает warn до fail;
 отсутствие Orca/agent-team — warn/skip, не fail. Контракт —
 [contracts.md](contracts.md#cli-json-v1-status-и-doctor-0520).
+`0.5.21` — `plan.execution: "omp" | "external"`: `external` назначает
+владельцем задач Ensemble, OAW отказывает `start/verify/finish/rebase` со
+stop-reason `external-run` и не трогает `STATE.json`/worktree; `doctor`
+предупреждает, если `external` без активного прогона. D15.
 
 ## С чего начать
 

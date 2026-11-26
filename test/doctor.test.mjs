@@ -420,6 +420,40 @@ describe("doctor", () => {
 		);
 	});
 
+	it("warns when execution is external without an active ensemble run", () => {
+		const plan = PLAN.replace(
+			'"verify": ["true"]',
+			'"verify": ["true"],\n  "execution": "external"',
+		);
+		assert.notEqual(plan, PLAN);
+		const dir = fixture({ plan });
+		const result = runDoctor(dir, makeShims());
+		const ensemble = result.checks.find(
+			(check) => check.id === "ensemble.active",
+		);
+		assert.equal(ensemble.level, "warn");
+		assert.match(ensemble.detail, /execution=external/);
+		assert.equal(result.ok, true);
+	});
+
+	it("passes execution external with an active ensemble run", () => {
+		const plan = PLAN.replace(
+			'"verify": ["true"]',
+			'"verify": ["true"],\n  "execution": "external"',
+		);
+		const dir = fixture({ plan });
+		const result = runDoctor(
+			dir,
+			makeShims({ ensemble: { active: true } }),
+		);
+		const ensemble = result.checks.find(
+			(check) => check.id === "ensemble.active",
+		);
+		assert.equal(ensemble.level, "pass");
+		assert.match(ensemble.detail, /external ensemble run active/);
+		assert.equal(result.ok, true);
+	});
+
 	it("reports a recognized inactive ensemble run as pass", () => {
 		const dir = fixture();
 		const shim = makeShims({ ensemble: { active: false } });

@@ -193,6 +193,14 @@ function parsePlanConfig(raw: unknown): PlanConfig {
 	if (backend !== "orca" && backend !== "git") {
 		fail("plan.backend: expected \"orca\" or \"git\"");
 	}
+	const executionRaw = record.execution;
+	if (
+		executionRaw !== undefined &&
+		executionRaw !== "omp" &&
+		executionRaw !== "external"
+	) {
+		fail("plan.execution: expected \"omp\" or \"external\"");
+	}
 	return {
 		version: 1,
 		goal: readString(record, "goal", "plan"),
@@ -200,6 +208,7 @@ function parsePlanConfig(raw: unknown): PlanConfig {
 		baseRepo: readNullableString(record, "baseRepo", "plan"),
 		worktreeRoot: readString(record, "worktreeRoot", "plan"),
 		backend,
+		execution: executionRaw as "omp" | "external" | undefined,
 		verify: readStringArray(record, "verify", "plan"),
 		budgets: parseBudgets(record.budgets, "plan"),
 	};

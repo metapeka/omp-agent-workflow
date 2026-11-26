@@ -1,6 +1,6 @@
 # Команды и CLI OAW
 
-Статус: `[готово]`, версия `0.5.20`. Источник истины — код
+Статус: `[готово]`, версия `0.5.21`. Источник истины — код
 (`index.ts`, `orchestrator.ts`, `bin/`); этот файл — подробный гид.
 Контракт режимов и файлов — [contracts.md](contracts.md).
 
@@ -136,6 +136,11 @@ agent-team или cache-monitor — `warn`/`skip`; битые настройки
 — `fail` (exit 1). `--json` — контракт v1 (`schemaVersion: 1`, `ok`,
 `summary`, `checks[]`), список проверок и стабильные поля `status` — в
 [contracts.md](contracts.md#cli-json-v1-status-и-doctor-0520).
+
+При `execution: external` в `AUTOPLAN.md` `start`, `verify`, `finish` и
+`rebase` возвращают `stop: external-run`: задачи ведёт Ensemble (Orca
+обязательна), OAW оставляет контекст и handoff. `status`, `next` и `doctor`
+работают.
 
 Требует `node --experimental-strip-types` (шим в `bin/` уже содержит shebang).
 

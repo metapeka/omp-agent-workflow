@@ -649,34 +649,47 @@ export function doctor(ctx: DoctorContext): DoctorResult {
 	});
 
 	run("ensemble.active", () => {
+		const external = plan?.config.execution === "external";
+		const unconfirmed = (why: string) =>
+			external
+				? { level: "warn" as const, detail: `execution=external; ${why}` }
+				: { level: "skip" as const, detail: why };
 		const result = probe("agent-team", ["status", "--json"], probeCtx);
 		if (result.unavailable) {
-			return { level: "skip", detail: "agent-team CLI unavailable" };
+			return unconfirmed("agent-team CLI unavailable");
 		}
 		if (result.code !== 0) {
-			return {
-				level: "skip",
-				detail: `agent-team status exited ${result.code ?? "signal"}`,
-			};
+			return unconfirmed(
+				`agent-team status exited ${result.code ?? "signal"}`,
+			);
 		}
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(result.stdout);
 		} catch {
-			return { level: "skip", detail: "agent-team status is not JSON" };
+			return unconfirmed("agent-team status is not JSON");
 		}
 		const active = ensembleActiveFrom(parsed);
 		if (active === null) {
-			return { level: "skip", detail: "unrecognized agent-team status" };
+			return unconfirmed("unrecognized agent-team status");
 		}
-		if (!active) return { level: "pass", detail: "no active ensemble run" };
+		if (!active) {
+			return external
+				? {
+						level: "warn",
+						detail: "execution=external but no active ensemble run",
+					}
+				: { level: "pass", detail: "no active ensemble run" };
+		}
 		if (stateActive) {
 			return {
 				level: "warn",
 				detail: "ensemble run active; STATE.run also active (two owners)",
 			};
 		}
-		return { level: "warn", detail: "ensemble run active" };
+		return external
+			? { level: "pass", detail: "external ensemble run active" }
+			: { level: "warn", detail: "ensemble run active" };
 	});
 
 	const finalChecks = strict

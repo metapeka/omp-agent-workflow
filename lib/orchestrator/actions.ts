@@ -199,6 +199,18 @@ function taskById(plan: Autoplan, id: string): TaskSpec {
 	return task;
 }
 
+/** `external`: задачи ведёт Ensemble; OAW не запускает и не меняет их. */
+function externalRun(
+	plan: Autoplan,
+): { kind: "stop"; reason: "external-run"; detail: string } | null {
+	if (plan.config.execution !== "external") return null;
+	return {
+		kind: "stop",
+		reason: "external-run",
+		detail: "plan execution is external; Ensemble owns tasks",
+	};
+}
+
 async function runChecks(
 	state: OrchestratorState,
 	task: TaskSpec,
@@ -275,6 +287,8 @@ export async function start(
 ): Promise<StartResult> {
 	const { planPath, statePath, label } = pathsFor(ctx);
 	const plan = readPlan(planPath);
+	const blocked = externalRun(plan);
+	if (blocked) return blocked;
 	const now = ctx.now ?? new Date();
 	const release = acquireLock(ctx.dir);
 	try {
@@ -428,12 +442,18 @@ export interface VerifyResult {
 	output: string;
 }
 
+export type VerifyOutcome =
+	| VerifyResult
+	| { kind: "stop"; reason: string; detail: string };
+
 export async function verify(
 	ctx: ActionContext,
 	id?: string,
-): Promise<VerifyResult> {
+): Promise<VerifyOutcome> {
 	const { planPath, statePath } = pathsFor(ctx);
 	const plan = readPlan(planPath);
+	const blocked = externalRun(plan);
+	if (blocked) return blocked;
 	const now = ctx.now ?? new Date();
 	const release = acquireLock(ctx.dir);
 	try {
@@ -495,6 +515,8 @@ export async function finish(
 ): Promise<FinishOutcome> {
 	const { planPath, statePath } = pathsFor(ctx);
 	const plan = readPlan(planPath);
+	const blocked = externalRun(plan);
+	if (blocked) return blocked;
 	const now = ctx.now ?? new Date();
 	const release = acquireLock(ctx.dir);
 	try {
@@ -658,6 +680,8 @@ export async function rebase(
 ): Promise<RebaseOutcome> {
 	const { planPath, statePath } = pathsFor(ctx);
 	const plan = readPlan(planPath);
+	const blocked = externalRun(plan);
+	if (blocked) return blocked;
 	const now = ctx.now ?? new Date();
 	const release = acquireLock(ctx.dir);
 	try {

@@ -10,6 +10,8 @@ info string `json plan` и `json task`; проза игнорируется.
 - `branch` не может быть `main` и не должен существовать;
 - `acceptance` — проверяемые утверждения, не «сделать хорошо»;
 - `gate` останавливает run до задачи и требует человека;
+- `execution` необязателен: `omp` (default) ведёт задачи в OAW,
+  `external` — в Ensemble; OAW тогда отказывает `start/verify/finish/rebase`;
 - `verify` задачи переопределяет `plan.verify`;
 - hash считается по JSON, поэтому правка комментариев безопасна.
 
@@ -27,6 +29,7 @@ Non-goals: <что не делаем>.
   "baseRepo": null,
   "worktreeRoot": "~/orca/workspaces/<project>",
   "backend": "orca",
+  "execution": "omp",
   "verify": ["npm test", "npm run typecheck"],
   "budgets": {
     "maxTasksPerSession": 3,

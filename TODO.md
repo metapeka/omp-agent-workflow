@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-26. Версия: `0.5.20`.
+Дата: 2026-11-26. Версия: `0.5.21`.
 
 ## Сейчас
 
@@ -95,7 +95,11 @@
 - [x] 0.5.20 — CLI JSON v1 и `doctor`: `schemaVersion: 1` в `status`/`doctor`,
       16 read-only проверок (проба ≤ 2 с, без сети), `--strict`, PATH-шимы
       для `omp`/`orca`/`agent-team`; docs/contracts и гид по командам.
-      Joint plan Ф0+Ф1 закрыты; Ф2 `execution: external` ждёт D10.
+      Joint plan Ф0+Ф1 закрыты; Ф2 — в 0.5.21.
+- [x] 0.5.21 — `execution: omp|external` (D15): default `omp`, hash старых
+      планов не меняется; `external` → stop `external-run` в
+      `start/verify/finish/rebase` без state/worktree; `doctor` warn, если
+      external без активного Ensemble; тесты и docs/contracts.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

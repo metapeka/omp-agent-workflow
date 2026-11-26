@@ -4,6 +4,30 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.5.21] — 2026-11-26
+
+### Added
+
+- `plan.execution: "omp" | "external"` in `AUTOPLAN.md`. Absent means `omp`
+  and keeps the legacy plan hash, so existing plans and active states are
+  compatible. `external` names Ensemble (`agent-team`) as the task owner:
+  `start`, `verify`, `finish`, and `rebase` return `stop: external-run`
+  before lock/state/worktree, leaving `STATE.json` and worktrees untouched.
+  `status`, `next`, `doctor`, handoff, `stop`, and `resume` still work.
+  Unknown values fail plan parsing like `backend`.
+- `doctor`: `execution=external` without an active Ensemble run warns (also
+  when `agent-team` is unavailable); an active run is `pass`; an active run
+  plus `STATE.run.active` stays `warn two owners`.
+- Tests: legacy plan hash, explicit `omp`/`external` hashes, invalid value,
+  all four refusals without state/worktree, CLI `start` stop, and doctor
+  external warn/pass.
+
+### Docs
+
+- `docs/decisions.md` D15, `docs/contracts.md`, `docs/orchestrator.md`,
+  `docs/commands.md`, and `docs/AUTOPLAN.example.md` describe the field and
+  its guards.
+
 ## [Unreleased]
 
 ### Docs

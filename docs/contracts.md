@@ -234,6 +234,34 @@ next-session: v=1 ts=2026-11-25T00:40Z model=cline-pass/deepseek-v4-pro thinking
   выигрывают, непроверенная модель не применяется.
 - Без строки ничего не меняется: формат аддитивен и опционален.
 
+## `execution` в AUTOPLAN (0.5.21)
+
+Необязательное поле `plan`-блока:
+
+```json
+{ "execution": "omp" }
+```
+
+| Значение | Владелец задач |
+|---|---|
+| нет поля / `omp` (default) | OAW: `start`/`verify`/`finish`/`rebase` |
+| `external` | Ensemble (`agent-team`); OAW только контекст и handoff |
+
+- Неизвестное значение — `PlanError` (`plan.execution: expected "omp" or
+  "external"`), как у `backend`.
+- Без поля hash плана не меняется (план 0.5.20 и раньше совместим);
+  явное значение участвует в hash, поэтому его правка даёт `plan-changed`.
+- При `external` `start`, `verify`, `finish`, `rebase` возвращают
+  `stop: external-run` до чтения `STATE.json`, lock и worktree: state и
+  worktree не создаются и не меняются. `status`, `next`, `doctor` и
+  handoff работают; `stop` и `resume` задачи не запускают и доступны.
+- Ensemble — Orca-плагин: `external` требует Orca. OAW без Orca работает
+  (D11); `external` — единственный режим, где Orca обязательна.
+- `doctor`: `execution=external` без активного Ensemble — `warn` (в том
+  числе когда `agent-team` недоступен и подтвердить нельзя); активный
+  Ensemble при `external` — `pass`; активный Ensemble вместе с
+  `STATE.run.active` — `warn two owners`; автоблокировки нет.
+
 ## CLI JSON v1: `status` и `doctor` (0.5.20)
 
 Машинный контракт для внешних обёрток (Orca/Ensemble, личный hub): только
@@ -290,7 +318,7 @@ deps. Каждый внешний проб — не дольше 2 с (`spawnSyn
 | `supervisor.lock` | lock `owner.json`, живой pid | warn; skip вне `yoda-supervised` |
 | `terminal.handle` | `ORCA_TERMINAL_HANDLE` | warn; skip вне `yoda-supervised` |
 | `cache.monitor` | `omp plugin list --json` | warn (нужно для 0.6) |
-| `ensemble.active` | `agent-team status --json` | warn; skip, если CLI/JSON нет |
+| `ensemble.active` | `agent-team status --json` | warn; skip, если CLI/JSON нет; при `execution=external` — warn, если прогон не активен |
 
 Правила:
 

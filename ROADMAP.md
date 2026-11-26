@@ -311,6 +311,17 @@ Orca-интеграция, Settings, handoff guards, kill switch и advisory
       битые входы, `off`, ensemble two-owners, CLI, отсутствие путей в
       `detail`.
 
+## Этап 0.5.21 — `execution: omp|external` (готово)
+
+- [x] `plan.execution`: без поля — `omp` и прежний hash; `external` —
+  владелец задач Ensemble; неизвестное значение — `PlanError`.
+- [x] `start/verify/finish/rebase` при `external` → stop `external-run`
+  до lock/state/worktree; `status`/`next`/`doctor`/handoff работают.
+- [x] `doctor`: external без активного прогона — warn; активный — pass;
+  вместе с `STATE.run.active` — `two owners`.
+- [x] Тесты: legacy hash, explicit-значения, отказы четырёх действий без
+  state/worktree, CLI start, doctor warn/pass; D15 и docs.
+
 ## Этап 0.6 — экономика handoff (P2)
 
 - Совместно с `omp-cache-monitor`: стоимость компакции/handoff и эффект на

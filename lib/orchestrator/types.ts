@@ -32,6 +32,8 @@ export interface PlanConfig {
 	baseRepo: string | null;
 	worktreeRoot: string;
 	backend: "orca" | "git";
+	/** Отсутствует = `omp`; явное значение участвует в hash плана. */
+	execution?: "omp" | "external";
 	verify: string[];
 	budgets: BudgetLimits;
 }
@@ -141,6 +143,7 @@ export const KNOWN_STOP_REASONS = [
 	"merge-conflict",
 	"verify-failed",
 	"handoff-unavailable",
+	"external-run",
 ] as const;
 
 export type KnownStopReason = (typeof KNOWN_STOP_REASONS)[number];

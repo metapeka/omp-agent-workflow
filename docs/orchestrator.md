@@ -78,6 +78,7 @@
 | `baseRepo` | нет | inferred | Путь к основному чекауту; иначе по `git-common-dir` |
 | `worktreeRoot` | да | — | Каталог task-worktree |
 | `backend` | нет | `orca` | `orca` или `git` (тесты/fallback) |
+| `execution` | нет | `omp` | `omp` — задачи ведёт OAW; `external` — Ensemble, OAW отказывает `start/verify/finish/rebase` |
 | `verify` | да | — | Команды по умолчанию; task может переопределить |
 | `budgets` | нет | см. ниже | Лимиты run |
 
@@ -197,6 +198,11 @@ bin/omp-orchestrate doctor [--json] [--strict]
 `start` выводит готовый промпт implementer'а: JSON task, абсолютный worktree,
 запрет трогать base, требование коммита и тестов. Модель не выбирает
 worktree/branch — это делает код.
+
+При `execution: external` `start`, `verify`, `finish` и `rebase` возвращают
+`stop: external-run` до lock/state/worktree: OAW не создаёт и не меняет
+`STATE.json` и worktree. `status`, `next`, `doctor` и handoff работают;
+`stop`/`resume` задачи не запускают.
 
 Повтор после падения verify: `verify` ставит `current.status = "failed"` и
 увеличивает `attempts[id]`; следующий `start` удаляет worktree и ветку,

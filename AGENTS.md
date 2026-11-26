@@ -35,7 +35,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.20`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.21`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -59,7 +59,9 @@ hit rate, этот проект управляет контекстом и см�
   `--model`/`--thinking` при старте, preflight показывает валидность, модель
   внутри сессии не меняется (D14); 0.5.20 — CLI JSON v1:
   `status --json`/`doctor --json` с `schemaVersion: 1`, `doctor` — 16
-  read-only проверок (проба ≤ 2 с, без сети, `--strict`).
+  read-only проверок (проба ≤ 2 с, без сети, `--strict`); 0.5.21 —
+  `plan.execution: omp|external` (D15): `external` ведёт Ensemble, OAW
+  отказывает `start/verify/finish/rebase` со stop-reason `external-run`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
