@@ -578,8 +578,10 @@ describe("spend handoff trigger", () => {
 
 			await fire(handlers, "turn_end", {}, v.ctx);
 			assert.equal(sent.length, 1);
-			assert.match(sent[0], /HANDOFF: spend \$0\.020 из порога \$0\.010\./);
-			assert.doesNotMatch(sent[0], /контекст/);
+			assert.match(
+				sent[0],
+				/HANDOFF: spend \$0\.020 из порога \$0\.010; контекст 10%/,
+			);
 			assert.ok(sent[0].includes('"reason":"spend"'), sent[0]);
 			assert.match(sent[0], /Не начинай новую задачу\./);
 		} finally {
@@ -691,7 +693,10 @@ describe("spend handoff trigger", () => {
 			appendFileSync(session, costLine(0.04));
 			await fire(handlers, "turn_end", {}, v.ctx);
 			assert.equal(sent.length, 1);
-			assert.match(sent[0], /HANDOFF: spend \$0\.060 из порога \$0\.050\./);
+			assert.match(
+				sent[0],
+				/HANDOFF: spend \$0\.060 из порога \$0\.050; контекст/,
+			);
 
 			// Compaction clears handoff state but not the measured spend.
 			await fire(handlers, "session_compact", {}, v.ctx);
@@ -722,6 +727,159 @@ describe("spend handoff trigger", () => {
 			writeFileSync(session, rewritten + costLine(0.01));
 			await fire(handlers, "turn_end", {}, v.ctx);
 			assert.equal(sent.length, 0, "the consumed prefix was not re-read");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("resets spend on session_start", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-start-"));
+		try {
+			const first = join(dir, "first.jsonl");
+			const second = join(dir, "second.jsonl");
+			writeFileSync(first, costLine(0.02));
+			writeFileSync(second, costLine(0.02));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.03" });
+
+			const v1 = view(10, { cwd: dir, sessionFile: first });
+			await fire(handlers, "turn_end", {}, v1.ctx);
+			assert.equal(sent.length, 0);
+
+			// Новый session file без сброса дал бы $0.04 и запрос.
+			const v2 = view(10, { cwd: dir, sessionFile: second });
+			await fire(handlers, "session_start", {}, v2.ctx);
+			await fire(handlers, "turn_end", {}, v2.ctx);
+			assert.equal(sent.length, 0);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("resets spend on session_switch", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-switch-"));
+		try {
+			const first = join(dir, "first.jsonl");
+			const second = join(dir, "second.jsonl");
+			writeFileSync(first, costLine(0.02));
+			writeFileSync(second, costLine(0.02));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.03" });
+
+			const v1 = view(10, { cwd: dir, sessionFile: first });
+			await fire(handlers, "turn_end", {}, v1.ctx);
+			assert.equal(sent.length, 0);
+
+			const v2 = view(10, { cwd: dir, sessionFile: second });
+			await fire(handlers, "session_switch", {}, v2.ctx);
+			await fire(handlers, "turn_end", {}, v2.ctx);
+			assert.equal(sent.length, 0);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("includes child sessions under the root stem", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-child-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.01));
+			mkdirSync(join(dir, "session"));
+			writeFileSync(join(dir, "session", "child.jsonl"), costLine(0.02));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.025" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(sent[0], /HANDOFF: spend \$0\.030 из порога \$0\.025;/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("does not grow spend when the file is missing or unreadable", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-missing-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.01" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0, "missing file");
+
+			writeFileSync(session, "{broken json\n");
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0, "unreadable line");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("recomputes the total after an in-place rewrite instead of doubling", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-rewrite-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			// Две строки: сумма $0.02.
+			writeFileSync(session, costLine(0.01) + costLine(0.01));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.03" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0);
+
+			// Компакция переписала файл короче: $0.02, а не +$0.02 к старым.
+			writeFileSync(session, costLine(0.02));
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0, "total must stay $0.02, not become $0.04");
+
+			appendFileSync(session, costLine(0.02));
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(
+				sent[0],
+				/HANDOFF: spend \$0\.040 из порога \$0\.030; контекст/,
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("reaches the cooldown branch in a child session", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-cooldown-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.02));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.01" });
+			const v = view(10, {
+				cwd: dir,
+				sessionFile: session,
+				parentSession: "/tmp/parent.jsonl",
+			});
+
+			await fire(handlers, "session_start", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0, "cooldown suppresses the first request");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("recomputes spend before the status after compaction", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-compact-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			const initial = costLine(0.02);
+			writeFileSync(session, initial);
+			const { handlers } = install({ OMP_HANDOFF_AT_USD: "0.05" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(v.statuses.at(-1).text, undefined);
+
+			// Та же длина, другой total: append-only чтение не увидит изменений,
+			// принудительный пересчёт на компакции обязан увидеть $9.99.
+			assert.equal(costLine(9.99).length, initial.length);
+			writeFileSync(session, costLine(9.99));
+			await fire(handlers, "session_compact", {}, v.ctx);
+			assert.match(v.statuses.at(-1).text, /⚠ HANDOFF/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

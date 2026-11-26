@@ -23,6 +23,12 @@ export interface CostRead {
 	deltaUsd: number;
 	offsets: Record<string, number>;
 	files: string[];
+	/**
+	 * true, если хотя бы один файл пришлось читать с начала: размер стал
+	 * меньше сохранённого offset (усечение или перезапись на месте, например
+	 * компакцией). Append эту ветку не трогает.
+	 */
+	restarted: boolean;
 }
 
 function collectJsonl(dir: string, out: string[]): void {
@@ -74,15 +80,17 @@ function costOfLine(line: string): number {
 function readFromOffset(path: string, offset: number): {
 	deltaUsd: number;
 	nextOffset: number;
+	restarted: boolean;
 } {
 	let size: number;
 	try {
 		size = statSync(path).size;
 	} catch {
-		return { deltaUsd: 0, nextOffset: 0 };
+		return { deltaUsd: 0, nextOffset: 0, restarted: false };
 	}
-	const start = size < offset ? 0 : offset;
-	if (start >= size) return { deltaUsd: 0, nextOffset: start };
+	const restarted = size < offset;
+	const start = restarted ? 0 : offset;
+	if (start >= size) return { deltaUsd: 0, nextOffset: start, restarted };
 	const length = size - start;
 	const chunk = Buffer.alloc(length);
 	let bytesRead = 0;
@@ -91,7 +99,7 @@ function readFromOffset(path: string, offset: number): {
 		fd = openSync(path, "r");
 		bytesRead = readSync(fd, chunk, 0, length, start);
 	} catch {
-		return { deltaUsd: 0, nextOffset: start };
+		return { deltaUsd: 0, nextOffset: start, restarted };
 	} finally {
 		if (fd !== null) {
 			try {
@@ -110,7 +118,7 @@ function readFromOffset(path: string, offset: number): {
 		deltaUsd += costOfLine(line);
 		consumed = newline + 1;
 	}
-	return { deltaUsd, nextOffset: start + consumed };
+	return { deltaUsd, nextOffset: start + consumed, restarted };
 }
 
 /**
@@ -124,7 +132,13 @@ export function readSessionCost(
 	previous: Readonly<Record<string, number>>,
 ): CostRead {
 	if (!rootFile) {
-		return { available: false, deltaUsd: 0, offsets: { ...previous }, files: [] };
+		return {
+			available: false,
+			deltaUsd: 0,
+			offsets: { ...previous },
+			files: [],
+			restarted: false,
+		};
 	}
 	const root = resolve(rootFile);
 	if (!existsSync(root)) {
@@ -134,17 +148,20 @@ export function readSessionCost(
 			deltaUsd: 0,
 			offsets: { ...previous },
 			files: [],
+			restarted: false,
 		};
 	}
 
 	const files = sessionFiles(root);
 	const offsets: Record<string, number> = {};
 	let deltaUsd = 0;
+	let restarted = false;
 	for (const file of files) {
 		const key = resolve(file);
 		const read = readFromOffset(key, previous[key] ?? 0);
 		offsets[key] = read.nextOffset;
 		deltaUsd += read.deltaUsd;
+		if (read.restarted) restarted = true;
 	}
-	return { available: true, deltaUsd, offsets, files };
+	return { available: true, deltaUsd, offsets, files, restarted };
 }

@@ -1635,11 +1635,26 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	};
 
 	/**
-	 * Дочитать только новый хвост session JSONL (offsets из прошлого чтения).
-	 * Файла нет или он не читается — spend не меняется. Смена session file
-	 * (switch или файл появился после `session_start`) начинает счёт с нуля.
+	 * Пересчитать total с нуля: компакция/перезапись делает byte offsets
+	 * недействительными. Файла нет или он не читается — уже измеренный spend
+	 * сохраняется, а не обнуляется.
 	 */
-	const refreshSpend = (ctx: ExtensionContext): void => {
+	const recomputeSpend = (sessionFile: string): void => {
+		if (!existsSync(sessionFile)) return;
+		const fresh = readSessionCost(sessionFile, {});
+		if (!fresh.available) return;
+		sessionSpendUsd = fresh.deltaUsd;
+		spendOffsets = fresh.offsets;
+	};
+
+	/**
+	 * Дочитать только новый хвост session JSONL (offsets из прошлого чтения).
+	 * Если файл усечён/перезаписан (`restarted`) или запрошен `recompute` —
+	 * total считается заново, а не прибавляется к накопленному. Файла нет
+	 * или он не читается — spend не меняется.
+	 */
+	const refreshSpend = (ctx: ExtensionContext, recompute = false): void => {
+		if (settings.handoffAtSpendUsd === null) return;
 		let sessionFile: string | null = null;
 		try {
 			sessionFile = ctx.sessionManager.getSessionFile() ?? null;
@@ -1648,8 +1663,16 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		}
 		if (sessionFile !== spendSessionFile) resetSpend(ctx);
 		if (sessionFile === null) return;
+		if (recompute) {
+			recomputeSpend(sessionFile);
+			return;
+		}
 		const read = readSessionCost(sessionFile, spendOffsets);
 		if (!read.available) return;
+		if (read.restarted) {
+			recomputeSpend(sessionFile);
+			return;
+		}
 		spendOffsets = read.offsets;
 		if (read.deltaUsd > 0) sessionSpendUsd += read.deltaUsd;
 	};
@@ -1810,7 +1833,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		const contextText = usage === null ? null : `контекст ${usageText(usage)}`;
 		const triggerText = [
 			spendTriggered ? spendText : null,
-			contextTriggered ? contextText : null,
+			// Контекст — справочно, если доступен, даже когда сработал spend.
+			contextText,
 		]
 			.filter((part): part is string => part !== null)
 			.join("; ");
@@ -1943,6 +1967,9 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		suggested = false;
 		autoCompacted = false;
 		resetHandoff();
+		// Компакция может переписать JSONL на месте, не уменьшая размер:
+		// offsets недействительны, total считается заново до статуса.
+		refreshSpend(ctx, true);
 		if (settings.workflowMode !== "off") {
 			notify(ctx, "Контекст сжат.", "info");
 		}

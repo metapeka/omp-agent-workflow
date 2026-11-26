@@ -618,6 +618,25 @@ describe("session cost", () => {
 		assert.ok(Math.abs(complete.deltaUsd - 0.07) < 1e-9);
 	});
 
+	it("flags a truncated file as restarted without changing the delta", () => {
+		const root = join(tempDir(), "session.jsonl");
+		writeFileSync(root, costLine(0.1) + costLine(0.1));
+		const first = readSessionCost(root, {});
+		assert.equal(first.restarted, false);
+
+		// Перезапись короче сохранённого offset — файл читается с начала.
+		writeFileSync(root, costLine(0.07));
+		const again = readSessionCost(root, first.offsets);
+		assert.equal(again.restarted, true);
+		assert.ok(Math.abs(again.deltaUsd - 0.07) < 1e-9);
+
+		// Обычный append после рестарта рестартом не считается.
+		appendFileSync(root, costLine(0.02));
+		const appended = readSessionCost(root, again.offsets);
+		assert.equal(appended.restarted, false);
+		assert.ok(Math.abs(appended.deltaUsd - 0.02) < 1e-9);
+	});
+
 	it("treats a fresh missing session as zero spend and a deleted one as unavailable", () => {
 		assert.equal(readSessionCost(null, {}).available, false);
 		const missing = join(tempDir(), "missing.jsonl");
