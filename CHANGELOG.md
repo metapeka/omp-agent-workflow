@@ -61,6 +61,9 @@ semantic for the plugin contract, not for OMP itself.
 
 ### Docs
 
+- `docs/faq.md`: handoff without commits, preflight action statuses and
+  reasons, the commit-message dialog, supervisor/`SUP OFF`, worktree cleanup,
+  diagnostics; linked from the wiki index and README.
 - `docs/research/workflow-presets.md` (F3 status and evidence),
   `model-modes.md` (boundary row), preflight sections in
   `docs/commands.md` and `docs/contracts.md`, wiki, ROADMAP, TODO, HANDOFF.

@@ -77,6 +77,7 @@ JSONL (`lib/session-metrics.ts`), прогресс плана с gate/deps и sp
 | Меняешь 0.3 (guard/handoff/supervisor) | [contracts.md](contracts.md) → [architecture.md](architecture.md) → [operations.md](operations.md) |
 | Реализуешь 0.5 | [orchestrator.md](orchestrator.md) → [decisions.md](decisions.md) → [AUTOPLAN.example.md](AUTOPLAN.example.md) |
 | Разбираешь сбой в TUI/Orca | [operations.md](operations.md) |
+| Быстрый ответ на типовой вопрос | [faq.md](faq.md) |
 | Разбираешься, как проходит handoff | [handoff-flow.md](handoff-flow.md) → [contracts.md](contracts.md) |
 | Понимаешь кэш, сессии и цену сброса | [Pages: EN](https://metapeka.github.io/omp-agent-workflow/) → [RU](https://metapeka.github.io/omp-agent-workflow/ru/) → [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |
 | Принимаешь решение по продукту | [decisions.md](decisions.md) |
@@ -88,6 +89,7 @@ JSONL (`lib/session-metrics.ts`), прогресс плана с gate/deps и sp
 | [architecture.md](architecture.md) | Компоненты, потоки данных, факты OMP API 19.1.0, что extension может и не может, источники истины, границы проекта |
 | [contracts.md](contracts.md) | Стабильный контракт 0.3: режимы, env, файлы marker/session, команды, инварианты; CLI JSON v1 (`status`/`doctor`); что нельзя менять |
 | [commands.md](commands.md) | Гид по командам: `/handoff`, `/handoff-preflight`, `/handoff-new`, `/wrap`, `/orchestrate`, tool `orchestrator`, CLI launcher и supervisor, файлы |
+| [faq.md](faq.md) | Короткие ответы: handoff без коммита, меню и статусы preflight, сообщение коммита, supervisor, worktree, диагностика |
 | [orchestrator.md](orchestrator.md) | Дизайн 0.5: роли, `AUTOPLAN.md`, `STATE.json`, действия, политика, бюджеты, stop-gates, handoff на границе, этапы A–D |
 | [wrap.md](wrap.md) | `/wrap` 0.5.1: карточки, safety для cleanup, handoff, следующая задача |
 | [operations.md](operations.md) | Runbook: установка, запуск, supervisor, worktree, проверки, типовые сбои |

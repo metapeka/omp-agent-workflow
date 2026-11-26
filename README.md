@@ -349,6 +349,7 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 | [`docs/README.md`](docs/README.md) | Engineering wiki (Russian): architecture, contracts, runbook |
 | [`docs/orchestrator.md`](docs/orchestrator.md) | `AUTOPLAN.md`, `STATE.json`, budgets, stop gates |
 | [`docs/commands.md`](docs/commands.md) | Command guide: slash commands, orchestrator tool, launcher and supervisor CLI |
+| [`docs/faq.md`](docs/faq.md) | FAQ: handoff without commits, preflight actions, commit messages, supervisor |
 | [`docs/operations.md`](docs/operations.md) | Install, supervisor, worktrees, incidents |
 | [`docs/decisions.md`](docs/decisions.md) | Accepted decisions and rejected alternatives |
 | [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | Copy-paste plan template |
