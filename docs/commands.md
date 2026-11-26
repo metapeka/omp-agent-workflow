@@ -164,7 +164,7 @@ bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit 
 | `--backend orca\|git` | backend worktree |
 | `--verify-timeout SEC` | таймаут verify (по умолчанию 900) |
 | `--strict` | `doctor`: повысить `warn` до `fail` |
-| `--session FILE` | `economics`: стартовый session JSONL |
+| `--session FILE` | `economics`: стартовый session JSONL (алиас `--session-file`) |
 | `--turns N` | `economics`: окно ходов, 1..100 (по умолчанию 10) |
 | `--json` | машинный вывод |
 
@@ -183,22 +183,29 @@ subagent-дети границу не создают. Ходы и деньги �
 без сети); `before` — последние N ходов родителя, `after` — первые N ходов
 ребёнка, `costPerTurnUsd` — медиана цен окна, `hitPercent` —
 `cacheRead/(input+cacheRead)` по сумме окна. `boundary.firstTurnUsd` — цена
-первого хода ребёнка, `recoveryTurns` — холодные ходы (`cacheRead == 0`)
-подряд до первого тёплого, `delta` — абсолютная разница. Компакции
-собираются по всей цепочке (`type:"compaction"`, `customType:"compaction"`,
-`model_usage` с `purpose`, начинающимся с `compaction`), стоимость —
-`usage.cost.total`.
+первого хода ребёнка, `recoveryTurns` — число холодных ходов
+(`cacheRead == 0`) подряд с начала ребёнка до первого тёплого (это скан
+начала сессии, а не окна `--turns`; `0` — первый ход уже тёплый), `delta` —
+абсолютная разница. Компакции собираются по всей цепочке
+(`type:"compaction"`, `customType:"compaction"`, `model_usage` с `purpose`,
+начинающимся с `compaction`), стоимость — `usage.cost.total`.
 
 ```bash
 node --experimental-strip-types bin/omp-orchestrate economics \
   [--session FILE] [--turns N] [--json] [--dir PATH]
 ```
 
+`--session-file` — алиас `--session` (то же имя уже используется для spend).
 Без `--session` — самая свежая живая запись `.omp-handoff-session.json` в
 `--dir`. Коды: 0 — отчёт (в том числе без CLI: `boundaries: []` + note),
-1 — нет/нечитаема сессия, 2 — плохие аргументы. `--json` — контракт
-`schemaVersion: 1` (`session`, `turnsWindow`, `chain[]`, `boundaries[]`,
-`compactions[]`, `notes[]`); ничего не пишется, сеть не используется.
+1 — нет/нечитаема сессия, 2 — плохие аргументы (включая `--turns=` и
+нецелое значение; `0`/`999` клампятся в 1..100). `--json` — контракт
+`schemaVersion: 1`: `generatedAt`, `session`, `turnsWindow`, `chain[]`
+(`session`, `startedAt`, `handoff`, `parentSession`), `boundaries[]`
+(`from`, `to`, `at`, `before`, `after`, `boundary`, `delta`),
+`compactions[]` (`session`, `at`, `costUsd`), `notes[]`. `chain[].startedAt`
+и `boundaries[].at` — `null`, если в метаданных сессии нет `timestamp`.
+Ничего не пишется, сеть не используется.
 
 При `execution: external` в `AUTOPLAN.md` `start`, `verify`, `finish` и
 `rebase` возвращают `stop: external-run`: задачи ведёт Ensemble (Orca

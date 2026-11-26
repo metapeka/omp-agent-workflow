@@ -25,15 +25,23 @@ semantic for the plugin contract, not for OMP itself.
   cost from `usage.cost.total` when present. Local data has no compactions
   yet, so the report says "no records" instead of inventing zeros — the
   output is data-gated.
-- `--json` is the contract (`schemaVersion: 1`: `session`, `turnsWindow`,
-  `chain[]`, `boundaries[]`, `compactions[]`, `notes[]`). Without `--session`
-  the freshest live `.omp-handoff-session.json` entry in `--dir` is used.
-  Exit codes: 0 — report (including the no-CLI graceful skip with empty
-  `boundaries` and a note), 1 — missing/unreadable session, 2 — bad arguments.
-- Tests: `test/handoff-economics.test.mjs` (24) — chain order, handoff vs
-  subagent children, medians/hit/recovery/delta, `--turns` clamping,
-  missing/broken parent, cycles, compaction records, latest live session,
-  exit codes and human output without JSON.
+- `--json` is the contract (`schemaVersion: 1`: `generatedAt`, `session`,
+  `turnsWindow`, `chain[]`, `boundaries[]`, `compactions[]`, `notes[]`);
+  `chain[].startedAt` and `boundaries[].at` are `null` when the session
+  metadata has no `timestamp`. `--session-file` is accepted as an alias of
+  `--session`. Without `--session` the freshest live
+  `.omp-handoff-session.json` entry in `--dir` is used. Exit codes: 0 —
+  report (including the no-CLI graceful skip with empty `boundaries` and a
+  note), 1 — missing/unreadable session, 2 — bad arguments (an empty or
+  non-integer `--turns` is rejected before the session is resolved).
+- Sessions are read incrementally through `lib/session-metrics.ts`
+  (`sessionLines`): 10–20 MB JSONL and a 20-node chain do not load whole
+  files, and broken lines are still skipped.
+- Tests: `test/handoff-economics.test.mjs` (30) — chain order, handoff vs
+  subagent children, medians/hit/recovery/delta, `--turns` clamping and
+  validation order, missing/broken parent, mutual and self cycles,
+  `MAX_CHAIN_NODES` truncation, compaction records, latest live session,
+  `--session-file`, exit codes and human output without JSON.
 
 ### Docs
 
