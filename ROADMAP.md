@@ -405,7 +405,7 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
 проверяемые пробелы; визуальные, платные и недоказуемые на текущем
 провайдере фичи отклонены.
 
-- [ ] **0.7.0 Spend-aware handoff.** Settings `handoffAtSpendUsd` (15-й
+- [x] **0.7.0 Spend-aware handoff.** Settings `handoffAtSpendUsd` (15-й
       ключ) и env `OMP_HANDOFF_AT_USD`; `0`/`off` = выключено. Триггер
       handoff по фактическому `usage.cost.total` сессии (инкрементальные
       offsets, без полного перечитывания JSONL каждый ход); тот же

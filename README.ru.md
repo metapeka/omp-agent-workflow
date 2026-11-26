@@ -117,7 +117,7 @@
 | План → worktree → verify → ff-merge | ✅ | ⚠️ вручную / subagents | ⚠️ вручную | ⚠️ ручные коммиты | ⚠️ | ⚠️ | ⚠️ только worktree |
 | Cleanup guard + backup-ref | ✅ merged/clean/current/live | — | — | — | — | — | ⚠️ worktree remove |
 | Мастер завершения с подтверждением | ✅ `/wrap` | ⚠️ | — | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| Settings UI + env fallback | ✅ OMP Settings, 14 ключей | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Settings UI + env fallback | ✅ OMP Settings, 15 ключей | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Работает слоем над OMP | ✅ | — свой агент | — свой агент | — свой агент | — свой агент | — свой агент | ✅ хост |
 
 **Легенда:** ✅ first-class · ⚠️ вручную или частично · — не заявлено как first-class.
@@ -152,6 +152,8 @@
 3. Supervisor видит marker и отправляет `/handoff-new` в terminal handle записи с совпавшим `marker.sessionFile` из `.omp-handoff-session.json`.
 4. `/handoff-new` собирает сообщение новой сессии из `continuePrompt` + state-файла (лимит 32k, маркер обрезки, fallback при ошибке чтения).
 5. Новая сессия читает `HANDOFF.md` и продолжает. Компакции посреди tool-loop нет: плагин ждёт `turn_end` и `ctx.isIdle()`.
+
+У handoff два независимых триггера: процент контекста (`handoffAtPercent`) и измеренный spend сессии (`handoffAtSpendUsd`, фактические `usage.cost.total` из session JSONL). Spend дочитывается инкрементально по byte offsets — каждый ход добавляет только новый хвост, дочерние сессии тоже; полного перечитывания нет. `0`/`off` выключает; оба триггера делят один cooldown, путь supervisor и статус `⚠ HANDOFF`, а marker пишет `reason: "context"`, если сработал контекст (в том числе вместе со spend), иначе `"spend"`. Считаются только измеренные деньги, без оценок по прайсу.
 
 Опциональная **advisory-строка `next-session:`** — первая строка `HANDOFF.md` может содержать `v=1 ts=… model=… thinking=… mode=… reason=…`. `bin/omp-yoda` проверяет её (синтаксис, свежесть 24 ч, модель по `omp models --json`) и добавляет `--model`/`--thinking` при запуске процесса; явные флаги выигрывают, а невалидная, устаревшая, повторная или не на первом месте строка ничего не меняет. `/handoff-preflight` показывает строку и её валидность. Модель внутри работающей сессии не меняется.
 
@@ -230,6 +232,7 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 | `workflowMode` | `assisted` | `off` / `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | `statusEnabled` | `true` | Ключ `workflow` в статус-строке |
 | `handoffAtPercent` | `55` (yoda) / off | Порог handoff; `0` = off |
+| `handoffAtSpendUsd` | off | Порог handoff по измеренному spend сессии, $; `0` = off |
 | `handoffCooldownSeconds` | `300` | Пауза после handoff |
 | `contextWarnPercent` | `35` | Первое предупреждение |
 | `contextSuggestPercent` | `50` | Предложить handoff |
@@ -241,7 +244,7 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 | `supervisorRetries` | `3` | Повторы send/preflight |
 | `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
 
-Env fallback: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP_CONTEXT_*`, `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`.
+Env fallback: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP_HANDOFF_AT_USD`, `OMP_CONTEXT_*`, `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`.
 
 ### Режимы
 

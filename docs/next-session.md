@@ -1,19 +1,19 @@
-# Next session: OAW (`omp-agent-workflow`) 0.6.1
+# Next session: OAW (`omp-agent-workflow`) 0.7.0
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.6.0`;
-  ветка `feat/handoff-economics` — `0.6.1` (ещё не слита).
+- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.6.1`;
+  ветка `feat/spend-handoff` — `0.7.0` (ещё не слита).
 - Ветки 0.5.1–0.6.0 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
   `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`)
   слиты ff-only; worktrees удалены.
 - Готово: 0.3 (guard/handoff/Yoda), 0.5 (orchestrator), 0.5.1 (`/wrap`),
   0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4–0.5.5
-  (Settings, 14 ключей), 0.5.6–0.5.11 (`/handoff-preflight`: таблица, меню
+  (Settings), 0.5.6–0.5.11 (`/handoff-preflight`: таблица, меню
   действий, итог), 0.5.12–0.5.13 (ключ `workflow`), 0.5.14 (safe cleanup),
   0.5.15–0.5.17 (handoff guards, session info по pid, fallback-компакция),
   0.5.18 (kill switch `off`), 0.5.19 (advisory `next-session:`),
@@ -32,7 +32,9 @@
   `omp-cache-monitor costs --json`: медиана холодных/тёплых, разрез по
   моделям, graceful skip без CLI; `lib/costs-client.ts`), 0.6.1
   (`omp-orchestrate economics`: цепочка по `parentSession`, окна «до/после»,
-  hit rate, цена первого хода, `recoveryTurns`, компакции; JSON v1).
+  hit rate, цена первого хода, `recoveryTurns`, компакции; JSON v1),
+  0.7.0 (spend-aware handoff: `handoffAtSpendUsd` и `OMP_HANDOFF_AT_USD`,
+  инкрементальные offsets по session JSONL, marker `reason: "spend"`).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
@@ -46,14 +48,18 @@
   меняется (D14). Пресет `plan` советует advisory `model=flash mode=routine`
   через continue prompt (D16).
 - Проверки: `npm run verify` (тесты, typecheck, `check:names`),
-  extension load exit 0, schema 14 ключей, `doctor --json` exit 0,
+  extension load exit 0, schema 15 ключей, `doctor --json` exit 0,
   `bin/omp-yoda --preset plan --version` exit 0;
   `test/contracts.test.mjs` фиксирует конверт `status`/`doctor` v1 для hub.
 - Текущая сессия могла стартовать до merge: перезапустить `bin/omp-yoda`.
 
 ## Следующий этап
 
-1. **0.6 economics**: реализовано в `feat/handoff-economics` (0.6.1) —
+1. **0.7.0 spend-aware handoff** реализован в `feat/spend-handoff`:
+   второй триггер по измеренному `usage.cost.total` с offsets, общий
+   cooldown/supervisor/`⚠ HANDOFF`. Осталось слить ff-only и проверить на
+   живой сессии с ценами. **0.6 economics**: реализовано в
+   `feat/handoff-economics` (0.6.1) —
    `omp-orchestrate economics`: цепочка по `parentSession`, граница только у
    ребёнка с маркером `handoff`, окна «до/после», hit rate, цена первого
    хода, `recoveryTurns`, детектор компакций; JSON v1, graceful skip без CLI.
@@ -93,7 +99,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.6.1. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.7.0. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11–D16).
 > Settings → Plugins — основной способ настройки, env — fallback.
 > `/handoff-preflight` advisory. `next-session:` применяет только launcher
@@ -102,4 +108,6 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 > `start/verify/finish/rebase` в OAW. 0.6 economics: `omp-orchestrate
 > economics` — read-only «до/после handoff» (цепочка `parentSession`, JSON v1,
 > graceful skip без CLI); не парсить внутренности cache-monitor.
+> Spend-триггер `handoffAtSpendUsd` — измеренные деньги, offsets без
+> полного перечитывания JSONL.
 > Публикация — по разрешению владельца (D10); 0.6.0 запушен.

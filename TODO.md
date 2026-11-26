@@ -20,7 +20,7 @@
 
 ### 0.7 — план 2026-11-27
 
-- [ ] 0.7.0 spend-aware handoff: Settings `handoffAtSpendUsd` (15-й ключ),
+- [x] 0.7.0 spend-aware handoff: Settings `handoffAtSpendUsd` (15-й ключ),
       env `OMP_HANDOFF_AT_USD`, `0`/`off` = выкл; триггер по фактическому
       `usage.cost.total` (инкрементальные offsets), cooldown/supervisor/
       `⚠ HANDOFF`, marker `reason: spend`; тесты, docs.

@@ -4,6 +4,36 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.7.0] — 2026-11-27
+
+### Added
+
+- `handoffAtSpendUsd` (15th Settings key) and `OMP_HANDOFF_AT_USD` — a second
+  handoff trigger on measured session spend (`usage.cost.total` from the session
+  JSONL), independent of the context percentage. `0`/`off` disables it; the
+  precedence is Settings > env > preset > mode: presets never set the key, `off`
+  mode forces `null`, and an explicit value works in `manual` the same way an
+  explicit `handoffAtPercent` does.
+- Spend is accumulated incrementally through `lib/orchestrator/cost.ts`: byte
+  offsets per session file (root plus child sessions under `<root-stem>/`), so
+  `turn_end` and `agent_end` read only the new tail — never the whole JSONL.
+  `session_start`/`session_switch` reset offsets and spend to zero;
+  `session_compact` keeps the measured spend; a missing or unreadable file
+  changes nothing. Only measured money counts, never price-list estimates.
+- The request text becomes `HANDOFF: spend $X из порога $Y.` (plus `; контекст …`
+  when available) and the marker records `reason: "spend"`. When both triggers
+  fire the reason stays `"context"` and the text carries both facts. Cooldown,
+  retry cap, supervisor gate, prerequisite warnings and `⚠ HANDOFF` status are
+  shared; the status key now also lights up at the spend threshold.
+- Tests: `test/workflow-settings.test.mjs` +1 (precedence, `0`/`off`, `off`
+  mode, presets, `manual`, fractional/out-of-range values) and
+  `test/context-guard.test.mjs` +9 (below/at the threshold, spend-only and both
+  triggers with marker reasons, `0`/`off`, cooldown and retry, status key,
+  accumulation across turns and through compaction, and a tail-only read proven
+  by rewriting the already-consumed prefix).
+- Docs: tri-lingual READMEs, `docs/contracts.md` (15 keys, marker reason
+  `context|spend`, incremental spend invariant), `docs/guards.md`.
+
 ## [0.6.1] — 2026-11-27
 
 ### Added

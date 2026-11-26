@@ -64,9 +64,11 @@ supervisor запущен (`bin/omp-yoda` или
 1. Extension на `session_start` пишет запись текущей сессии в
    `.omp-handoff-session.json` (`{sessions}`: `terminal`, `sessionFile`,
    `cwd`, `pid`); другие живые записи в этом cwd не затираются.
-2. На пороге 55% (в `yoda`/`yoda-supervised`) или на границе задачи агент
-   получает указание: завершить задачу, обновить `HANDOFF.md`, записать
-   `.omp-handoff-request.json` и закончить ход.
+2. На пороге контекста 55% (в `yoda`/`yoda-supervised`), пороге
+   `handoffAtSpendUsd` по измеренному spend сессии или на границе задачи
+   агент получает указание: завершить задачу, обновить `HANDOFF.md`,
+   записать `.omp-handoff-request.json` и закончить ход. Marker несёт
+   `reason: "context"` или `"spend"`.
 3. Supervisor читает marker и session info, выбирает запись по
    `marker.sessionFile`, проверяет terminal handle, `sessionFile`, cooldown
    300 с и stale grace.

@@ -1,6 +1,6 @@
 # Защиты OAW: что, зачем и где в цикле
 
-Дата: 2026-11-26. Версия: `0.5.24`. Контракт — [contracts.md](contracts.md),
+Дата: 2026-11-27. Версия: `0.7.0`. Контракт — [contracts.md](contracts.md),
 поток handoff — [handoff-flow.md](handoff-flow.md), диагностика —
 [operations.md](operations.md).
 
@@ -21,7 +21,7 @@ OAW решает две разные задачи, и путать их нель
 ```mermaid
 flowchart TD
   T["turn_end / agent_end"] --> G1["guard: main TUI, ctx.isIdle(),<br/>нет pending-сообщений"]
-  G1 -->|"usage ≥ порога"| G2["guard: cooldown 300 с,<br/>лимит 3 запросов, stale marker"]
+  G1 -->|"usage ≥ порога или spend ≥ порога"| G2["guard: cooldown 300 с,<br/>лимит 3 запросов, stale marker"]
   G2 --> FR["flight recorder 0.5.24 (read-only):<br/>ветка · HEAD · незакоммиченные пути"]
   FR --> REQ["запрос HANDOFF → агент обновляет<br/>HANDOFF.md и пишет marker"]
   REQ -.->|"marker не появился"| FB["fallback-компакция<br/>(0.5.17)"]
@@ -35,6 +35,7 @@ flowchart TD
 | Угроза | Защита | Где срабатывает | С версии |
 |---|---|---|---|
 | Контекст переполнен, модель теряет задачу | warning 35% / suggest 50% / handoff на пороге; в `yoda-supervised` — 55% | `turn_end`, `agent_end` | 0.1, 0.3 |
+| Сессия дорогая, хотя контекст ещё низкий (много коротких ходов/субагентов) | handoff по измеренному `usage.cost.total` (`handoffAtSpendUsd`); тот же cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"`; JSONL дочитывается offsets, не целиком | `checkHandoff` | 0.7.0 |
 | Handoff запрошен, но marker не появился | повтор через 2 завершённых хода, максимум 3 запроса, статус `⚠ HANDOFF` | `checkHandoff` | 0.5.15 |
 | Handoff завис навсегда (нет supervisor) | fallback-компакция на `autoCompactPercent` после исчерпания повторов | `checkAuto` | 0.5.17 |
 | Два supervisor на один каталог перехватывают marker | lock-dir `.omp-handoff-supervisor.lock/`, stale reclaim по мёртвому pid, release на сигналах | старт supervisor'а | 0.5.2 |

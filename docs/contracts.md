@@ -28,12 +28,13 @@ Settings (аварийное выключение). Команды остают�
 
 ## Settings
 
-`package.json#omp.settings` даёт 14 ключей; UI — Settings → Plugins. Приоритет:
+`package.json#omp.settings` даёт 15 ключей; UI — Settings → Plugins. Приоритет:
 **Settings > env > пресет > режим/дефолт**. Значения читаются extension на
 `session_start` и `session_switch`, launcher — при старте. Для порогов `0`
 и `off` означают выключение; `handoffAtPercent`/`autoCompactPercent` без
-явного значения берутся из пресета, затем из режима. Пресет задаёт только
-не заданные явно ключи; `workflowPreset=off` — без пресета.
+явного значения берутся из пресета, затем из режима; `handoffAtSpendUsd`
+пресеты не задают. Пресет задаёт только не заданные явно ключи;
+`workflowPreset=off` — без пресета.
 
 | Ключ | Тип | Default |
 |---|---|---|
@@ -41,6 +42,7 @@ Settings (аварийное выключение). Команды остают�
 | `workflowPreset` | enum | `off` (пресеты: `routine`/`plan`/`review`/`budget`) |
 | `statusEnabled` | boolean | `true` (false очищает ключ `workflow`) |
 | `handoffAtPercent` | number 0–95 | режим: `55` / off |
+| `handoffAtSpendUsd` | number 0–10000 | `0` (off); фактические `usage.cost.total` сессии |
 | `handoffCooldownSeconds` | number 0–86400 | `300` |
 | `contextWarnPercent` | number 1–99 | `35` |
 | `contextSuggestPercent` | number 1–99 | `50` |
@@ -58,8 +60,8 @@ Settings (аварийное выключение). Команды остают�
 - Текст: `YODA` / `YODA-SUP` по `workflowMode`; `SUP OFF` — в
   `yoda-supervised`, если lock/pid supervisor'а не найден; `T2 verify` —
   пока `STATE.json.run.active` и есть `current`.
-- `⚠ HANDOFF` — при `usage >= handoffAtPercent` или marker с текущим
-  `sessionFile`.
+- `⚠ HANDOFF` — при `usage >= handoffAtPercent`, измеренном spend
+  `>= handoffAtSpendUsd` или marker с текущим `sessionFile`.
 - Stale marker другой сессии игнорируется.
 - `statusEnabled=false` вызывает `setStatus(key, undefined)`.
 - `context_pct`, cache и другие native/чужие метрики не дублируются;
@@ -77,6 +79,7 @@ Settings (аварийное выключение). Команды остают�
 | `OMP_CONTEXT_SUGGEST` | `50` | Warning «пора HANDOFF» |
 | `OMP_CONTEXT_AUTO` | режим: `60` / `70` / `off` | Авто-компакция; `off` выключает |
 | `OMP_HANDOFF_AT` | режим: `55` / `off` | Запрос handoff; `off` выключает |
+| `OMP_HANDOFF_AT_USD` | `off` | Порог handoff по spend, $; `0`/`off` выключают |
 | `OMP_HANDOFF_COOLDOWN_SECONDS` | `300` | Пауза после handoff |
 | `OMP_ORCA_ENABLED` | `true` | Orca terminal list/show; `false` — fallback |
 | `OMP_ORCA_PREFLIGHT` | `true` | Проверять handle перед handoff |
@@ -87,7 +90,7 @@ Settings (аварийное выключение). Команды остают�
 | `OMP_YODA_DIR` | `$PWD` | Каталог supervisor/launcher |
 | `OMP_YODA_LOG` | `${TMPDIR:-/tmp}/omp-yoda-supervisor.log` | Лог supervisor |
 
-Невалидное число откатывается к default. `off` — только для auto/handoff.
+Невалидное число откатывается к default. `off` — для auto/handoff/spend.
 
 ## Команды
 
@@ -224,7 +227,7 @@ Subagent-сессии файл не трогают. Читают supervisor и o
 
 ```json
 {
-  "reason": "context | task-boundary",
+  "reason": "context | spend | task-boundary",
   "sessionFile": "/home/u/.omp/agent/sessions/.../session.jsonl"
 }
 ```
@@ -416,6 +419,13 @@ Supervisor не LLM: только файлы, terminal handle и `orca terminal 
 - Текст запроса HANDOFF несёт read-only снимок дерева (ветка, HEAD, до 6
   незакоммиченных путей, бюджет 300 символов); файлы marker/session и их
   поля не меняются, снимок в новую сессию не попадает.
+- Spend — только измеренный `usage.cost.total` из session JSONL (дочерние
+  сессии под `<root-stem>/`), без оценок по прайсу. Читается инкрементально
+  по byte offsets: каждый `turn_end`/`agent_end` добавляет лишь новый хвост;
+  `session_start`/`session_switch` начинают с нуля, `session_compact` spend
+  не сбрасывает. Оба триггера делят один cooldown, supervisor и `⚠ HANDOFF`;
+  marker получает `reason: "context"`, если сработал контекст (в том числе
+  вместе со spend), иначе `"spend"`.
 - Пороги — эвристика, не измеренная граница модели.
 - `getContextUsage()` может вернуть `null` после компакции; проверки
   пропускаются до следующего хода.

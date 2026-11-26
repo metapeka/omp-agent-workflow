@@ -117,7 +117,7 @@
 | 计划 → worktree → 验证 → ff 合并 | ✅ | ⚠️ 手动 / 子代理 | ⚠️ 手动 | ⚠️ 手动提交 | ⚠️ | ⚠️ | ⚠️ 仅 worktree |
 | 清理守卫 + 备份引用 | ✅ merged/clean/current/live 检查 | — | — | — | — | — | ⚠️ worktree remove |
 | 人工确认收尾向导 | ✅ `/wrap` | ⚠️ | — | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| 设置 UI + 环境变量回退 | ✅ OMP Settings，13 个键 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 设置 UI + 环境变量回退 | ✅ OMP Settings，15 个键 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 作为 OMP 之上的工作流层 | ✅ | — 自有代理 | — 自有代理 | — 自有代理 | — 自有代理 | — 自有代理 | ✅ 宿主 |
 
 **图例：** ✅ 一等能力 · ⚠️ 手动或部分支持 · — 不是其文档中的一等能力。
@@ -152,6 +152,8 @@
 3. 守护进程看到 marker，向 `.omp-handoff-session.json` 中 `marker.sessionFile` 匹配记录的终端 handle 发送 `/handoff-new`。
 4. `/handoff-new` 用 `continuePrompt` + 状态文件构造新会话消息（32k 上限、截断标记、读取失败回退）。
 5. 新会话读取 `HANDOFF.md` 并继续。不会在工具循环中间压缩；插件等待 `turn_end` 和 `ctx.isIdle()`。
+
+交接有两个独立触发器：上下文百分比（`handoffAtPercent`）与会话实测花费（`handoffAtSpendUsd`，取 session JSONL 中的 `usage.cost.total`）。花费按 byte offsets 增量读取——每个回合只追加新的尾部，包含子会话；绝不整体重读。`0`/`off` 关闭该触发器；两个触发器共用一个 cooldown、supervisor 路径和 `⚠ HANDOFF` 状态，marker 在上下文触发时（即使同时超花费）写 `reason: "context"`，否则写 `"spend"`。只计算实测金额，不按价目表估算。
 
 可选的 **`next-session:` 建议行** — `HANDOFF.md` 的第一行可写 `v=1 ts=… model=… thinking=… mode=… reason=…`。`bin/omp-yoda` 会校验（语法、24 小时新鲜度、按 `omp models --json` 校验模型），并在启动进程时追加 `--model`/`--thinking`；显式参数优先，无效、过期、重复或不在首行的建议不产生任何变化。`/handoff-preflight` 显示该行及其有效性。运行中的会话绝不会切换模型。
 
@@ -230,6 +232,7 @@ Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境�
 | `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | `statusEnabled` | `true` | 显示 `workflow` 状态键 |
 | `handoffAtPercent` | `55`（yoda）/ off | 交接阈值；`0` = 关闭 |
+| `handoffAtSpendUsd` | off | 按会话实测花费的交接阈值（$）；`0` = 关闭 |
 | `handoffCooldownSeconds` | `300` | 交接后的冷却时间 |
 | `contextWarnPercent` | `35` | 第一次警告 |
 | `contextSuggestPercent` | `50` | 建议交接 |
@@ -241,7 +244,7 @@ Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境�
 | `supervisorRetries` | `3` | 发送/预检重试次数 |
 | `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
 
-环境变量回退：`OMP_WORKFLOW_MODE`、`OMP_STATUS_ENABLED`、`OMP_HANDOFF_AT`、`OMP_CONTEXT_*`、`OMP_HANDOFF_COOLDOWN_SECONDS`、`OMP_ORCA_ENABLED`、`OMP_ORCA_PREFLIGHT`、`OMP_SUPERVISOR_ENABLED`、`OMP_HANDOFF_PROMPT`、`OMP_SUPERVISOR_RETRIES`、`OMP_SUPERVISOR_LOG_LEVEL`、`ORCA_CLI_COMMAND`。
+环境变量回退：`OMP_WORKFLOW_MODE`、`OMP_STATUS_ENABLED`、`OMP_HANDOFF_AT`、`OMP_HANDOFF_AT_USD`、`OMP_CONTEXT_*`、`OMP_HANDOFF_COOLDOWN_SECONDS`、`OMP_ORCA_ENABLED`、`OMP_ORCA_PREFLIGHT`、`OMP_SUPERVISOR_ENABLED`、`OMP_HANDOFF_PROMPT`、`OMP_SUPERVISOR_RETRIES`、`OMP_SUPERVISOR_LOG_LEVEL`、`ORCA_CLI_COMMAND`。
 
 ### 模式
 

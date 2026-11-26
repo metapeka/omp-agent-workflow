@@ -35,7 +35,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.6.0`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.7.0`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -82,6 +82,11 @@ hit rate, этот проект управляет контекстом и см�
   costs --json` v1: медиана холодных ходов против тёплых, разрез по моделям
   при >1 модели; CLI нет/упал/другая схема — строк нет (graceful skip);
   `OMP_CACHE_MONITOR_CLI` или bin в `PATH`.
+- 0.6.1 — `omp-orchestrate economics`: цепочка `parentSession`, граница
+  только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1;
+  0.7.0 — spend-aware handoff: `handoffAtSpendUsd` (15-й ключ) и
+  `OMP_HANDOFF_AT_USD`, триггер по измеренному `usage.cost.total` с
+  инкрементальными offsets, marker `reason: "spend"`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
@@ -154,9 +159,11 @@ launcher не поднимает supervisor; явные пороги игнор�
 побеждает Settings.
 
 `OMP_CONTEXT_WARN`, `OMP_CONTEXT_SUGGEST`, `OMP_CONTEXT_AUTO`,
-`OMP_HANDOFF_AT`, `OMP_HANDOFF_COOLDOWN_SECONDS` — env fallback, если ключ
-не задан в Settings. Приоритет: Settings > env > пресет > режим/дефолт.
-`off` в значении порога отключает соответствующее действие.
+`OMP_HANDOFF_AT`, `OMP_HANDOFF_AT_USD`, `OMP_HANDOFF_COOLDOWN_SECONDS` — env
+fallback, если ключ не задан в Settings. Приоритет: Settings > env > пресет >
+режим/дефолт. `off` в значении порога отключает соответствующее действие.
+`handoffAtSpendUsd` (15-й ключ) — независимый триггер по измеренному spend
+сессии; пресеты его не задают.
 
 `workflowPreset` (Settings, 14-й ключ) или явный `--preset` launcher'а
 выбирает `routine|plan|review|budget`: модель, thinking, пороги и continue

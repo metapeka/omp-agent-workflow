@@ -116,7 +116,7 @@ Most tools optimize **the model call**. This project optimizes **the session bou
 | Plan → worktree → verify → ff-merge loop | ✅ | ⚠️ manual / subagents | ⚠️ manual | ⚠️ manual commits | ⚠️ | ⚠️ | ⚠️ worktrees only |
 | Cleanup guard + backup ref | ✅ merged/clean/current/live checks | — | — | — | — | — | ⚠️ worktree remove |
 | Human-in-the-loop finish wizard | ✅ `/wrap` | ⚠️ | — | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| Settings UI + env fallback | ✅ OMP Settings, 13 keys | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Settings UI + env fallback | ✅ OMP Settings, 15 keys | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Works as a layer over OMP | ✅ | — own agent | — own agent | — own agent | — own agent | — own agent | ✅ host |
 
 **Legend:** ✅ first-class · ⚠️ manual or partial · — not a documented first-class feature.
@@ -151,6 +151,8 @@ The public landscape study behind this claim — PI, OMP and GitHub, 2026-11-23:
 3. The supervisor sees the marker and sends `/handoff-new` to the terminal handle of the session entry matching `marker.sessionFile` in `.omp-handoff-session.json`.
 4. `/handoff-new` builds a new session message from `continuePrompt` + the state file (32k limit, truncation marker, read-error fallback).
 5. The new session reads `HANDOFF.md` and continues. No compact event in the middle of a tool loop; the plugin waits for `turn_end` and `ctx.isIdle()`.
+
+Handoff has two independent triggers: the context percentage (`handoffAtPercent`) and the measured session spend (`handoffAtSpendUsd`, actual `usage.cost.total` from the session JSONL). Spend is read incrementally by byte offsets — each turn adds only the new tail, child sessions included — never re-read whole. `0`/`off` disables it; both triggers share one cooldown, supervisor path and `⚠ HANDOFF` status, and the marker records `reason: "context"` when the context fired (even together with spend), otherwise `"spend"`. Only measured money counts, never price-list estimates.
 
 Optional **`next-session:` advisory** — the first line of `HANDOFF.md` may carry `v=1 ts=… model=… thinking=… mode=… reason=…`. `bin/omp-yoda` validates it (syntax, 24 h freshness, model against `omp models --json`) and adds `--model`/`--thinking` at process start; explicit flags win, and an invalid, stale, duplicated, or misplaced line changes nothing. `/handoff-preflight` shows the line and its validity. The model is never switched inside a running session.
 
@@ -228,6 +230,7 @@ Settings → Plugins → `omp-agent-workflow`. Priority: **Settings > env > mode
 | `workflowMode` | `assisted` | `off` / `manual` / `assisted` / `yoda` / `yoda-supervised` |
 | `statusEnabled` | `true` | Show the `workflow` status key |
 | `handoffAtPercent` | `55` (yoda) / off | Handoff threshold; `0` = off |
+| `handoffAtSpendUsd` | off | Handoff threshold by measured session spend, $; `0` = off |
 | `handoffCooldownSeconds` | `300` | Cooldown after a handoff |
 | `contextWarnPercent` | `35` | First warning |
 | `contextSuggestPercent` | `50` | Suggest a handoff |
@@ -239,7 +242,7 @@ Settings → Plugins → `omp-agent-workflow`. Priority: **Settings > env > mode
 | `supervisorRetries` | `3` | Send/preflight retries |
 | `supervisorLogLevel` | `info` | `quiet` / `info` / `debug` |
 
-Env fallbacks: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP_CONTEXT_*`, `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`.
+Env fallbacks: `OMP_WORKFLOW_MODE`, `OMP_STATUS_ENABLED`, `OMP_HANDOFF_AT`, `OMP_HANDOFF_AT_USD`, `OMP_CONTEXT_*`, `OMP_HANDOFF_COOLDOWN_SECONDS`, `OMP_ORCA_ENABLED`, `OMP_ORCA_PREFLIGHT`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL`, `ORCA_CLI_COMMAND`.
 
 ### Modes
 

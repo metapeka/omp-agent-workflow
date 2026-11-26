@@ -1,11 +1,14 @@
 # Передача: OAW (`omp-agent-workflow`)
 
-Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
+Дата: 2026-11-27. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.6.0`; в ветке `feat/handoff-economics` — `0.6.1`:
-read-only отчёт `omp-orchestrate economics` «до/после handoff» (см.
-CHANGELOG 0.6.1). Последний код в `main` — цена границы handoff в preflight
+`main`, версия `0.6.1`; в ветке `feat/spend-handoff` — `0.7.0`:
+spend-aware handoff — Settings `handoffAtSpendUsd` (15-й ключ) и env
+`OMP_HANDOFF_AT_USD`, триггер по измеренному `usage.cost.total` с
+инкрементальными offsets, marker `reason: "spend"` (см. CHANGELOG 0.7.0).
+Последний код в `main` — read-only отчёт `omp-orchestrate economics`
+«до/после handoff» (см. CHANGELOG 0.6.1) и цена границы handoff в preflight
 из `omp-cache-monitor costs --json` (CLI нет — graceful skip, см. CHANGELOG
 0.6.0).
 Ветки 0.5.1–0.5.26 (включая `feat/doctor`, `feat/oaw-name`,
@@ -76,7 +79,7 @@ tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
 | Orchestrator 0.5 | `AUTOPLAN.md`, `STATE.json`, actions, policy, budgets |
 | Wrap 0.5.1 | `/wrap`, safe cleanup, next worktree, review |
 | Orca additive 0.5.3 | terminal list/show, `status`, `ORCA_CLI_COMMAND` |
-| Settings 0.5.4–0.5.5 | 14 ключей в Settings → Plugins (0.5.22 добавил `workflowPreset`) |
+| Settings 0.5.4–0.5.5 | 15 ключей в Settings → Plugins (0.5.22 добавил `workflowPreset`, 0.7.0 — `handoffAtSpendUsd`) |
 | Preflight 0.5.6–0.5.7 | read-only проверка перед `/handoff-new` |
 | State 0.5.8 | `/handoff-new` встраивает state-файл в новую сессию |
 | Checklist 0.5.9 | `/handoff-preflight`: чек-лист, затем таблица проверок |
@@ -85,6 +88,7 @@ tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
 | Economics 0.6.1 | `omp-orchestrate economics`: цепочка `parentSession`, граница только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1; ветка `feat/handoff-economics` |
+| Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `session_compact` spend не сбрасывает; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); ветка `feat/spend-handoff` |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -305,11 +309,12 @@ native `context_pct` не дублируется.
 ## Settings 0.5.5
 
 `package.json#omp.settings` → Settings → Plugins. Приоритет:
-**Settings > env > пресет > режим/дефолт** (D12, D16). 14 ключей:
+**Settings > env > пресет > режим/дефолт** (D12, D16). 15 ключей:
 `workflowMode`, `workflowPreset`, `statusEnabled`, `handoffAtPercent`,
-`handoffCooldownSeconds`, `contextWarnPercent`, `contextSuggestPercent`,
-`autoCompactPercent`, `orcaEnabled`, `orcaPreflight`, `supervisorEnabled`,
-`continuePrompt`, `supervisorRetries`, `supervisorLogLevel`.
+`handoffAtSpendUsd`, `handoffCooldownSeconds`, `contextWarnPercent`,
+`contextSuggestPercent`, `autoCompactPercent`, `orcaEnabled`, `orcaPreflight`,
+`supervisorEnabled`, `continuePrompt`, `supervisorRetries`,
+`supervisorLogLevel`.
 
 Launcher читает `omp plugin config list` при старте и передаёт supervisor'у
 `OMP_ORCA_*`, `OMP_SUPERVISOR_ENABLED`, `OMP_HANDOFF_PROMPT`,
@@ -395,7 +400,13 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.6.0; проверить `omp plugin list`, отсутствие
+1. 0.7.0 spend-aware handoff собран в `feat/spend-handoff`:
+   `npm run verify` (check:names, тесты, typecheck), extension load и
+   `omp plugin config list` — 15 ключей, зелёные. Осталось: ff-only merge в
+   `main`; живой прогон с `OMP_HANDOFF_AT_USD=0.01` на сессии с ценами —
+   проверить текст `HANDOFF: spend $X из порога $Y.`, marker
+   `reason: "spend"`, `⚠ HANDOFF` и что JSONL не перечитывается целиком.
+2. Новая сессия загрузит 0.6.1; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
    с advisory-строкой, метриками и строкой `usage-border` (при
    `OMP_CACHE_MONITOR_CLI` или `omp-cache-monitor` в `PATH`; без CLI строки
@@ -404,18 +415,17 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
    supervisor, exit 0). `doctor --json` на чистом репо — exit 0, без Orca —
    warn; `--strict` — exit 1. На пороге handoff проверить строку `Дерево:`
    в запросе (ветка, HEAD, грязные пути).
-2. 0.6 economics закрыт содержательно в `feat/handoff-economics` (0.6.1):
+3. 0.6 economics закрыт содержательно в `feat/handoff-economics` (0.6.1):
    `omp-orchestrate economics` строит цепочку по `parentSession`, считает
    окна «до/после», hit rate, цену первого хода и `recoveryTurns`, ищет
    компакции. Компакций в локальных данных нет — вывод data-gated, отчёт
-   пишет «нет записей». Осталось слить ветку ff-only в `main` и проверить
-   на живой цепочке (`--session`/`--dir`). OAW не парсит внутренности
-   cache-monitor.
-3. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
+   пишет «нет записей». Осталось проверить на живой цепочке
+   (`--session`/`--dir`). OAW не парсит внутренности cache-monitor.
+4. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
    `--plan-yolo` — только после замера.
-4. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
+5. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
-5. TUI E2E `/wrap` — опционально. Публикация остаётся локальной (D10).
+6. TUI E2E `/wrap` — опционально. Публикация остаётся локальной (D10).
 
 ## Риски
 
@@ -428,6 +438,11 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   `schemaVersion` → строк `usage-border`/`usage-model` нет; preflight
   остаётся read-only и не падает. Цена — фактический `usage.cost.total`,
   не ставка каталога; медиана не заменяет счёт провайдера.
+- Spend-триггер видит только то, что OMP записал в session JSONL: провайдер
+  без `usage.cost.total` даёт spend 0 и не срабатывает — это не ошибка, а
+  отсутствие измерения. Offset-чтение привязано к пути файла: смена сессии
+  начинает счёт заново, а внешняя перезапись уже прочитанного префикса
+  (не append) не учитывается до `session_start`/`session_switch`.
 - `/handoff-preflight` — эвристика и advisory; не заменяет проверки
   supervisor'а и не блокирует `/handoff-new`. Выбранные действия `commit`
   и `merge` меняют репозиторий: merge только ff-only в чистый `main`
