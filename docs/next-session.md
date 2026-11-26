@@ -87,11 +87,12 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.5.23. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.6.0. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11–D16).
 > Settings → Plugins — основной способ настройки, env — fallback.
 > `/handoff-preflight` advisory. `next-session:` применяет только launcher
 > при старте; `--preset` важнее Settings и отменяет advisory.
 > `execution: external` в `AUTOPLAN.md` отдаёт задачи Ensemble и блокирует
-> `start/verify/finish/rebase` в OAW. 0.6 economics ждёт `costs --json` от
-> cache-monitor; не парсить его внутренности. Публикация локальная (D10).
+> `start/verify/finish/rebase` в OAW. 0.6 economics: `costs --json` есть
+> (cache-monitor 0.11.0), цена границы — в preflight; не парсить внутренности
+> cache-monitor. Публикация — по разрешению владельца (D10); 0.6.0 запушен.

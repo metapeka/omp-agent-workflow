@@ -56,6 +56,12 @@ timeout 2 с/другая схема — строк нет, preflight не ме�
 0.11.0 CLI влит в его `main` (`5c9eeb8`), ветка `feat/costs-json`
 сохранена; OAW-изменения — `lib/costs-client.ts`, `test/costs-client.test.mjs`.
 
+2026-11-27: push 0.6.0 (`ecc3a01`) в `origin/main` сделан с разрешения
+владельца, CI зелёный. cache-monitor 0.11.0 опубликован
+([v0.11.0](https://github.com/metapeka/omp-cache-monitor/releases/tag/v0.11.0),
+tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
+`~/.local/bin`, preflight находит его через `PATH` без env.
+
 ## Что готово
 
 | Что | Состояние |
@@ -410,7 +416,9 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 - Установленный пакет без резолвимого OMP loader → Settings игнорируются,
   работает env fallback.
 - `costs --json` — отдельный CLI соседнего продукта: `omp plugin link` bin в
-  `PATH` не добавляет. Нет команды, timeout 2 с, exit ≠ 0 или другая
+  `PATH` не добавляет. На этой машине стоит симлинк
+  `~/.local/bin/omp-cache-monitor`; на другой — `npm link` в cache-monitor
+  или `OMP_CACHE_MONITOR_CLI`. Нет команды, timeout 2 с, exit ≠ 0 или другая
   `schemaVersion` → строк `usage-border`/`usage-model` нет; preflight
   остаётся read-only и не падает. Цена — фактический `usage.cost.total`,
   не ставка каталога; медиана не заменяет счёт провайдера.
