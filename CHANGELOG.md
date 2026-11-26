@@ -28,6 +28,15 @@ semantic for the plugin contract, not for OMP itself.
   `omp models --json` differ ≈1.6×. It needs the cache-monitor price table
   (`costs --json`), not a local guess.
 
+### Changed
+
+- Preflight action results carry an explicit status: `✓` done, `–` skipped
+  with a reason, `✗` failed. A skipped action no longer looks like success.
+- Each selected action prints a `PREFLIGHT: …` line before it runs
+  (`npm test/typecheck`, `git add + git commit`, `git merge --ff-only`).
+- An empty commit-message input now accepts the placeholder
+  (`handoff: перед сменой сессии`); cancelling the input is a skip.
+
 ### Fixed
 
 - Preflight `commit` no longer fails with `paths are ignored` when runtime

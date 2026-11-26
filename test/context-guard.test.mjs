@@ -1711,7 +1711,7 @@ describe("/handoff-preflight", () => {
 			const v = view(40, { cwd: dir, askDialog });
 			await command(commands, "handoff-preflight", v.ctx);
 
-			assert.match(v.notes.at(-1).text, /✓ проверки: test OK; typecheck OK/);
+			assert.match(v.notes.at(-1).text, /✓ проверки: выполнено — test OK; typecheck OK/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
 			assert.equal(v.notes.at(-1).level, "info");
 		} finally {
@@ -1741,10 +1741,51 @@ describe("/handoff-preflight", () => {
 			);
 			assert.equal(run("log", "-1", "--format=%s"), "test: handoff");
 			assert.equal(run("status", "--porcelain"), "");
-			assert.match(v.notes.at(-1).text, /✓ коммит: [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — test: handoff/);
 			assert.match(v.notes.at(-1).text, /PREFLIGHT · итог/);
 			assert.match(v.notes.at(-1).text, /git: чисто/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("uses the placeholder message on an empty commit input", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, { cwd: dir, askDialog, input: async () => "" });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "handoff: перед сменой сессии");
+			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("reports a cancelled commit input as skipped", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, { cwd: dir, askDialog, input: async () => undefined });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "init");
+			assert.match(
+				v.notes.at(-1).text,
+				/– коммит: пропущено — ввод сообщения отменён/,
+			);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -1828,8 +1869,8 @@ describe("/handoff-preflight", () => {
 
 			assert.equal(inputs, 0);
 			assert.equal(run("log", "-1", "--format=%s"), "init");
-			assert.match(v.notes.at(-1).text, /✗ проверки: test FAIL/);
-			assert.match(v.notes.at(-1).text, /коммит: пропущен — проверки не прошли/);
+			assert.match(v.notes.at(-1).text, /✗ проверки: ошибка — test FAIL/);
+			assert.match(v.notes.at(-1).text, /– коммит: пропущено — проверки не прошли/);
 			assert.equal(v.notes.at(-1).level, "warning");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1858,8 +1899,8 @@ describe("/handoff-preflight", () => {
 
 			assert.equal(inputs, 0);
 			assert.equal(run("log", "-1", "--format=%s"), "init");
-			assert.match(v.notes.at(-1).text, /✗ проверки: package\.json — битый JSON/);
-			assert.match(v.notes.at(-1).text, /коммит: пропущен — проверки не прошли/);
+			assert.match(v.notes.at(-1).text, /✗ проверки: ошибка — package.json битый JSON/);
+			assert.match(v.notes.at(-1).text, /– коммит: пропущено — проверки не прошли/);
 			assert.equal(v.notes.at(-1).level, "warning");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1915,7 +1956,7 @@ describe("/handoff-preflight", () => {
 			assert.deepEqual(run("show", "--name-only", "--format=", "HEAD").split("\n"), [
 				"code.ts",
 			]);
-			assert.match(v.notes.at(-1).text, /✓ коммит: [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — test: ignored runtime/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1942,7 +1983,7 @@ describe("/handoff-preflight", () => {
 
 			assert.equal(inputs, 0);
 			assert.equal(run("log", "-1", "--format=%s"), "init");
-			assert.match(v.notes.at(-1).text, /коммит: detached HEAD/);
+			assert.match(v.notes.at(-1).text, /коммит: ошибка — detached HEAD/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

@@ -140,6 +140,9 @@ Settings (аварийное выключение). Команды остают�
 - Отмена меню останавливает команду. Без `askDialog` (старый TUI-хост)
   меню пропускается, команда остаётся read-only и печатает таблицу; в
   headless/sub команда молчит.
+- Выбранные действия preflight сообщают статус `done`/`skipped`/`failed`
+  (`✓`/`–`/`✗`) с причиной; перед запуском печатается строка `PREFLIGHT: …`.
+  Пустой ввод сообщения коммита принимает placeholder, отмена — пропуск.
 - Runtime-файлы `.omp-handoff-session.json`, `.omp-handoff-request.json`,
   `.omp-handoff-supervisor.lock*`, `.omp-handoff-done.json` не считаются
   грязным деревом и не коммитятся: `commit` добавляет всё, затем снимает

@@ -650,7 +650,7 @@ function formatPreflightResult(
 ): string {
 	const actionLines =
 		actions.length > 0
-			? actions.map((action) => `${action.ok ? "✓" : "✗"} ${action.text}`)
+			? actions.map((action) => `${ACTION_MARKS[action.status]} ${action.text}`)
 			: ["— не выбраны"];
 	const sections = [
 		[DIVIDER, "PREFLIGHT · действия", ...actionLines].join("\n"),
@@ -666,9 +666,15 @@ function formatPreflightResult(
 
 export interface HandoffActionReport {
 	id: string;
-	ok: boolean;
+	status: "done" | "skipped" | "failed";
 	text: string;
 }
+
+const ACTION_MARKS: Record<HandoffActionReport["status"], string> = {
+	done: "✓",
+	skipped: "–",
+	failed: "✗",
+};
 
 /** Коммит всех изменений с сообщением из input-диалога. */
 async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport> {
@@ -676,8 +682,8 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 	if (!branch.ok || !branch.out || branch.out === "HEAD") {
 		return {
 			id: "commit",
-			ok: false,
-			text: "коммит: detached HEAD — переключись на ветку",
+			status: "failed",
+			text: "коммит: ошибка — detached HEAD, переключись на ветку",
 		};
 	}
 	const status = git(ctx.cwd, [
@@ -688,21 +694,34 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 		...RUNTIME_EXCLUDES,
 	]);
 	if (!status.ok) {
-		return { id: "commit", ok: false, text: `коммит: git status — ${status.error}` };
+		return {
+			id: "commit",
+			status: "failed",
+			text: `коммит: ошибка — git status: ${status.error}`,
+		};
 	}
-	if (!status.out) return { id: "commit", ok: true, text: "коммит: нечего коммитить" };
-	const message = await ctx.ui.input(
-		"Сообщение коммита",
-		"handoff: перед сменой сессии",
-	);
-	if (typeof message !== "string" || !message.trim()) {
-		return { id: "commit", ok: true, text: "коммит: пропущен (нет сообщения)" };
+	if (!status.out) {
+		return { id: "commit", status: "skipped", text: "коммит: пропущено — нечего коммитить" };
 	}
+	const placeholder = "handoff: перед сменой сессии";
+	const answer = await ctx.ui.input("Сообщение коммита", placeholder);
+	if (answer === undefined) {
+		return {
+			id: "commit",
+			status: "skipped",
+			text: "коммит: пропущено — ввод сообщения отменён",
+		};
+	}
+	// Пустой Enter принимает placeholder: иначе выбранное действие молча
+	// превращается в пропуск (GridSnap, 2026-11-26).
+	const message = answer.trim() || placeholder;
 	// Явный `:(exclude)`-pathspec заставляет git падать «paths are ignored»,
 	// если runtime-файлы перечислены в .gitignore (тест GridSnap 2026-11-26).
 	// Поэтому добавляем всё и снимаем runtime-пути с индекса.
 	const add = git(ctx.cwd, ["add", "-A", "--", "."], 60_000);
-	if (!add.ok) return { id: "commit", ok: false, text: `коммит: git add — ${add.error}` };
+	if (!add.ok) {
+		return { id: "commit", status: "failed", text: `коммит: ошибка — git add: ${add.error}` };
+	}
 	for (const path of RUNTIME_PATHS) {
 		git(ctx.cwd, ["reset", "-q", "--", path], 10_000);
 	}
@@ -717,16 +736,20 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 		git(ctx.cwd, ["reset", "-q"], 10_000);
 		return {
 			id: "commit",
-			ok: false,
-			text: `коммит: runtime-файлы в индексе — отменено (${stagedRuntime.out.replace(/\n/g, ", ")})`,
+			status: "failed",
+			text: `коммит: ошибка — runtime-файлы в индексе, отменено (${stagedRuntime.out.replace(/\n/g, ", ")})`,
 		};
 	}
-	const commit = git(ctx.cwd, ["commit", "-m", message.trim()], 120_000);
+	const commit = git(ctx.cwd, ["commit", "-m", message], 120_000);
 	if (!commit.ok) {
-		return { id: "commit", ok: false, text: `коммит: git commit — ${commit.error}` };
+		return { id: "commit", status: "failed", text: `коммит: ошибка — git commit: ${commit.error}` };
 	}
 	const head = git(ctx.cwd, ["rev-parse", "--short", "HEAD"]);
-	return { id: "commit", ok: true, text: `коммит: ${head.ok ? head.out : "OK"}` };
+	return {
+		id: "commit",
+		status: "done",
+		text: `коммит: создан ${head.ok ? head.out : "OK"} — ${message}`,
+	};
 }
 
 /** Находит worktree, в котором checked out `main`. */
@@ -746,14 +769,18 @@ function mainWorktree(cwd: string): string | null {
 function performMerge(cwd: string): HandoffActionReport {
 	const branch = git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
 	if (!branch.ok || !branch.out || branch.out === "HEAD") {
-		return { id: "merge", ok: false, text: "merge: не удалось определить ветку" };
+		return {
+			id: "merge",
+			status: "failed",
+			text: "merge: ошибка — не удалось определить ветку",
+		};
 	}
 	if (branch.out === "main") {
-		return { id: "merge", ok: true, text: "merge: уже на main" };
+		return { id: "merge", status: "skipped", text: "merge: пропущено — уже на main" };
 	}
 	const target = mainWorktree(cwd);
 	if (!target) {
-		return { id: "merge", ok: false, text: "merge: main worktree не найден" };
+		return { id: "merge", status: "failed", text: "merge: ошибка — main worktree не найден" };
 	}
 	const status = git(target, [
 		"status",
@@ -763,25 +790,33 @@ function performMerge(cwd: string): HandoffActionReport {
 		...RUNTIME_EXCLUDES,
 	]);
 	if (!status.ok) {
-		return { id: "merge", ok: false, text: "merge: main worktree не читается" };
+		return {
+			id: "merge",
+			status: "failed",
+			text: "merge: ошибка — main worktree не читается",
+		};
 	}
 	if (status.out) {
-		return { id: "merge", ok: false, text: "merge: main worktree грязный" };
+		return { id: "merge", status: "failed", text: "merge: ошибка — main worktree грязный" };
 	}
 	const ff = git(target, ["merge-base", "--is-ancestor", "main", branch.out]);
 	if (!ff.ok) {
 		return {
 			id: "merge",
-			ok: false,
-			text: "merge: не fast-forward — смерджи вручную",
+			status: "failed",
+			text: "merge: ошибка — не fast-forward, смерджи вручную",
 		};
 	}
 	const merge = git(target, ["merge", "--ff-only", branch.out], 120_000);
 	if (!merge.ok) {
-		return { id: "merge", ok: false, text: `merge: ${merge.error || "ошибка git"}` };
+		return {
+			id: "merge",
+			status: "failed",
+			text: `merge: ошибка — ${merge.error || "git merge"}`,
+		};
 	}
 	const head = git(target, ["rev-parse", "--short", "HEAD"]);
-	return { id: "merge", ok: true, text: `merge: main @ ${head.ok ? head.out : "OK"}` };
+	return { id: "merge", status: "done", text: `merge: main @ ${head.ok ? head.out : "OK"}` };
 }
 
 /** Запускает npm-скрипт без блокировки event loop TUI. */
@@ -833,22 +868,26 @@ async function performChecks(cwd: string): Promise<HandoffActionReport> {
 		if (code === "ENOENT") {
 			return {
 				id: "checks",
-				ok: true,
-				text: "проверки: package.json нет — пропущено",
+				status: "skipped",
+				text: "проверки: пропущено — package.json нет, тесты не запускались",
 			};
 		}
 		const message = error instanceof Error ? error.message : String(error);
 		return {
 			id: "checks",
-			ok: false,
-			text: `проверки: package.json не читается — ${message}`,
+			status: "failed",
+			text: `проверки: ошибка — package.json не читается: ${message}`,
 		};
 	}
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(text);
 	} catch {
-		return { id: "checks", ok: false, text: "проверки: package.json — битый JSON" };
+		return {
+			id: "checks",
+			status: "failed",
+			text: "проверки: ошибка — package.json битый JSON",
+		};
 	}
 	let raw: unknown = null;
 	if (parsed && typeof parsed === "object" && "scripts" in parsed) {
@@ -864,8 +903,8 @@ async function performChecks(cwd: string): Promise<HandoffActionReport> {
 	if (names.length === 0) {
 		return {
 			id: "checks",
-			ok: true,
-			text: "проверки: скриптов test/typecheck нет",
+			status: "skipped",
+			text: "проверки: пропущено — нет scripts.test/typecheck",
 		};
 	}
 	const results: string[] = [];
@@ -875,7 +914,11 @@ async function performChecks(cwd: string): Promise<HandoffActionReport> {
 		ok = ok && result.ok;
 		results.push(result.text);
 	}
-	return { id: "checks", ok, text: `проверки: ${results.join("; ")}` };
+	return {
+		id: "checks",
+		status: ok ? "done" : "failed",
+		text: `проверки: ${ok ? "выполнено" : "ошибка"} — ${results.join("; ")}`,
+	};
 }
 
 async function runHandoffActions(
@@ -884,26 +927,32 @@ async function runHandoffActions(
 	selected: ReadonlySet<string>,
 ): Promise<HandoffActionReport[]> {
 	const reports: HandoffActionReport[] = [];
-	let checksOk: boolean | null = null;
-	let commitOk: boolean | null = null;
+	let checksFailed = false;
+	let commitFailed = false;
+	const start: Record<HandoffAction["id"], string> = {
+		checks: "PREFLIGHT: запускаю npm test/typecheck…",
+		commit: "PREFLIGHT: git add + git commit…",
+		merge: "PREFLIGHT: git merge --ff-only…",
+	};
 	for (const action of actions) {
 		if (!selected.has(action.id)) continue;
-		if (action.id === "commit" && checksOk === false) {
+		if (action.id === "commit" && checksFailed) {
 			reports.push({
 				id: action.id,
-				ok: false,
-				text: "коммит: пропущен — проверки не прошли",
+				status: "skipped",
+				text: "коммит: пропущено — проверки не прошли",
 			});
 			continue;
 		}
-		if (action.id === "merge" && (checksOk === false || commitOk === false)) {
+		if (action.id === "merge" && (checksFailed || commitFailed)) {
 			reports.push({
 				id: action.id,
-				ok: false,
-				text: "merge: пропущен — есть незавершённый шаг",
+				status: "skipped",
+				text: "merge: пропущено — предыдущий шаг не завершён",
 			});
 			continue;
 		}
+		notify(ctx, start[action.id], "info");
 		const report =
 			action.id === "checks"
 				? await performChecks(ctx.cwd)
@@ -911,8 +960,8 @@ async function runHandoffActions(
 					? await performCommit(ctx)
 					: performMerge(ctx.cwd);
 		reports.push(report);
-		if (action.id === "checks") checksOk = report.ok;
-		if (action.id === "commit") commitOk = report.ok;
+		if (action.id === "checks") checksFailed = report.status === "failed";
+		if (action.id === "commit") commitFailed = report.status === "failed";
 	}
 	return reports;
 }
@@ -1464,7 +1513,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 				outcome.selected,
 			);
 			const report = runPreflight(ctx.cwd, sessionFile, stateFile);
-			const failed = actions.some((action) => !action.ok);
+			const failed = actions.some((action) => action.status === "failed");
 			notify(
 				ctx,
 				formatPreflightResult(report, actions),
