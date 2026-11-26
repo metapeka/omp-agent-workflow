@@ -142,7 +142,10 @@ Settings (аварийное выключение). Команды остают�
   headless/sub команда молчит.
 - Выбранные действия preflight сообщают статус `done`/`skipped`/`failed`
   (`✓`/`–`/`✗`) с причиной; перед запуском печатается строка `PREFLIGHT: …`.
-  Пустой ввод сообщения коммита принимает placeholder, отмена — пропуск.
+  Пустой ввод сообщения коммита принимает черновик: короткий side turn
+  (`runEphemeralTurn`, tools off) видит `git status --short` и
+  `git diff --stat`; нет API/ошибка/пустой ответ — placeholder
+  `handoff: перед сменой сессии`. Отмена ввода — пропуск.
 - Runtime-файлы `.omp-handoff-session.json`, `.omp-handoff-request.json`,
   `.omp-handoff-supervisor.lock*`, `.omp-handoff-done.json` не считаются
   грязным деревом и не коммитятся: `commit` добавляет всё, затем снимает

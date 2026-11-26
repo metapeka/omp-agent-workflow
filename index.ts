@@ -676,6 +676,46 @@ const ACTION_MARKS: Record<HandoffActionReport["status"], string> = {
 	failed: "✗",
 };
 
+/**
+ * Черновик сообщения коммита: агент видит diff и предлагает subject, человек
+ * только правит. Нет side-turn API, ошибка или пустой ответ — placeholder.
+ */
+async function draftCommitMessage(ctx: ExtensionContext): Promise<string> {
+	const fallback = "handoff: перед сменой сессии";
+	const ephemeral = ctx.runEphemeralTurn;
+	if (!ephemeral) return fallback;
+	const status = git(ctx.cwd, ["status", "--short"]);
+	const stat = git(ctx.cwd, ["diff", "--stat", "HEAD"]);
+	if (!status.ok || !status.out) return fallback;
+	const ui = ctx.ui;
+	const working = typeof ui.setWorkingMessage === "function";
+	if (working) ui.setWorkingMessage("PREFLIGHT: черновик сообщения коммита…");
+	try {
+		const result = await ephemeral({
+			promptText:
+				"Напиши subject git-коммита для этих изменений: одна строка на " +
+				"английском, conventional commits (feat/fix/docs/refactor/test/chore), " +
+				"до 72 символов, без кавычек и точки в конце. Только строка.\n\n" +
+				`Файлы:\n${status.out}\n` +
+				(stat.ok && stat.out ? `Статистика:\n${stat.out}\n` : ""),
+			tools: false,
+			maxTokens: 80,
+			minimizeEffort: true,
+		});
+		const line = result.replyText
+			.trim()
+			.split("\n")[0]
+			.replace(/^["'`]+|["'`]+$/g, "")
+			.trim();
+		if (!line || line.length > 100) return fallback;
+		return line;
+	} catch {
+		return fallback;
+	} finally {
+		if (working) ui.setWorkingMessage();
+	}
+}
+
 /** Коммит всех изменений с сообщением из input-диалога. */
 async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport> {
 	const branch = git(ctx.cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
@@ -703,9 +743,9 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 	if (!status.out) {
 		return { id: "commit", status: "skipped", text: "коммит: пропущено — нечего коммитить" };
 	}
-	const placeholder = "handoff: перед сменой сессии";
+	const placeholder = await draftCommitMessage(ctx);
 	const answer = await ctx.ui.input(
-		"Сообщение коммита (git commit -m; пусто = handoff: перед сменой сессии)",
+		"Сообщение коммита (git commit -m; пусто = предложенное)",
 		placeholder,
 	);
 	if (answer === undefined) {

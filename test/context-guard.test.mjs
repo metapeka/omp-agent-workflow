@@ -96,6 +96,7 @@ function view(percent, options = {}) {
 		newSessionResult = { cancelled: false },
 		askDialog = null,
 		input = null,
+		ephemeral = null,
 	} = options;
 	const notes = [];
 	const statuses = [];
@@ -136,6 +137,7 @@ function view(percent, options = {}) {
 		isIdle() {
 			return idle;
 		},
+		...(ephemeral ? { runEphemeralTurn: ephemeral } : {}),
 		hasPendingMessages() {
 			return pending;
 		},
@@ -1760,6 +1762,69 @@ describe("/handoff-preflight", () => {
 			const { commands } = install();
 			const { askDialog } = actionDialog(["commit"]);
 			const v = view(40, { cwd: dir, askDialog, input: async () => "" });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "handoff: перед сменой сессии");
+			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("uses a model-drafted commit message", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const prompts = [];
+			const ephemeral = async (options) => {
+				prompts.push(options);
+				return {
+					replyText: "feat(preflight): draft commit subject\nsecond line",
+					assistantMessage: {},
+				};
+			};
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => "",
+				ephemeral,
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(
+				run("log", "-1", "--format=%s"),
+				"feat(preflight): draft commit subject",
+			);
+			assert.match(prompts[0].promptText, /code\.ts/);
+			assert.equal(prompts[0].tools, false);
+			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — feat\(preflight\)/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("falls back when the draft turn fails", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => "",
+				ephemeral: async () => {
+					throw new Error("no model");
+				},
+			});
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(run("log", "-1", "--format=%s"), "handoff: перед сменой сессии");

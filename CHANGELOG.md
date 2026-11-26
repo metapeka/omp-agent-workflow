@@ -36,6 +36,11 @@ semantic for the plugin contract, not for OMP itself.
   (`npm test/typecheck`, `git add + git commit`, `git merge --ff-only`).
 - An empty commit-message input now accepts the placeholder
   (`handoff: перед сменой сессии`); cancelling the input is a skip.
+- The commit-message dialog is pre-filled with a model-drafted subject:
+  a short side turn (`runEphemeralTurn`, tools off, 80 tokens) sees
+  `git status --short` and `git diff --stat`, and the empty input accepts
+  its line. Hosts without side turns, errors and empty replies fall back to
+  the placeholder.
 
 ### Fixed
 
