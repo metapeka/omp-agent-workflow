@@ -1,6 +1,6 @@
 # Передача: omp-agent-workflow
 
-Дата: 2026-11-25. Основной репозиторий: `~/projects/omp-agent-workflow`.
+Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 `main`, версия `0.5.19`; последний код-коммит — advisory `next-session:`;
 ветки `feat/handoff-preflight`, `feat/preflight-fixes`,
 `feat/handoff-state-embed`, `feat/preflight-checklist`,
@@ -43,6 +43,7 @@ backlog — `TODO.md`.
 | Замеры 2026-11-24/25 | `docs/research/model-modes.md`: цены 9 моделей, reasoning flash/pro, handoff-payload 20 сессий, цена границы, рекомендации R1–R8 |
 | Пресеты (design) | `docs/research/workflow-presets.md`: `routine/plan/review/budget`, `next-session:` в launcher, метрики выбора; ждёт решения владельца |
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; не реализовано |
+| Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor — наш, Ф2 `execution: external` после решения владельца, Ф3 hub и `brief` — личные вне репозитория, Ф4 контрактные тесты; границы и матрица конфликтов согласованы |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
 | Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 224/224, `npm run typecheck`, extension load exit 0, HTML tag/link check + browser screenshots |
@@ -330,18 +331,23 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
    `docs/research/workflow-presets.md`. F1 (`next-session:` → launcher)
    реализован в 0.5.19, D14; имя `--preset`/`workflowPreset` и наборы —
    открыты.
-3. Решение владельца по `execution: omp|external` в `AUTOPLAN.md`: additive,
-   stop-reason `external-run`, тест на старый файл; контракт меняется (D10).
-4. `doctor` — ТЗ согласовано с соседним проектом (16 проверок, `--json`,
-   `--strict`, план опционален); реализовать в `bin/omp-orchestrate` после
-   решения, начать с read-only версии без схем.
-5. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
+3. Joint plan Ф0: контракт `status --json` (добавить `schemaVersion: 1`,
+   стабильные поля — `plan`, `state.run/current/completed/stop`, `next`;
+   `budgets.costOffsets` вне контракта) и `doctor --json`; зафиксировать в
+   `docs/contracts.md` + ссылка из вики.
+4. Joint plan Ф1: `doctor` в `bin/omp-orchestrate` — read-only, `--json`,
+   `--strict`, план опционален (нет плана → skip), 16 проверок по ТЗ; без
+   сети, таймаут пробы 2 с. Hub у соседей — только обёртка над `doctor --json`.
+5. Joint plan Ф2: `execution: omp|external` в `AUTOPLAN.md` — additive,
+   default `omp`, stop-reason `external-run`, тест на старый план; включать
+   после решения владельца (D10).
+6. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
-6. Настройки: `autoCompactPercent=60`; для окна 1M рекомендуется 40 —
+7. Настройки: `autoCompactPercent=60`; для окна 1M рекомендуется 40 —
    решение владельца.
-7. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
+8. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
-8. Решение владельца: npm/marketplace; опционально TUI E2E `/wrap`.
+9. Решение владельца: npm/marketplace; опционально TUI E2E `/wrap`.
 
 ## Риски
 
