@@ -97,6 +97,7 @@ function view(percent, options = {}) {
 		askDialog = null,
 		input = null,
 		ephemeral = null,
+		editor = null,
 	} = options;
 	const notes = [];
 	const statuses = [];
@@ -126,6 +127,7 @@ function view(percent, options = {}) {
 			},
 			...(askDialog ? { askDialog } : {}),
 			...(input ? { input } : {}),
+			...(editor ? { editor } : {}),
 		},
 		getContextUsage() {
 			return {
@@ -1829,6 +1831,84 @@ describe("/handoff-preflight", () => {
 
 			assert.equal(run("log", "-1", "--format=%s"), "handoff: перед сменой сессии");
 			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("prefills the editor with the drafted message and changed files", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const seen = [];
+			const editor = async (title, prefill) => {
+				seen.push({ title, prefill });
+				return prefill;
+			};
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				editor,
+				ephemeral: async () => ({
+					replyText: "fix: draft from model",
+					assistantMessage: {},
+				}),
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "fix: draft from model");
+			assert.match(seen[0].title, /code\.ts/);
+			assert.equal(seen[0].prefill, "fix: draft from model");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("commits the message edited in the editor", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				editor: async () => "fix: edited by hand",
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "fix: edited by hand");
+			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — fix: edited by hand/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("skips the commit when the editor is cancelled", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, { cwd: dir, askDialog, editor: async () => undefined });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "init");
+			assert.match(
+				v.notes.at(-1).text,
+				/– коммит: пропущено — ввод сообщения отменён/,
+			);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

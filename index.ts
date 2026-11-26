@@ -743,11 +743,23 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 	if (!status.out) {
 		return { id: "commit", status: "skipped", text: "коммит: пропущено — нечего коммитить" };
 	}
-	const placeholder = await draftCommitMessage(ctx);
-	const answer = await ctx.ui.input(
-		"Сообщение коммита (git commit -m; пусто = предложенное)",
-		placeholder,
-	);
+	const draft = await draftCommitMessage(ctx);
+	const changed = status.out.split("\n").filter(Boolean);
+	const summary =
+		changed.length > 3
+			? `${changed.length} файла`
+			: changed.map((line) => line.slice(3)).join(", ");
+	const title = `Сообщение коммита (git commit -m) · ${summary}`;
+	let answer: string | undefined;
+	if (typeof ctx.ui.editor === "function") {
+		// Поле с предзаполненным черновиком: видно, что будет записано.
+		answer = await ctx.ui.editor(title, draft);
+	} else {
+		answer = await ctx.ui.input(
+			"Сообщение коммита (git commit -m; пусто = предложенное)",
+			draft,
+		);
+	}
 	if (answer === undefined) {
 		return {
 			id: "commit",
@@ -755,9 +767,7 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 			text: "коммит: пропущено — ввод сообщения отменён",
 		};
 	}
-	// Пустой Enter принимает placeholder: иначе выбранное действие молча
-	// превращается в пропуск (GridSnap, 2026-11-26).
-	const message = answer.trim() || placeholder;
+	const message = answer.trim() || draft;
 	// Явный `:(exclude)`-pathspec заставляет git падать «paths are ignored»,
 	// если runtime-файлы перечислены в .gitignore (тест GridSnap 2026-11-26).
 	// Поэтому добавляем всё и снимаем runtime-пути с индекса.

@@ -144,8 +144,10 @@ Settings (аварийное выключение). Команды остают�
   (`✓`/`–`/`✗`) с причиной; перед запуском печатается строка `PREFLIGHT: …`.
   Пустой ввод сообщения коммита принимает черновик: короткий side turn
   (`runEphemeralTurn`, tools off) видит `git status --short` и
-  `git diff --stat`; нет API/ошибка/пустой ответ — placeholder
-  `handoff: перед сменой сессии`. Отмена ввода — пропуск.
+  `git diff --stat`; диалог — редактор с предзаполненным черновиком и
+  списком файлов в заголовке, без `editor` — однострочный input; нет
+  API/ошибка/пустой ответ — placeholder `handoff: перед сменой сессии`.
+  Отмена ввода — пропуск.
 - Runtime-файлы `.omp-handoff-session.json`, `.omp-handoff-request.json`,
   `.omp-handoff-supervisor.lock*`, `.omp-handoff-done.json` не считаются
   грязным деревом и не коммитятся: `commit` добавляет всё, затем снимает
