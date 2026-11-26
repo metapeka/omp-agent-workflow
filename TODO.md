@@ -23,6 +23,18 @@
       Вход готов: `docs/research/model-modes.md` — цены 9 моделей, замеры
       reasoning (n=3) и handoff-payload (20 сессий), цена границы, режим v1.
       Запрос API: `docs/research/cache-monitor-costs-api.md` (`costs --json`).
+      **2026-11-27: запрос передан агенту cache-monitor** (Orca worktree
+      `~/orca/workspaces/omp-cache-monitor/costs-json`, ветка
+      `feat/costs-json`, база 0.10.1). Чек-лист:
+  - [x] cache-monitor: CLI `costs --json` v1, тесты, docs — 0.11.0,
+        ветка `feat/costs-json`, 104 теста, установленный `bin` проверен
+        из tarball
+  - [x] ревью и ff-merge в `main` cache-monitor (`5c9eeb8`); ветка
+        `feat/costs-json` остаётся
+  - [ ] OAW: контрактный тест формы ответа + graceful skip без CLI
+  - [ ] OAW: preflight вместо `[blocked]` показывает цену границы и hit из
+        `costs --json`; `lib/orchestrator/cost.ts` остаётся fallback
+  - [ ] OAW: `npm run verify`, HANDOFF/CHANGELOG/ROADMAP 0.6
 - [x] F1 advisory `next-session:` + launcher (0.5.19, D14): parser,
       `bin/omp-next-session`, `--model`/`--thinking` при старте, показ в
       preflight; тесты.

@@ -1,6 +1,13 @@
 # Запрос: `costs --json` для `omp-cache-monitor`
 
 Статус: `[request]`, не контракт. Дата: 2026-11-26.
+2026-11-27: передан в реализацию агенту cache-monitor (Orca worktree
+`~/orca/workspaces/omp-cache-monitor/costs-json`, ветка `feat/costs-json`,
+база 0.10.1); контракт ниже — вход задачи, менять его без согласования.
+2026-11-27: реализовано в cache-monitor `0.11.0` (ff-merge `5c9eeb8` в
+`main`, ветка сохранена): `lib/costs.mjs`, `bin/omp-cache-monitor.mjs`,
+104 теста, установленный `bin` проверен из tarball; JSON-форма ниже
+совпадает.
 Адресат — `omp-cache-monitor` (соседний проект, отдельный runtime).
 Цель — закрыть 0.6 economics в OAW без парсинга внутренностей cache-monitor.
 
@@ -50,7 +57,7 @@ Read-only, без сети, exit 0 при валидном ответе; `--json
       "cacheWriteTokens": 0,
       "outputTokens": 200,
       "reasoningTokens": 0,
-      "hitPercent": 98
+      "hitPercent": 49.5
     }
   ],
   "models": [
@@ -58,7 +65,7 @@ Read-only, без сети, exit 0 при валидном ответе; `--json
       "model": "cline-pass/deepseek-v4.1-flash-1017",
       "turns": 20,
       "costUsd": 0.104,
-      "hitPercent": 99.2
+      "hitPercent": 49.7
     }
   ],
   "notes": ["cold prefix after model switch"]
