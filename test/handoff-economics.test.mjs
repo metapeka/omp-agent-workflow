@@ -18,9 +18,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
 	EconomicsSessionError,
+	MAX_CHAIN_NODES,
 	buildEconomicsReport,
 	recoveryTurns,
 	renderEconomics,
@@ -28,7 +30,7 @@ import {
 	windowMetrics,
 } from "../lib/handoff-economics.ts";
 
-const CLI = new URL("../bin/omp-orchestrate", import.meta.url).pathname;
+const CLI = fileURLToPath(new URL("../bin/omp-orchestrate", import.meta.url));
 const MISSING_CLI = join(tmpdir(), "does-not-exist-omp-cache-monitor");
 
 let tempDirs = [];
@@ -300,6 +302,47 @@ describe("handoff economics: chain and boundaries", () => {
 		assert.equal(narrow.turnsWindow, 1);
 		assert.equal(narrow.boundaries[0].before.turns, 1);
 	});
+
+	it("truncates the chain at MAX_CHAIN_NODES with a note", () => {
+		const dir = tempDir();
+		const files = [];
+		for (let index = 0; index < MAX_CHAIN_NODES + 2; index += 1) {
+			const file = join(dir, `s${String(index).padStart(2, "0")}.jsonl`);
+			writeSession(file, {
+				id: `s${index}`,
+				timestamp: `2026-11-22T00:${String(index).padStart(2, "0")}:00.000Z`,
+				parent: index === 0 ? null : files[index - 1],
+			});
+			files.push(file);
+		}
+		const report = buildEconomicsReport({
+			sessionFile: files[files.length - 1],
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: MISSING_CLI },
+		});
+		assert.equal(report.chain.length, MAX_CHAIN_NODES);
+		assert.equal(report.chain[report.chain.length - 1].session, files[files.length - 1]);
+		assert.ok(
+			report.notes.some((note) =>
+				note.includes(`обрезана на ${MAX_CHAIN_NODES} узлах`),
+			),
+		);
+	});
+
+	it("notes a self-cycle and stops", () => {
+		const dir = tempDir();
+		const file = join(dir, "self.jsonl");
+		writeSession(file, {
+			id: "self",
+			timestamp: "2026-11-23T00:00:00.000Z",
+			parent: file,
+		});
+		const report = buildEconomicsReport({
+			sessionFile: file,
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: MISSING_CLI },
+		});
+		assert.equal(report.chain.length, 1);
+		assert.ok(report.notes.some((note) => note.startsWith("цикл parentSession")));
+	});
 });
 
 describe("handoff economics: broken and missing input", () => {
@@ -404,6 +447,7 @@ describe("handoff economics: broken and missing input", () => {
 			env: { ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() },
 		});
 		assert.deepEqual(report.boundaries, []);
+		assert.ok(!report.notes.includes("границ handoff в цепочке нет"));
 		assert.ok(
 			report.notes.some(
 				(note) =>
@@ -628,6 +672,46 @@ describe("handoff economics: CLI", () => {
 		assert.match(result.stderr, /--turns/);
 	});
 
+	it("validates --turns before looking for a session", () => {
+		const empty = tempDir();
+		const result = runCli([
+			"economics",
+			"--json",
+			"--dir",
+			empty,
+			"--turns",
+			"abc",
+		]);
+		assert.equal(result.status, 2);
+		assert.match(result.stderr, /--turns/);
+	});
+
+	it("rejects an empty --turns value instead of clamping it", () => {
+		const { child } = chainFixture();
+		const result = runCli([
+			"economics",
+			"--json",
+			"--session",
+			child,
+			"--turns=",
+		]);
+		assert.equal(result.status, 2);
+		assert.equal(result.stdout.trim(), "");
+		assert.match(result.stderr, /--turns/);
+	});
+
+	it("accepts --session-file as an alias of --session", () => {
+		const { child } = chainFixture();
+		const result = runCli(
+			["economics", "--json", "--session-file", child, "--turns", "2"],
+			{ ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() },
+		);
+		assert.equal(result.status, 0, result.stderr);
+		const report = JSON.parse(result.stdout);
+		assert.equal(report.session, child);
+		assert.equal(report.boundaries.length, 1);
+	});
+
 	it("skips gracefully without cache-monitor: exit 0, empty boundaries", () => {
 		const { child } = chainFixture();
 		const result = runCli(
@@ -657,9 +741,52 @@ describe("handoff economics: human output", () => {
 		assert.ok(text.includes("+$0.0405"));
 		assert.ok(text.includes("hit"));
 		assert.ok(text.includes("-100.0 pp"));
-		assert.ok(text.includes("граница: первый ход $0.0500 · холодных 2"));
+		assert.ok(text.includes("граница: первый ход $0.0500 · холодных подряд 2"));
 		assert.ok(text.includes("Компакции: нет записей."));
 		assert.ok(!text.includes("schemaVersion"));
+	});
+
+	it("renders two boundaries as separate blocks with one header", () => {
+		const dir = tempDir();
+		const first = join(dir, "2026-11-21T00-00-00-000Z_aaaa0001.jsonl");
+		const second = join(dir, "2026-11-22T00-00-00-000Z_bbbb0002.jsonl");
+		const third = join(dir, "2026-11-23T00-00-00-000Z_cccc0003.jsonl");
+		writeSession(first, { id: "a", timestamp: "2026-11-21T00:00:00.000Z" });
+		writeSession(second, {
+			id: "b",
+			timestamp: "2026-11-22T00:00:00.000Z",
+			parent: first,
+			handoff: true,
+		});
+		writeSession(third, {
+			id: "c",
+			timestamp: "2026-11-23T00:00:00.000Z",
+			parent: second,
+			handoff: true,
+		});
+		for (const file of [first, second, third]) {
+			writeCosts(file, [turn("a", 0.001, 0, 100)]);
+		}
+		const report = buildEconomicsReport({
+			sessionFile: third,
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() },
+		});
+		assert.equal(report.boundaries.length, 2);
+		const text = renderEconomics(report);
+		assert.ok(text.startsWith("HANDOFF ECONOMICS · 2 границы"));
+		const lines = text.split("\n");
+		assert.equal(lines.filter((line) => line.startsWith("FROM")).length, 1);
+		assert.equal(
+			lines.filter((line) => line.startsWith("граница:")).length,
+			2,
+		);
+		assert.ok(text.includes("aaaa0001"));
+		assert.ok(text.includes("bbbb0002"));
+		assert.ok(text.includes("cccc0003"));
+		// Каждая граница — свой блок: между ними пустая строка.
+		assert.ok(
+			lines.filter((line) => line === "").length >= 2,
+		);
 	});
 
 	it("renders the no-boundary and no-compaction states honestly", () => {

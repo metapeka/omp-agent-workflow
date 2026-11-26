@@ -48,7 +48,8 @@ const USAGE = `Использование:
   omp-orchestrate stop --reason REASON [--detail TEXT] [--json]
   omp-orchestrate resume [--json]
   omp-orchestrate doctor [--json] [--strict]
-  omp-orchestrate economics [--session FILE] [--turns N] [--json]
+  omp-orchestrate economics [--session FILE] [--turns N] [--json] [--dir PATH]
+    (--session-file — то же, что --session; без --session берётся свежая живая запись .omp-handoff-session.json)
 
 Общие флаги:
   --dir PATH            control worktree (default: cwd)
@@ -183,24 +184,32 @@ function render(result) {
 }
 
 function runEconomics() {
-	const file = values.session ?? resolveLatestSession(resolve(values.dir));
+	// Аргументы проверяются до поиска сессии: `--turns abc` без сессии — exit 2.
+	let turns;
+	if (values.turns !== undefined) {
+		const raw = values.turns.trim();
+		turns = raw === "" ? Number.NaN : Number(raw);
+		if (!Number.isInteger(turns)) {
+			console.error(
+				`omp-orchestrate: --turns: expected integer 1..100, got "${values.turns}"`,
+			);
+			process.exitCode = 2;
+			return;
+		}
+	}
+	// `--session-file` — историческое имя того же флага (spend у orchestrator).
+	const requested = values.session ?? values["session-file"];
+	const explicit =
+		typeof requested === "string" && requested.trim() !== ""
+			? requested
+			: undefined;
+	const file = explicit ?? resolveLatestSession(resolve(values.dir));
 	if (!file) {
 		console.error(
 			"omp-orchestrate: economics: сессия не найдена; передайте --session FILE",
 		);
 		process.exitCode = 1;
 		return;
-	}
-	let turns;
-	if (values.turns !== undefined) {
-		turns = Number(values.turns);
-		if (!Number.isInteger(turns)) {
-			console.error(
-				`omp-orchestrate: --turns: expected integer, got "${values.turns}"`,
-			);
-			process.exitCode = 2;
-			return;
-		}
 	}
 	try {
 		const report = buildEconomicsReport({ sessionFile: file, turns });

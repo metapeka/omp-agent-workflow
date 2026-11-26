@@ -16,6 +16,7 @@ import { basename, resolve } from "node:path";
 import type { CostsTurn } from "./costs-client.ts";
 import { readCostsSummary, resolveCostsCommand } from "./costs-client.ts";
 import { parseSessionInfo, pidAlive } from "./session-info.ts";
+import { sessionLines } from "./session-metrics.ts";
 
 /** Лимит цепочки: защита от огромного/циклического генеалогического дерева. */
 export const MAX_CHAIN_NODES = 20;
@@ -132,11 +133,13 @@ function isCompactionRecord(record: Record<string, unknown>): boolean {
  * компакции. Битые строки пропускаются — усечённый хвост не рушит отчёт.
  */
 function scanSession(file: string): SessionScan {
-	const raw = readFileSync(file, "utf8");
+	// sessionLines молча возвращает пустое на unreadable-файле; для стартовой
+	// сессии это должно быть ошибкой, поэтому явно требуем чтение.
+	accessSync(file, constants.R_OK);
 	let meta: SessionMeta | null = null;
 	let handoff = false;
 	const compactions: EconomicsCompaction[] = [];
-	for (const line of raw.split("\n")) {
+	for (const line of sessionLines(file)) {
 		if (line.length === 0) continue;
 		let parsed: unknown;
 		try {
@@ -360,11 +363,15 @@ export function buildEconomicsReport(input: EconomicsInput): EconomicsReport {
 	};
 
 	const boundaries: EconomicsBoundary[] = [];
+	// Найденная пара и посчитанная граница — разные вещи: без отчёта costs
+	// пара есть, а границы нет, и «границ нет» было бы враньём.
+	let handoffPairs = 0;
 	if (!cliMissing) {
 		for (let index = 1; index < chain.length; index += 1) {
 			const parent = chain[index - 1];
 			const child = chain[index];
 			if (!child.handoff) continue;
+			handoffPairs += 1;
 			const parentTurns = readTurns(parent.session);
 			const childTurns = readTurns(child.session);
 			if (!parentTurns || !childTurns) {
@@ -424,7 +431,7 @@ export function buildEconomicsReport(input: EconomicsInput): EconomicsReport {
 		notes.push(
 			"omp-cache-monitor не найден — границы не считаются (read-only)",
 		);
-	} else if (boundaries.length === 0) {
+	} else if (boundaries.length === 0 && handoffPairs === 0) {
 		notes.push("границ handoff в цепочке нет");
 	}
 	if (compactions.length === 0) notes.push("компакций не найдено");
@@ -538,7 +545,7 @@ export function renderEconomics(report: EconomicsReport): string {
 			];
 			return {
 				rows: [costRow, hitRow],
-				foot: `граница: первый ход ${formatMoney(boundary.boundary.firstTurnUsd)} · холодных ${boundary.boundary.recoveryTurns}`,
+				foot: `граница: первый ход ${formatMoney(boundary.boundary.firstTurnUsd)} · холодных подряд ${boundary.boundary.recoveryTurns}`,
 			};
 		});
 		const widths = columnWidths([
