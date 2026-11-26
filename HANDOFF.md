@@ -1,6 +1,8 @@
-# Передача: omp-agent-workflow
+# Передача: OAW (`omp-agent-workflow`)
 
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
+OAW — короткое имя продукта; `workflow` — только его режимы и ключи
+(`workflowMode`, статус-ключ).
 `main`, версия `0.5.20`; последний код-коммит — CLI JSON v1 и `doctor`;
 ветки `feat/handoff-preflight`, `feat/preflight-fixes`,
 `feat/handoff-state-embed`, `feat/preflight-checklist`,

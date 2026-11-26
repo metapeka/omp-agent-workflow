@@ -1,8 +1,8 @@
-# omp-agent-workflow — вики проекта
+# OAW — omp-agent-workflow: вики проекта
 
-Карта знаний по проекту. Цель — не переоткрывать каждый раз, как устроен
-OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
-объясняет, где что лежит и почему сделано именно так.
+Карта знаний по OAW (`omp-agent-workflow`). Цель — не переоткрывать каждый
+раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
+тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
 Версия: `0.5.20` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff

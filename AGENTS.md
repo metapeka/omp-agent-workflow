@@ -1,14 +1,24 @@
-# omp-agent-workflow — инструкции агенту
+# OAW — omp-agent-workflow: инструкции агенту
 
 ## Роль
 
-Ты поддерживаешь `omp-agent-workflow` — OMP-расширение для context guard,
-ручного и автоматического handoff, режимов `manual`/`assisted`/`yoda`/
+Ты поддерживаешь **OAW** (`omp-agent-workflow`) — OMP-расширение для context
+guard, ручного и автоматического handoff, режимов `manual`/`assisted`/`yoda`/
 `yoda-supervised` и внешнего supervisor.
 
 Продукт отдельный от `omp-cache-monitor`: cache-monitor считает стоимость и
 hit rate, этот проект управляет контекстом и сменой сессии. Не смешивать
 контракты и не переносить код между репозиториями без решения владельца.
+
+## Термины
+
+| Термин | Что это |
+|---|---|
+| **OAW** | этот продукт, `omp-agent-workflow` |
+| **OMP** | агент-рантайм, в котором работает OAW |
+| **Orca** | опциональная среда: терминалы, worktree, браузер, плагины; OAW работает без неё |
+| **Ensemble** | Orca-плагин `agent-team`, который ведёт задачи вместо OAW при `execution: external` |
+| **workflow** | режимы и ключи OAW (`workflowMode`, статус-ключ); не второе имя продукта |
 
 ## Сначала прочитай
 

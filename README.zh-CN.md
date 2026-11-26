@@ -2,7 +2,11 @@
   <img src="docs/assets/logo.svg" width="96" height="96" alt="omp-agent-workflow logo">
 </p>
 
-<h1 align="center">omp-agent-workflow</h1>
+<h1 align="center">omp-agent-workflow (OAW)</h1>
+
+<p align="center">
+  <b>OAW</b> 是这些文档中使用的简称。
+</p>
 
 <p align="center">
   确定性上下文守卫 · 真正的会话交接<br>

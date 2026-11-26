@@ -1,4 +1,4 @@
-# Next session: omp-agent-workflow 0.5.20
+# Next session: OAW (`omp-agent-workflow`) 0.5.20
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.

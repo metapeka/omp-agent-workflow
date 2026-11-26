@@ -6,6 +6,13 @@ semantic for the plugin contract, not for OMP itself.
 
 ## [Unreleased]
 
+### Docs
+
+- Short product name **OAW** (`omp-agent-workflow`) is defined once in
+  `AGENTS.md` (terms table), all three READMEs, the wiki and `HANDOFF.md`.
+  `workflow` keeps meaning the modes/keys (`workflowMode`, status key), not
+  a second product name.
+
 ### Added
 
 - `docs/commands.md` — full command guide: slash commands, the
