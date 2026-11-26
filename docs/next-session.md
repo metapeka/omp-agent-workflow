@@ -1,12 +1,12 @@
-# Next session: OAW (`omp-agent-workflow`) 0.5.22
+# Next session: OAW (`omp-agent-workflow`) 0.5.23
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.5.22`.
-- Ветки 0.5.1–0.5.22 (включая `feat/doctor`, `feat/oaw-name`,
+- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.5.23`.
+- Ветки 0.5.1–0.5.23 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`) слиты ff-only; worktrees удалены.
 - Готово: 0.3 (guard/handoff/Yoda), 0.5 (orchestrator), 0.5.1 (`/wrap`),
   0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4–0.5.5
@@ -18,7 +18,9 @@
   0.5.21 (`execution: omp|external`: `external` ведёт Ensemble, OAW
   отказывает `start/verify/finish/rebase`),
   0.5.22 (пресеты `routine/plan/review/budget`: `--preset` и
-  `workflowPreset`).
+  `workflowPreset`), 0.5.23 (метрики preflight: размер state, cache hit,
+  reasoning share и spend сессии, план/gate/deps, run spend; цена
+  границы — до `costs --json`).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
@@ -42,8 +44,7 @@
 1. **0.6 economics**: запрос `costs --json` готов в
    `docs/research/cache-monitor-costs-api.md`; реализация — у cache-monitor.
    Не парсить его внутренности.
-2. F3-метрики preflight (`docs/research/workflow-presets.md`) — можно без
-   решения; F4 `--plan-yolo` — только после замера.
+2. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
 3. Публикация остаётся локальной (`omp plugin link`; D10).
 4. Hub старта сессии и `brief` — личный runbook, вне продукта (joint plan
    Ф3); `doctor --json` уже готов как источник проверок.
@@ -77,7 +78,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.5.22. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.5.23. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11–D16).
 > Settings → Plugins — основной способ настройки, env — fallback.
 > `/handoff-preflight` advisory. `next-session:` применяет только launcher

@@ -11,10 +11,11 @@ OAW — короткое имя продукта; `workflow` — только е
 `docs/README.md`; backlog — `TODO.md`.
 
 Сессия 2026-11-26 (вторая) закрыта: F3-метрики preflight проверены
-(`npm test` 275/275, `typecheck`, `check:names`) и закоммичены `4eeff3d`;
-дерево чистое. Публикация остаётся локальной (D10); запрос `costs --json`
-для 0.6 сформулирован и ждёт cache-monitor (в 0.10.1 CLI нет — только
-`/cache-monitor costs` в TUI).
+(`npm run verify`, `check:names`, extension load) и закоммичены `4eeff3d`;
+review-находки исправлены (spend при нулевом output, `STATE.plan.path`,
+`formatTokens`, UTF-8 тест); дерево чистое после коммитов. Публикация
+остаётся локальной (D10); запрос `costs --json` для 0.6 сформулирован и
+ждёт cache-monitor (в 0.10.1 CLI нет — только `/cache-monitor costs` в TUI).
 
 `main` впереди `origin/main` на несколько коммитов; push не делался (D10).
 
@@ -58,7 +59,7 @@ OAW — короткое имя продукта; `workflow` — только е
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
-| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 275/275, `npm run typecheck`, extension load exit 0, launcher `--preset`/`--preset=`, HTML tag/link check + browser screenshots |
+| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test`, `npm run typecheck`, extension load exit 0, launcher `--preset`/`--preset=`, HTML tag/link check + browser screenshots |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
