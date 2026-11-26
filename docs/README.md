@@ -4,7 +4,7 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.25` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.26` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
 `next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты + метрики
@@ -76,6 +76,9 @@ handoff остаётся read-only, контракт marker/session не мен�
 расчётной шириной и переносом на широком терминале, группы с иконками и
 вердиктом сверху уже 70 колонок; глифы из `theme.symbol`, `ascii`-пресет
 даёт `[+]`/`[!]`/`[-]`. Формат — [commands.md](commands.md).
+`0.5.26` — preflight предлагает действие `push`, когда у ветки есть upstream
+и незапушенные коммиты: `git push` без `--force`, только по выбору в меню;
+упавшие проверки или commit пропускают push.
 
 ## С чего начать
 

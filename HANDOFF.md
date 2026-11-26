@@ -3,12 +3,13 @@
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.5.25`; последний код — табличный вывод `/handoff-preflight`
-(вариант C + fallback D, глифы `theme.symbol`, см. CHANGELOG 0.5.25).
-Ветки 0.5.1–0.5.25 (включая `feat/doctor`, `feat/oaw-name`,
+`main`, версия `0.5.26`; последний код — действие `push` в меню preflight
+(только при upstream и незапушенных коммитах, без `--force`, см. CHANGELOG
+0.5.26).
+Ветки 0.5.1–0.5.26 (включая `feat/doctor`, `feat/oaw-name`,
 `feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`,
-`feat/handoff-flight-recorder`, `feat/preflight-output`) слиты ff-only,
-worktrees удалены. GitHub:
+`feat/handoff-flight-recorder`, `feat/preflight-output`,
+`feat/preflight-push`) слиты ff-only, worktrees удалены. GitHub:
 `metapeka/omp-agent-workflow`
 (public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
 `docs/README.md`; backlog — `TODO.md`.
@@ -38,6 +39,12 @@ README EN/RU/ZH. Проверено `npm run verify`.
 переносом (широкий терминал) и группы с иконками + вердикт сверху (уже 70
 колонок); глифы из `theme.symbol` (`✔ ⦸ ✘`, ascii `[+]`). Push 0.5.24
 сделан (`8326f1c`), коммиты 0.5.25 — локальные, до разрешения.
+
+0.5.26: preflight предлагает действие `push`, когда у ветки есть upstream и
+незапушенные коммиты; `git push` без `--force` (timeout 120 с), только по
+выбору в меню; отказ remote не двигает ref; без upstream действия нет.
+Упавшие проверки или commit пропускают push. Коммиты 0.5.25–0.5.26
+локальные, push не делался.
 
 ## Что готово
 
@@ -76,6 +83,7 @@ README EN/RU/ZH. Проверено `npm run verify`.
 | Метрики 0.5.23 | `lib/session-metrics.ts` + строки preflight: размер state против 32k, cache hit, reasoning share и spend сессии из root JSONL, прогресс плана с gate/deps, attempts, run spend; цена границы — `[blocked]` до `costs --json` |
 | Flight recorder 0.5.24 | `workingTreeSnapshot()`: ветка, короткий HEAD, до 6 незакоммиченных путей в тексте запроса HANDOFF; runtime-файлы исключены; контракт marker/session не меняется; карта защит — `docs/guards.md` |
 | Вывод preflight 0.5.25 | Таблица `GROUP  ST  DETAIL` (расчётная ширина, перенос деталей) и fallback-группы с иконками уже 70 колонок; глифы `theme.symbol` (unicode/nerd/ascii), unicode-фолбэк; `✔ ⦸ ✘` у действий и вердикта; формат — `docs/commands.md` |
+| Push в меню 0.5.26 | Действие `push` при upstream и незапушенных коммитах: `git push` без `--force`, timeout 120 с; отказ remote не двигает ref; skip после упавших проверок/commit; тесты на успех/отказ/пропуск |
 | Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md`: `costs --json` v1 для 0.6 economics; в cache-monitor 0.10.1 CLI нет (только `/cache-monitor costs` в TUI) |
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; Ф1 реализован в 0.5.20 |
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
@@ -365,7 +373,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.25; проверить `omp plugin list`, отсутствие
+1. Новая сессия загрузит 0.5.26; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
    с advisory-строкой и метриками (state/usage/plan), `SUP OFF` в TUI,
    `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и

@@ -1605,6 +1605,16 @@ function preflightRepo(files) {
 	return { dir, run };
 }
 
+function preflightRemote(files) {
+	const { dir, run } = preflightRepo(files);
+	const remote = mkdtempSync(join(tmpdir(), "cg-remote-"));
+	const bare = spawnSync("git", ["init", "-q", "--bare", remote], { encoding: "utf8" });
+	assert.equal(bare.status, 0, bare.stderr);
+	run("remote", "add", "origin", remote);
+	run("push", "-q", "-u", "origin", "main");
+	return { dir, run, remote };
+}
+
 function actionDialog(selectedIds = []) {
 	const asked = [];
 	const askDialog = async (questions) => {
@@ -2477,6 +2487,119 @@ describe("/handoff-preflight", () => {
 			assert.equal(after.notes[0].level, "info");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("offers push for unpushed commits and pushes them", async () => {
+		const { dir, run, remote } = preflightRemote({
+			"HANDOFF.md": "# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "index.ts"), "export const x = 1;\n");
+			run("add", "-A");
+			run("commit", "-q", "-m", "next");
+			const { commands } = install();
+			const { asked, askDialog } = actionDialog(["push"]);
+			const v = view(40, { cwd: dir, askDialog });
+
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.deepEqual(
+				asked[0].map((question) => question.id),
+				["checks", "push"],
+			);
+			assert.match(v.notes.at(-1).text, /✔ push: 1 коммит в origin\/main/);
+			assert.match(v.notes.at(-1).text, /✔ preflight: OK/);
+			const pushed = spawnSync("git", ["-C", remote, "rev-parse", "main"], {
+				encoding: "utf8",
+			});
+			assert.equal(pushed.stdout.trim(), run("rev-parse", "HEAD"));
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+			rmSync(remote, { recursive: true, force: true });
+		}
+	});
+
+	it("does not offer push when the upstream is synced", async () => {
+		const { dir, remote } = preflightRemote({
+			"HANDOFF.md": "# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const { asked, askDialog } = actionDialog();
+			const v = view(40, { cwd: dir, askDialog });
+
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.deepEqual(
+				asked[0].map((question) => question.id),
+				["checks"],
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+			rmSync(remote, { recursive: true, force: true });
+		}
+	});
+
+	it("reports a rejected push without forcing", async () => {
+		const { dir, run, remote } = preflightRemote({
+			"HANDOFF.md": "# state\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			mkdirSync(join(remote, "hooks"), { recursive: true });
+			writeFileSync(join(remote, "hooks", "pre-receive"), "#!/bin/sh\nexit 1\n", {
+				mode: 0o755,
+			});
+			writeFileSync(join(dir, "index.ts"), "export const x = 1;\n");
+			run("add", "-A");
+			run("commit", "-q", "-m", "next");
+			const before = spawnSync("git", ["-C", remote, "rev-parse", "main"], {
+				encoding: "utf8",
+			}).stdout.trim();
+			const { commands } = install();
+			const { askDialog } = actionDialog(["push"]);
+			const v = view(40, { cwd: dir, askDialog });
+
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(v.notes.at(-1).text, /✘ push: ошибка/);
+			assert.match(v.notes.at(-1).text, /preflight: блокеры/);
+			const after = spawnSync("git", ["-C", remote, "rev-parse", "main"], {
+				encoding: "utf8",
+			}).stdout.trim();
+			assert.equal(after, before, "remote ref must not move");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+			rmSync(remote, { recursive: true, force: true });
+		}
+	});
+
+	it("skips push when the checks fail", async () => {
+		const { dir, run, remote } = preflightRemote({
+			"HANDOFF.md": "# state\n",
+			"package.json": JSON.stringify({ scripts: { test: "exit 1" } }),
+		});
+		try {
+			writeFileSync(join(dir, "index.ts"), "export {};\n");
+			run("add", "-A");
+			run("commit", "-q", "-m", "next");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["checks", "push"]);
+			const v = view(40, { cwd: dir, askDialog });
+
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(v.notes.at(-1).text, /✘ проверки: ошибка/);
+			assert.match(
+				v.notes.at(-1).text,
+				/⦸ push: пропущено — предыдущий шаг не завершён/,
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+			rmSync(remote, { recursive: true, force: true });
 		}
 	});
 

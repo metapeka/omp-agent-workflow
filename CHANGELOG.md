@@ -4,6 +4,26 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.5.26] — 2026-11-26
+
+### Added
+
+- Preflight offers a `push` action when the current branch has an upstream
+  and unpushed commits: `git push` without `--force`, 120 s timeout, the
+  remote ref never moves on rejection, and a branch without upstream gets no
+  action (the warning stays). The action runs only when the user selects it
+  in the menu, like `commit` and `merge`.
+- Failed selected checks skip `push` in the same run; a failed `commit`
+  skips it too.
+- Tests: push happens and the remote ref matches HEAD, no action when the
+  upstream is synced, rejected push keeps the remote ref, push skipped after
+  failed checks.
+
+### Docs
+
+- `commands.md` menu table, FAQ answer on preflight pushing, `guards.md`
+  row; version `0.5.26`.
+
 ## [0.5.25] — 2026-11-26
 
 ### Changed

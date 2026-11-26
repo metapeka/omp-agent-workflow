@@ -41,6 +41,7 @@ flowchart TD
 | Одноразовый `omp "…"` затирает terminal handle живой сессии | session info — карта по `pid`, merge + dead prune, lock + atomic rename | `session_start`, `session_switch` | 0.5.16 |
 | Cleanup worktree убивает SIGTERM'ом живую сессию | guard: merged, clean, не current, нет процессов/JIT-терминалов; без `--force`/`-D`; ветка остаётся, tip в backup-ref | `/wrap`, `finish` | 0.5.14 |
 | Commit в preflight утаскивает runtime-файлы или падает на `.gitignore` | add-all, затем снятие `.omp-handoff-*` с индекса; остались — abort | меню preflight | 0.5.23 |
+| Незапушенные коммиты | действие `push` в меню preflight (только по выбору, `git push` без `--force`, отказ remote не форсится) | меню preflight | 0.5.26 |
 | State раздут и съедает контекст новой сессии | лимит 32 000 символов + маркер обрезки с полным размером и путём | `/handoff-new` | 0.5.8, 0.5.15 |
 | **Незакоммиченная работа не видна новой сессии** | **flight recorder: ветка, HEAD и до 6 грязных путей в тексте handoff-запроса** | `checkHandoff` перед `sendUserMessage` | **0.5.24** |
 | Плагин мешает, когда не нужен | `workflowMode: off` — ни статуса, ни предупреждений, ни session info, launcher без supervisor | все хуки | 0.5.18 |

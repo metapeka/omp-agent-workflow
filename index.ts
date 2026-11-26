@@ -510,7 +510,7 @@ export function runPreflight(
 				add("pass", `upstream ${upstream.out}: синхронизирован`);
 			} else {
 				if (ahead > 0)
-					add("fail", `upstream ${upstream.out}: не запушено ${commits(ahead)}`);
+					add("fail", `upstream ${upstream.out}: не запушено ${commits(ahead)}`, "upstream");
 				if (behind > 0)
 					add(
 						"warn",
@@ -802,7 +802,7 @@ export function formatPreflight(
 
 /** Действия, которые preflight умеет выполнить сам; остальное — вручную/агентом. */
 interface HandoffAction {
-	id: "checks" | "commit" | "merge";
+	id: "checks" | "commit" | "merge" | "push";
 	label: string;
 	question: string;
 	description: string;
@@ -829,6 +829,13 @@ const MERGE_ACTION: HandoffAction = {
 	description: "fast-forward в чистый main worktree; при конфликте — ошибка",
 };
 
+const PUSH_ACTION: HandoffAction = {
+	id: "push",
+	label: "push",
+	question: "Запушить коммиты в upstream?",
+	description: "git push без --force в upstream текущей ветки; ошибка не форсится",
+};
+
 const MANUAL_HANDOFF_STEPS = [
 	"завершить задачу — сессию можно закрывать",
 	"обновить HANDOFF.md под следующую сессию",
@@ -844,6 +851,10 @@ function actionsForPreflight(report: PreflightReport): HandoffAction[] {
 	const actions: HandoffAction[] = [CHECKS_ACTION];
 	if (byId.get("worktree")?.status === "fail") actions.push(COMMIT_ACTION);
 	if (byId.get("merge")?.status === "warn") actions.push(MERGE_ACTION);
+	const upstream = byId.get("upstream");
+	if (upstream?.status === "fail" && /не запушено/.test(upstream.text)) {
+		actions.push(PUSH_ACTION);
+	}
 	return actions;
 }
 
@@ -1066,6 +1077,45 @@ function mainWorktree(cwd: string): string | null {
 	return null;
 }
 
+/** `git push` в upstream текущей ветки: без `--force`, ошибка не форсится. */
+function performPush(cwd: string): HandoffActionReport {
+	const upstream = git(cwd, [
+		"rev-parse",
+		"--abbrev-ref",
+		"--symbolic-full-name",
+		"@{u}",
+	]);
+	if (!upstream.ok || !upstream.out) {
+		return {
+			id: "push",
+			status: "failed",
+			text: "push: ошибка — у ветки нет upstream",
+		};
+	}
+	const ahead = git(cwd, ["rev-list", "--count", "@{u}..HEAD"]);
+	const count = Number(ahead.out);
+	if (!ahead.ok || !Number.isFinite(count)) {
+		return {
+			id: "push",
+			status: "failed",
+			text: "push: ошибка — не удалось посчитать коммиты",
+		};
+	}
+	if (count === 0) {
+		return { id: "push", status: "skipped", text: "push: пропущено — нечего пушить" };
+	}
+	const result = git(cwd, ["push"], 120_000);
+	if (!result.ok) {
+		const reason = result.error || result.out || "git push";
+		return { id: "push", status: "failed", text: `push: ошибка — ${reason}` };
+	}
+	return {
+		id: "push",
+		status: "done",
+		text: `push: ${commits(count)} в ${upstream.out}`,
+	};
+}
+
 /** Fast-forward merge текущей ветки в main worktree; без force. */
 function performMerge(cwd: string): HandoffActionReport {
 	const branch = git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
@@ -1234,6 +1284,7 @@ async function runHandoffActions(
 		checks: "PREFLIGHT: запускаю npm test/typecheck…",
 		commit: "PREFLIGHT: git add + git commit…",
 		merge: "PREFLIGHT: git merge --ff-only…",
+		push: "PREFLIGHT: git push…",
 	};
 	for (const action of actions) {
 		if (!selected.has(action.id)) continue;
@@ -1253,13 +1304,23 @@ async function runHandoffActions(
 			});
 			continue;
 		}
+		if (action.id === "push" && (checksFailed || commitFailed)) {
+			reports.push({
+				id: action.id,
+				status: "skipped",
+				text: "push: пропущено — предыдущий шаг не завершён",
+			});
+			continue;
+		}
 		notify(ctx, start[action.id], "info");
 		const report =
 			action.id === "checks"
 				? await performChecks(ctx.cwd)
 				: action.id === "commit"
 					? await performCommit(ctx)
-					: performMerge(ctx.cwd);
+					: action.id === "merge"
+						? performMerge(ctx.cwd)
+						: performPush(ctx.cwd);
 		reports.push(report);
 		if (action.id === "checks") checksFailed = report.status === "failed";
 		if (action.id === "commit") commitFailed = report.status === "failed";

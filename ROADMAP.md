@@ -1,12 +1,12 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-26. Версия: `0.5.25`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-26. Версия: `0.5.26`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
-preflight, flight recorder в запросе HANDOFF и табличный вывод preflight
-готовы; публичный GitHub-репозиторий и release `v0.5.14` есть;
-npm/marketplace — по решению владельца.
+preflight, flight recorder в запросе HANDOFF, табличный вывод preflight и
+действие `push` в меню готовы; публичный GitHub-репозиторий и release
+`v0.5.14` есть; npm/marketplace — по решению владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -369,6 +369,16 @@ npm/marketplace — по решению владельца.
       headless; действия и вердикт используют тот же набор (`✔ ⦸ ✘`).
 - [x] Тесты: таблица, группы, ascii, перенос, ширина колонок; assertions
       команд не зависят от режима рендера. Docs: `commands.md`, FAQ, вики.
+
+## Этап 0.5.26 — push в меню preflight (готово)
+
+- [x] Действие `push` предлагается только при наличии upstream и
+      незапушенных коммитов; `git push` без `--force`, timeout 120 с.
+- [x] Отказ remote — ошибка без сдвига ref; нет upstream — действия нет,
+      warning остаётся; push только по явному выбору в меню.
+- [x] Упавшие проверки или commit пропускают push в этом запуске.
+- [x] Тесты: успешный push сверяет remote ref с HEAD, synced — без
+      действия, rejected — ref на месте, skip после провала проверок.
 
 ## Этап 0.6 — экономика handoff (P2)
 
