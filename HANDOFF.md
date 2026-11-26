@@ -3,18 +3,20 @@
 Дата: 2026-11-27. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.6.1`; в ветке `feat/spend-handoff` — `0.7.0`:
-spend-aware handoff — Settings `handoffAtSpendUsd` (15-й ключ) и env
-`OMP_HANDOFF_AT_USD`, триггер по измеренному `usage.cost.total` с
-инкрементальными offsets, marker `reason: "spend"` (см. CHANGELOG 0.7.0).
-Последний код в `main` — read-only отчёт `omp-orchestrate economics`
+`main`, версия `0.7.0`; последний код — spend-aware handoff: Settings
+`handoffAtSpendUsd` (15-й ключ) и env `OMP_HANDOFF_AT_USD`, триггер по
+измеренному `usage.cost.total` с инкрементальными offsets, marker
+`reason: "spend"` (см. CHANGELOG 0.7.0); влито `3ba713d`, запушено, CI
+зелёный.
+До него в `main` — read-only отчёт `omp-orchestrate economics`
 «до/после handoff» (см. CHANGELOG 0.6.1) и цена границы handoff в preflight
 из `omp-cache-monitor costs --json` (CLI нет — graceful skip, см. CHANGELOG
 0.6.0).
-Ветки 0.5.1–0.5.26 (включая `feat/doctor`, `feat/oaw-name`,
+Ветки 0.5.1–0.7.0 (включая `feat/doctor`, `feat/oaw-name`,
 `feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`,
 `feat/handoff-flight-recorder`, `feat/preflight-output`,
-`feat/preflight-push`) слиты ff-only, worktrees удалены. GitHub:
+`feat/preflight-push`, `feat/handoff-economics`, `feat/spend-handoff`)
+слиты ff-only, worktrees удалены. GitHub:
 `metapeka/omp-agent-workflow`
 (public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
 `docs/README.md`; backlog — `TODO.md`.
@@ -67,6 +69,14 @@ timeout 2 с/другая схема — строк нет, preflight не ме�
 tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
 `~/.local/bin`, preflight находит его через `PATH` без env.
 
+0.7.0 (`3ba713d`): spend-aware handoff влит в `main` и запушен, CI зелёный.
+Ревью нашло P1 — после компакции OMP переписывает JSONL на месте, старые
+offsets давали двойной счёт; исправлено (`CostRead.restarted`, пересчёт
+total при перезаписи и на `session_compact`). 352 теста, typecheck, 15
+ключей Settings, extension load exit 0. Worktree удалён, ветка
+`feat/spend-handoff` сохранена. Дальше по плану 0.7 — quality gate,
+`economics --summary`, discovery, ledger субагентов (`ROADMAP.md`).
+
 ## Что готово
 
 | Что | Состояние |
@@ -88,7 +98,7 @@ tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
 | Economics 0.6.1 | `omp-orchestrate economics`: цепочка `parentSession`, граница только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1; ветка `feat/handoff-economics` |
-| Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `restarted`/`session_compact` пересчитывают total, не сбрасывая spend; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); ветка `feat/spend-handoff` |
+| Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `restarted`/`session_compact` пересчитывают total, не сбрасывая spend; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); влито `3ba713d` |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -400,27 +410,26 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. 0.7.0 spend-aware handoff собран в `feat/spend-handoff`:
-   `npm run verify` (check:names, тесты, typecheck), extension load и
-   `omp plugin config list` — 15 ключей, зелёные. Осталось: ff-only merge в
-   `main`; живой прогон с `OMP_HANDOFF_AT_USD=0.01` на сессии с ценами —
-   проверить текст `HANDOFF: spend $X из порога $Y.`, marker
-   `reason: "spend"`, `⚠ HANDOFF` и что JSONL не перечитывается целиком.
-2. Новая сессия загрузит 0.6.1; проверить `omp plugin list`, отсутствие
+1. 0.7.1 quality gate — следующая задача по плану 0.7: advisory-warning в
+   `/handoff-preflight`, если в `HANDOFF.md` нет ключевых секций
+   (цель/состояние/решения/файлы/проверки/дальше) или после обновления
+   state была компакция. Перед реализацией показать 3–4 варианта строки.
+   Затем 0.7.2 `economics --summary`.
+2. Новая сессия загрузит 0.7.0; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
    с advisory-строкой, метриками и строкой `usage-border` (при
    `OMP_CACHE_MONITOR_CLI` или `omp-cache-monitor` в `PATH`; без CLI строки
-   нет), `SUP OFF` в TUI, `OMP_WORKFLOW_MODE=off bin/omp-yoda` без
-   supervisor и `bin/omp-yoda --preset plan --version` (флаги модели,
-   supervisor, exit 0). `doctor --json` на чистом репо — exit 0, без Orca —
-   warn; `--strict` — exit 1. На пороге handoff проверить строку `Дерево:`
-   в запросе (ветка, HEAD, грязные пути).
-3. 0.6 economics закрыт содержательно в `feat/handoff-economics` (0.6.1):
-   `omp-orchestrate economics` строит цепочку по `parentSession`, считает
-   окна «до/после», hit rate, цену первого хода и `recoveryTurns`, ищет
-   компакции. Компакций в локальных данных нет — вывод data-gated, отчёт
-   пишет «нет записей». Осталось проверить на живой цепочке
-   (`--session`/`--dir`). OAW не парсит внутренности cache-monitor.
+   нет), `⚠ HANDOFF` при spend-пороге (`OMP_HANDOFF_AT_USD`), `SUP OFF` в
+   TUI, `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и
+   `bin/omp-yoda --preset plan --version` (флаги модели, supervisor,
+   exit 0). `doctor --json` на чистом репо — exit 0, без Orca — warn;
+   `--strict` — exit 1. На пороге handoff проверить строку `Дерево:` в
+   запросе (ветка, HEAD, грязные пути).
+3. 0.6 economics закрыт содержательно (0.6.1): `omp-orchestrate economics`
+   строит цепочку по `parentSession`, считает окна «до/после», hit rate,
+   цену первого хода и `recoveryTurns`, ищет компакции. Компакций в
+   локальных данных нет — вывод data-gated, отчёт пишет «нет записей».
+   OAW не парсит внутренности cache-monitor.
 4. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
    `--plan-yolo` — только после замера.
 5. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
