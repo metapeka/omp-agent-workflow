@@ -3,15 +3,17 @@
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.5.22`; последний код-коммит — пресеты запуска;
-ветки `feat/handoff-preflight`, `feat/preflight-fixes`,
-`feat/handoff-state-embed`, `feat/preflight-checklist`,
-`feat/preflight-actions`, `feat/preflight-flow`,
-`feat/workflow-status-key`, `feat/workflow-status-p2`,
-`feat/safe-worktree-remove`, `feat/next-session-advisory` и `feat/doctor`
+`main`, версия `0.5.22`; последний код-коммит `b7de1f3` — пресеты запуска.
+Ветки 0.5.1–0.5.22 (включая `feat/doctor`, `feat/oaw-name`,
+`feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`)
 слиты ff-only, worktrees удалены. GitHub: `metapeka/omp-agent-workflow`
 (public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
 `docs/README.md`; backlog — `TODO.md`.
+
+Сессия 2026-11-26 закрыта: D15 (`execution`) и D16 (пресеты) приняты и
+реализованы; `autoCompactPercent=40` применён в Settings владельца;
+публикация остаётся локальной (D10); запрос `costs --json` для 0.6
+сформулирован и ждёт cache-monitor. Handoff запрошен по контексту.
 
 ## Что готово
 
@@ -52,7 +54,7 @@ OAW — короткое имя продукта; `workflow` — только е
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
-| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 200+, `npm run typecheck`, extension load exit 0, launcher `--preset`, HTML tag/link check + browser screenshots |
+| Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 265/265, `npm run typecheck`, extension load exit 0, launcher `--preset`/`--preset=`, HTML tag/link check + browser screenshots |
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
