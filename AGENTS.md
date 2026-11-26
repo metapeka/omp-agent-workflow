@@ -86,7 +86,8 @@ hit rate, этот проект управляет контекстом и см�
   только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1;
   0.7.0 — spend-aware handoff: `handoffAtSpendUsd` (15-й ключ) и
   `OMP_HANDOFF_AT_USD`, триггер по измеренному `usage.cost.total` с
-  инкрементальными offsets, marker `reason: "spend"`.
+  инкрементальными offsets (перезапись/компакция пересчитывает total),
+  marker `reason: "spend"`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.

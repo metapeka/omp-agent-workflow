@@ -88,7 +88,7 @@ tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
 | Economics 0.6.1 | `omp-orchestrate economics`: цепочка `parentSession`, граница только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1; ветка `feat/handoff-economics` |
-| Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `session_compact` spend не сбрасывает; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); ветка `feat/spend-handoff` |
+| Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `restarted`/`session_compact` пересчитывают total, не сбрасывая spend; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); ветка `feat/spend-handoff` |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -441,8 +441,9 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 - Spend-триггер видит только то, что OMP записал в session JSONL: провайдер
   без `usage.cost.total` даёт spend 0 и не срабатывает — это не ошибка, а
   отсутствие измерения. Offset-чтение привязано к пути файла: смена сессии
-  начинает счёт заново, а внешняя перезапись уже прочитанного префикса
-  (не append) не учитывается до `session_start`/`session_switch`.
+  начинает счёт заново, перезапись на месте обнаруживается по `restarted`
+  (size < offset) и пересчитывает total, компакция форсирует пересчёт;
+  недоступный файл не сбрасывает уже измеренную сумму.
 - `/handoff-preflight` — эвристика и advisory; не заменяет проверки
   supervisor'а и не блокирует `/handoff-new`. Выбранные действия `commit`
   и `merge` меняют репозиторий: merge только ff-only в чистый `main`

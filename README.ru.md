@@ -153,7 +153,7 @@
 4. `/handoff-new` собирает сообщение новой сессии из `continuePrompt` + state-файла (лимит 32k, маркер обрезки, fallback при ошибке чтения).
 5. Новая сессия читает `HANDOFF.md` и продолжает. Компакции посреди tool-loop нет: плагин ждёт `turn_end` и `ctx.isIdle()`.
 
-У handoff два независимых триггера: процент контекста (`handoffAtPercent`) и измеренный spend сессии (`handoffAtSpendUsd`, фактические `usage.cost.total` из session JSONL). Spend дочитывается инкрементально по byte offsets — каждый ход добавляет только новый хвост, дочерние сессии тоже; полного перечитывания нет. `0`/`off` выключает; оба триггера делят один cooldown, путь supervisor и статус `⚠ HANDOFF`, а marker пишет `reason: "context"`, если сработал контекст (в том числе вместе со spend), иначе `"spend"`. Считаются только измеренные деньги, без оценок по прайсу.
+У handoff два независимых триггера: процент контекста (`handoffAtPercent`) и измеренный spend сессии (`handoffAtSpendUsd`, фактические `usage.cost.total` из session JSONL). Spend дочитывается инкрементально по byte offsets — каждый ход добавляет только новый хвост, дочерние сессии тоже; при перезаписи на месте (размер меньше сохранённого offset) или компакции total пересчитывается, а не суммируется дважды. `0`/`off` выключает; оба триггера делят один cooldown, путь supervisor и статус `⚠ HANDOFF`, а marker пишет `reason: "context"`, если сработал контекст (в том числе вместе со spend), иначе `"spend"`. Считаются только измеренные деньги, без оценок по прайсу.
 
 Опциональная **advisory-строка `next-session:`** — первая строка `HANDOFF.md` может содержать `v=1 ts=… model=… thinking=… mode=… reason=…`. `bin/omp-yoda` проверяет её (синтаксис, свежесть 24 ч, модель по `omp models --json`) и добавляет `--model`/`--thinking` при запуске процесса; явные флаги выигрывают, а невалидная, устаревшая, повторная или не на первом месте строка ничего не меняет. `/handoff-preflight` показывает строку и её валидность. Модель внутри работающей сессии не меняется.
 
@@ -230,6 +230,7 @@ Settings → Plugins → `omp-agent-workflow`. Приоритет: **Settings > 
 | Ключ | Default | Смысл |
 |---|---|---|
 | `workflowMode` | `assisted` | `off` / `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `workflowPreset` | `off` | `routine` / `plan` / `review` / `budget`; явные ключи и флаги выигрывают |
 | `statusEnabled` | `true` | Ключ `workflow` в статус-строке |
 | `handoffAtPercent` | `55` (yoda) / off | Порог handoff; `0` = off |
 | `handoffAtSpendUsd` | off | Порог handoff по измеренному spend сессии, $; `0` = off |

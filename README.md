@@ -152,7 +152,7 @@ The public landscape study behind this claim — PI, OMP and GitHub, 2026-11-23:
 4. `/handoff-new` builds a new session message from `continuePrompt` + the state file (32k limit, truncation marker, read-error fallback).
 5. The new session reads `HANDOFF.md` and continues. No compact event in the middle of a tool loop; the plugin waits for `turn_end` and `ctx.isIdle()`.
 
-Handoff has two independent triggers: the context percentage (`handoffAtPercent`) and the measured session spend (`handoffAtSpendUsd`, actual `usage.cost.total` from the session JSONL). Spend is read incrementally by byte offsets — each turn adds only the new tail, child sessions included — never re-read whole. `0`/`off` disables it; both triggers share one cooldown, supervisor path and `⚠ HANDOFF` status, and the marker records `reason: "context"` when the context fired (even together with spend), otherwise `"spend"`. Only measured money counts, never price-list estimates.
+Handoff has two independent triggers: the context percentage (`handoffAtPercent`) and the measured session spend (`handoffAtSpendUsd`, actual `usage.cost.total` from the session JSONL). Spend is read incrementally by byte offsets — each turn adds only the new tail, child sessions included — never re-read whole; an in-place rewrite (size below the saved offset, or compaction) triggers a full total recompute instead of adding twice. `0`/`off` disables it; both triggers share one cooldown, supervisor path and `⚠ HANDOFF` status, and the marker records `reason: "context"` when the context fired (even together with spend), otherwise `"spend"`. Only measured money counts, never price-list estimates.
 
 Optional **`next-session:` advisory** — the first line of `HANDOFF.md` may carry `v=1 ts=… model=… thinking=… mode=… reason=…`. `bin/omp-yoda` validates it (syntax, 24 h freshness, model against `omp models --json`) and adds `--model`/`--thinking` at process start; explicit flags win, and an invalid, stale, duplicated, or misplaced line changes nothing. `/handoff-preflight` shows the line and its validity. The model is never switched inside a running session.
 
@@ -228,6 +228,7 @@ Settings → Plugins → `omp-agent-workflow`. Priority: **Settings > env > mode
 | Key | Default | Meaning |
 |---|---|---|
 | `workflowMode` | `assisted` | `off` / `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `workflowPreset` | `off` | `routine` / `plan` / `review` / `budget`; explicit keys and flags win |
 | `statusEnabled` | `true` | Show the `workflow` status key |
 | `handoffAtPercent` | `55` (yoda) / off | Handoff threshold; `0` = off |
 | `handoffAtSpendUsd` | off | Handoff threshold by measured session spend, $; `0` = off |

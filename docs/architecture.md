@@ -55,7 +55,11 @@ Launcher читает те же ключи через `omp plugin config list` �
 `OMP_ORCA_*`/`OMP_SUPERVISOR_ENABLED` supervisor'у, а также
 `continuePrompt`/`supervisorRetries`/`supervisorLogLevel` через
 `OMP_HANDOFF_PROMPT`/`OMP_SUPERVISOR_RETRIES`/`OMP_SUPERVISOR_LOG_LEVEL`.
-Приоритет: **Settings > env > режим/дефолт** (D12).
+Приоритет: **Settings > env > режим/дефолт** (D12). Пятнадцатый ключ
+`handoffAtSpendUsd` (env `OMP_HANDOFF_AT_USD`) — независимый от контекста
+триггер handoff по измеренному `usage.cost.total`: extension держит byte
+offsets в памяти, дочитывает только хвост JSONL, а после перезаписи файла
+(компакция) пересчитывает total с нуля.
 
 ## Что extension может и не может (OMP 19.1.0)
 
@@ -76,7 +80,7 @@ Launcher читает те же ключи через `omp plugin config list` �
 | `read`/`write`/`edit` | Принимают абсолютные пути | Изоляция задачи держится на промпте и проверках, не на cwd |
 | Context usage | `ctx.getContextUsage()` → `tokens/contextWindow/percent` | Политика handoff/compact; `null` сразу после компакции |
 | Spend в контексте | Нет | Считать по session JSONL или полагаться на native `--max-cost` |
-| Session JSONL | `message.assistant.usage.cost.total`; дочерние сессии в `<root-session-dir>/*.jsonl` с `parentSession` | Инкрементальный run-бюджет |
+| Session JSONL | `message.assistant.usage.cost.total`; дочерние сессии в `<root-session-dir>/*.jsonl` с `parentSession` | Инкрементальный run-бюджет; spend-триггер handoff по offsets (перезапись → пересчёт total) |
 | Native cost gate | `omp --max-cost`, `--warn-cost`; учитывает subagents | Жёсткий backstop, но per-session, не run-глобальный |
 | Extension entry | `package.json` → `omp.extensions` — массив | 0.5 добавляет второй entry, `index.ts` не трогаем |
 | Загрузчик | Bun; относительные `.ts` import ожидаются рабочими | Spike перед этапом C; fallback — импорт ядра из `index.ts` |
@@ -98,8 +102,9 @@ Launcher читает те же ключи через `omp plugin config list` �
 
 1. `session_start` (main) → session info с terminal handle, session file, cwd, pid; ключ `workflow` в статус-строке.
 2. `turn_end`/`agent_end` → warning/suggest/auto/handoff по порогам и пересчёт `workflow`.
-3. На `OMP_HANDOFF_AT` extension просит агента завершить задачу, обновить
-   `HANDOFF.md` и записать marker.
+3. На `OMP_HANDOFF_AT` (процент контекста) или `OMP_HANDOFF_AT_USD`
+   (измеренный spend сессии) extension просит агента завершить задачу,
+   обновить `HANDOFF.md` и записать marker (`reason: "context"`/`"spend"`).
 4. Supervisor видит marker + session info, ждёт idle, отправляет
    `/handoff-new` в terminal handle.
 5. `/handoff-new` проверяет `HANDOFF.md`, ждёт idle, вызывает `newSession`,

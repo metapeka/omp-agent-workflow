@@ -226,7 +226,7 @@ bin/omp-yoda [флаги omp]
 | Режим | Settings `workflowMode` > env `OMP_WORKFLOW_MODE` > `yoda-supervised` |
 | `off` | `exec omp` без supervisor и без env-порогов; env `off` побеждает Settings |
 | Supervisor | стартует, если `supervisorEnabled` и `orcaEnabled` не выключены |
-| Env для supervisor | `OMP_HANDOFF_AT=55`, `OMP_CONTEXT_AUTO=off`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL` (Settings важнее) |
+| Env для supervisor | `OMP_HANDOFF_AT=55`, `OMP_HANDOFF_AT_USD` (spend-триггер; `0`/`off` выкл.), `OMP_CONTEXT_AUTO=off`, `OMP_HANDOFF_PROMPT`, `OMP_SUPERVISOR_RETRIES`, `OMP_SUPERVISOR_LOG_LEVEL` (Settings важнее) |
 | `OMP_YODA_DIR` | каталог, который обслуживает supervisor (по умолчанию `$PWD`) |
 | `OMP_YODA_LOG` | лог supervisor (по умолчанию `$TMPDIR/omp-yoda-supervisor.log`) |
 | Аргументы | передаются `omp` как есть (`--model`, `--thinking`, `--version`, …) |

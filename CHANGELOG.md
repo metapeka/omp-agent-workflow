@@ -18,19 +18,26 @@ semantic for the plugin contract, not for OMP itself.
   offsets per session file (root plus child sessions under `<root-stem>/`), so
   `turn_end` and `agent_end` read only the new tail — never the whole JSONL.
   `session_start`/`session_switch` reset offsets and spend to zero;
-  `session_compact` keeps the measured spend; a missing or unreadable file
-  changes nothing. Only measured money counts, never price-list estimates.
+  `session_compact` keeps the measured spend but forces a full recompute before
+  the status update, because OMP rewrites the JSONL in place. `CostRead` now
+  reports `restarted` when a file shrank below its saved offset; the extension
+  then recomputes the total instead of adding the re-read bytes twice. A
+  missing or unreadable file changes nothing (the measured total and its
+  trigger survive). Only measured money counts, never price-list estimates.
 - The request text becomes `HANDOFF: spend $X из порога $Y.` (plus `; контекст …`
   when available) and the marker records `reason: "spend"`. When both triggers
   fire the reason stays `"context"` and the text carries both facts. Cooldown,
   retry cap, supervisor gate, prerequisite warnings and `⚠ HANDOFF` status are
   shared; the status key now also lights up at the spend threshold.
 - Tests: `test/workflow-settings.test.mjs` +1 (precedence, `0`/`off`, `off`
-  mode, presets, `manual`, fractional/out-of-range values) and
-  `test/context-guard.test.mjs` +9 (below/at the threshold, spend-only and both
-  triggers with marker reasons, `0`/`off`, cooldown and retry, status key,
-  accumulation across turns and through compaction, and a tail-only read proven
-  by rewriting the already-consumed prefix).
+  mode, presets, `manual`, fractional/out-of-range values);
+  `test/context-guard.test.mjs` +16 (below/at the threshold, spend-only and
+  both triggers with marker reasons, `0`/`off`, retry, reset on
+  `session_start`/`session_switch`, child sessions, missing/unreadable file,
+  in-place rewrite regression, the child-session cooldown branch, status after
+  compaction, accumulation across turns, and a tail-only read proven by
+  rewriting the consumed prefix); `test/orchestrator.test.mjs` +1
+  (`restarted` is reported without changing `deltaUsd`).
 - Docs: tri-lingual READMEs, `docs/contracts.md` (15 keys, marker reason
   `context|spend`, incremental spend invariant), `docs/guards.md`.
 

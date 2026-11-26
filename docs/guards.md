@@ -35,7 +35,7 @@ flowchart TD
 | Угроза | Защита | Где срабатывает | С версии |
 |---|---|---|---|
 | Контекст переполнен, модель теряет задачу | warning 35% / suggest 50% / handoff на пороге; в `yoda-supervised` — 55% | `turn_end`, `agent_end` | 0.1, 0.3 |
-| Сессия дорогая, хотя контекст ещё низкий (много коротких ходов/субагентов) | handoff по измеренному `usage.cost.total` (`handoffAtSpendUsd`); тот же cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"`; JSONL дочитывается offsets, не целиком | `checkHandoff` | 0.7.0 |
+| Сессия дорогая, хотя контекст ещё низкий (много коротких ходов/субагентов) | handoff по измеренному `usage.cost.total` (`handoffAtSpendUsd`); тот же cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"`; JSONL дочитывается offsets, перезапись/компакция пересчитывает total (без двойного счёта) | `checkHandoff`, `session_compact` | 0.7.0 |
 | Handoff запрошен, но marker не появился | повтор через 2 завершённых хода, максимум 3 запроса, статус `⚠ HANDOFF` | `checkHandoff` | 0.5.15 |
 | Handoff завис навсегда (нет supervisor) | fallback-компакция на `autoCompactPercent` после исчерпания повторов | `checkAuto` | 0.5.17 |
 | Два supervisor на один каталог перехватывают marker | lock-dir `.omp-handoff-supervisor.lock/`, stale reclaim по мёртвому pid, release на сигналах | старт supervisor'а | 0.5.2 |

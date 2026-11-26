@@ -153,7 +153,7 @@
 4. `/handoff-new` 用 `continuePrompt` + 状态文件构造新会话消息（32k 上限、截断标记、读取失败回退）。
 5. 新会话读取 `HANDOFF.md` 并继续。不会在工具循环中间压缩；插件等待 `turn_end` 和 `ctx.isIdle()`。
 
-交接有两个独立触发器：上下文百分比（`handoffAtPercent`）与会话实测花费（`handoffAtSpendUsd`，取 session JSONL 中的 `usage.cost.total`）。花费按 byte offsets 增量读取——每个回合只追加新的尾部，包含子会话；绝不整体重读。`0`/`off` 关闭该触发器；两个触发器共用一个 cooldown、supervisor 路径和 `⚠ HANDOFF` 状态，marker 在上下文触发时（即使同时超花费）写 `reason: "context"`，否则写 `"spend"`。只计算实测金额，不按价目表估算。
+交接有两个独立触发器：上下文百分比（`handoffAtPercent`）与会话实测花费（`handoffAtSpendUsd`，取 session JSONL 中的 `usage.cost.total`）。花费按 byte offsets 增量读取——每个回合只追加新的尾部，包含子会话；就地重写（大小小于已保存 offset）或压缩时会重算 total，而不是重复相加。`0`/`off` 关闭该触发器；两个触发器共用一个 cooldown、supervisor 路径和 `⚠ HANDOFF` 状态，marker 在上下文触发时（即使同时超花费）写 `reason: "context"`，否则写 `"spend"`。只计算实测金额，不按价目表估算。
 
 可选的 **`next-session:` 建议行** — `HANDOFF.md` 的第一行可写 `v=1 ts=… model=… thinking=… mode=… reason=…`。`bin/omp-yoda` 会校验（语法、24 小时新鲜度、按 `omp models --json` 校验模型），并在启动进程时追加 `--model`/`--thinking`；显式参数优先，无效、过期、重复或不在首行的建议不产生任何变化。`/handoff-preflight` 显示该行及其有效性。运行中的会话绝不会切换模型。
 
@@ -230,6 +230,7 @@ Settings → Plugins → `omp-agent-workflow`。优先级：**Settings > 环境�
 | 键 | 默认值 | 含义 |
 |---|---|---|
 | `workflowMode` | `assisted` | `manual` / `assisted` / `yoda` / `yoda-supervised` |
+| `workflowPreset` | `off` | `routine` / `plan` / `review` / `budget`；显式键和参数优先 |
 | `statusEnabled` | `true` | 显示 `workflow` 状态键 |
 | `handoffAtPercent` | `55`（yoda）/ off | 交接阈值；`0` = 关闭 |
 | `handoffAtSpendUsd` | off | 按会话实测花费的交接阈值（$）；`0` = 关闭 |
