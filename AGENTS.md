@@ -25,7 +25,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.19`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.20`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -47,11 +47,13 @@ hit rate, этот проект управляет контекстом и см�
   0.5.18 — режим `off`: выключатель плагина, OMP на дефолтах, launcher не
   поднимает supervisor; 0.5.19 — advisory `next-session:`: launcher добавляет
   `--model`/`--thinking` при старте, preflight показывает валидность, модель
-  внутри сессии не меняется (D14).
+  внутри сессии не меняется (D14); 0.5.20 — CLI JSON v1:
+  `status --json`/`doctor --json` с `schemaVersion: 1`, `doctor` — 16
+  read-only проверок (проба ≤ 2 с, без сети, `--strict`).
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
-- `npm run verify` — `check:names`, 224 теста и typecheck; CI в
+- `npm run verify` — `check:names`, тесты и typecheck; CI в
   `.github/workflows/ci.yml`.
 - Launcher `bin/omp-yoda` запускает supervisor и OMP в режиме
   `yoda-supervised` (handoff 55%, auto-compaction выключена).
@@ -79,7 +81,7 @@ orca worktree create --repo name:omp-agent-workflow --name <slug> \
 
 # в worktree
 npm run verify
-omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
+omp --no-extensions -e ./index.ts --no-session --mode json \
   -p 'Reply with exactly: OK'        # exit 0, stderr пуст
 bin/omp-yoda --version               # launcher находит supervisor и omp
 

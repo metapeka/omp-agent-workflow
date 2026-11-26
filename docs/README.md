@@ -4,10 +4,10 @@
 OMP, Orca и контракт workflow. Источник истины — код, тесты и git; эта вики
 объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.19` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.20` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
-`next-session:`).
+`next-session:` + CLI JSON v1 и `doctor`).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -49,6 +49,11 @@ marker без живого supervisor; рекомендация для 1M — `a
 `0.5.19` — advisory `next-session:` в первой строке `HANDOFF.md`: launcher
 добавляет `--model`/`--thinking` при старте, preflight показывает
 валидность, модель в сессии не меняется (D14).
+`0.5.20` — CLI JSON v1: `status --json` и `doctor --json` получают
+`schemaVersion: 1`; `doctor` — 16 read-only проверок среды (фиксированный
+порядок, каждый проб ≤ 2 с, без сети), `--strict` повышает warn до fail;
+отсутствие Orca/agent-team — warn/skip, не fail. Контракт —
+[contracts.md](contracts.md#cli-json-v1-status-и-doctor-0520).
 
 ## С чего начать
 
@@ -67,7 +72,7 @@ marker без живого supervisor; рекомендация для 1M — `a
 | Страница | Что внутри |
 |---|---|
 | [architecture.md](architecture.md) | Компоненты, потоки данных, факты OMP API 19.1.0, что extension может и не может, источники истины, границы проекта |
-| [contracts.md](contracts.md) | Стабильный контракт 0.3: режимы, env, файлы marker/session, команды, инварианты; что нельзя менять |
+| [contracts.md](contracts.md) | Стабильный контракт 0.3: режимы, env, файлы marker/session, команды, инварианты; CLI JSON v1 (`status`/`doctor`); что нельзя менять |
 | [commands.md](commands.md) | Гид по командам: `/handoff`, `/handoff-preflight`, `/handoff-new`, `/wrap`, `/orchestrate`, tool `orchestrator`, CLI launcher и supervisor, файлы |
 | [orchestrator.md](orchestrator.md) | Дизайн 0.5: роли, `AUTOPLAN.md`, `STATE.json`, действия, политика, бюджеты, stop-gates, handoff на границе, этапы A–D |
 | [wrap.md](wrap.md) | `/wrap` 0.5.1: карточки, safety для cleanup, handoff, следующая задача |

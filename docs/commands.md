@@ -1,6 +1,6 @@
 # Команды и CLI
 
-Статус: `[готово]`, версия `0.5.19`. Источник истины — код
+Статус: `[готово]`, версия `0.5.20`. Источник истины — код
 (`index.ts`, `orchestrator.ts`, `bin/`); этот файл — подробный гид.
 Контракт режимов и файлов — [contracts.md](contracts.md).
 
@@ -114,7 +114,7 @@
 ### `bin/omp-orchestrate` — headless orchestrator
 
 ```
-bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit SHA|rebase [TASK]|stop --reason R|resume
+bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit SHA|rebase [TASK]|stop --reason R|resume|doctor
 ```
 
 | Флаг | Назначение |
@@ -127,7 +127,15 @@ bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit 
 | `--context N` | текущий процент контекста |
 | `--backend orca\|git` | backend worktree |
 | `--verify-timeout SEC` | таймаут verify (по умолчанию 900) |
+| `--strict` | `doctor`: повысить `warn` до `fail` |
 | `--json` | машинный вывод |
+
+`doctor` — read-only диагностика среды: 16 проверок в фиксированном порядке,
+каждый проб ≤ 2 с, без сети, `STATE.json` не меняется. Отсутствие Orca,
+agent-team или cache-monitor — `warn`/`skip`; битые настройки, план или state
+— `fail` (exit 1). `--json` — контракт v1 (`schemaVersion: 1`, `ok`,
+`summary`, `checks[]`), список проверок и стабильные поля `status` — в
+[contracts.md](contracts.md#cli-json-v1-status-и-doctor-0520).
 
 Требует `node --experimental-strip-types` (шим в `bin/` уже содержит shebang).
 

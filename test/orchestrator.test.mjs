@@ -768,6 +768,7 @@ describe("actions on a real git repo", () => {
 	it("reports status and next without mutating state", async () => {
 		const s = await scenario();
 		const before = statusAction(s.ctx);
+		assert.equal(before.schemaVersion, 1);
 		assert.equal(before.plan.tasks, 1);
 		assert.equal(before.next.id, "T1");
 		assert.equal(existsSync(join(s.control, STATE_FILE)), false);
@@ -836,6 +837,7 @@ describe("actions on a real git repo", () => {
 		);
 		assert.equal(result.code, 0, result.stderr);
 		const parsed = JSON.parse(result.stdout);
+		assert.equal(parsed.schemaVersion, 1);
 		assert.equal(parsed.plan.tasks, 1);
 		assert.equal(parsed.next.id, "T1");
 	});

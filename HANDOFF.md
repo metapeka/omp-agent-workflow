@@ -1,15 +1,15 @@
 # Передача: omp-agent-workflow
 
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
-`main`, версия `0.5.19`; последний код-коммит — advisory `next-session:`;
+`main`, версия `0.5.20`; последний код-коммит — CLI JSON v1 и `doctor`;
 ветки `feat/handoff-preflight`, `feat/preflight-fixes`,
 `feat/handoff-state-embed`, `feat/preflight-checklist`,
 `feat/preflight-actions`, `feat/preflight-flow`,
 `feat/workflow-status-key`, `feat/workflow-status-p2`,
-`feat/safe-worktree-remove` и `feat/next-session-advisory` слиты ff-only,
-worktrees удалены. GitHub: `metapeka/omp-agent-workflow` (public), тег и
-release `v0.5.14`, CI на Node 22 зелёный. Вики — `docs/README.md`;
-backlog — `TODO.md`.
+`feat/safe-worktree-remove`, `feat/next-session-advisory` и `feat/doctor`
+слиты ff-only, worktrees удалены. GitHub: `metapeka/omp-agent-workflow`
+(public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
+`docs/README.md`; backlog — `TODO.md`.
 
 ## Что готово
 
@@ -38,12 +38,13 @@ backlog — `TODO.md`.
 | Fallback 0.5.17 | авто-компакция срабатывает после исчерпания handoff-повторов или при marker без живого supervisor |
 | Kill switch 0.5.18 | `workflowMode: off` (`OMP_WORKFLOW_MODE=off`): плагин молчит, OMP на дефолтах, launcher делает exec omp без supervisor; env off побеждает Settings |
 | Advisory 0.5.19 | `next-session:` первой строкой `HANDOFF.md`: launcher добавляет `--model`/`--thinking` при старте (явные флаги выигрывают), preflight показывает валидность; модель в сессии не меняется (D14) |
+| Doctor 0.5.20 | `bin/omp-orchestrate doctor [--json] [--strict]`: 16 read-only проверок в фиксированном порядке, проба ≤ 2 с, без сети; нет Orca/agent-team/cache-monitor — warn/skip; битые настройки/план/state — fail; `status --json` и `doctor --json` — `schemaVersion: 1` |
 | Имена команд 0.5.18 | `/handoff` убран (builtin OMP); `npm run check:names` сверяет 105 builtin-имён с нашими 5 в `verify`; коллизий 0 |
 | Гид по командам | `docs/commands.md`: слэш-команды, tool `orchestrator`, меню preflight, карточки `/wrap`, CLI launcher/supervisor/orchestrate, владельцы имён |
 | Замеры 2026-11-24/25 | `docs/research/model-modes.md`: цены 9 моделей, reasoning flash/pro, handoff-payload 20 сессий, цена границы, рекомендации R1–R8 |
 | Пресеты (design) | `docs/research/workflow-presets.md`: `routine/plan/review/budget`, `next-session:` в launcher, метрики выбора; ждёт решения владельца |
-| Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; не реализовано |
-| Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor — наш, Ф2 `execution: external` после решения владельца, Ф3 hub и `brief` — личные вне репозитория, Ф4 контрактные тесты; границы и матрица конфликтов согласованы |
+| Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; Ф1 реализован в 0.5.20 |
+| Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`) и Ф1 doctor — сделаны в 0.5.20; Ф2 `execution: external` после решения владельца, Ф3 hub и `brief` — личные вне репозитория, Ф4 контрактные тесты; границы и матрица конфликтов согласованы |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
 | Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test` 224/224, `npm run typecheck`, extension load exit 0, HTML tag/link check + browser screenshots |
@@ -309,45 +310,41 @@ source `main /docs`, `.nojekyll`; homepage репозитория указыва
 ```bash
 cd ~/projects/omp-agent-workflow
 npm run check:names                       # 105 builtin, 5 наших, 0 конфликтов
-npm test                                  # 224/224
+npm test
 npm run typecheck
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts --no-session \
-  --no-tools --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
+  --mode json -p 'Reply with exactly: OK'   # exit 0, stderr пуст
 OMP_WORKFLOW_MODE=off bin/omp-yoda --version           # без supervisor
 omp plugin config list omp-agent-workflow --json | jq '.schema | keys'
 node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
+node --experimental-strip-types bin/omp-orchestrate doctor --json | jq .ok
+node --experimental-strip-types bin/omp-orchestrate status --json | jq .schemaVersion
 curl -sS -o /dev/null -w '%{http_code}\n' \
   https://metapeka.github.io/omp-agent-workflow/       # 200
 ```
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.19; проверить `omp plugin list`, отсутствие
+1. Новая сессия загрузит 0.5.20; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
    с advisory-строкой, `SUP OFF` в TUI и `OMP_WORKFLOW_MODE=off bin/omp-yoda`
-   без supervisor. Advisory без строки в `HANDOFF.md` ничего не меняет —
-   для проверки добавить строку временно.
+   без supervisor. `doctor --json` на чистом репо — exit 0, без Orca —
+   warn; `--strict` — exit 1. Advisory без строки в `HANDOFF.md` ничего не
+   меняет — для проверки добавить строку временно.
 2. Решение владельца по F2-пресетам `routine/plan/review/budget`:
    `docs/research/workflow-presets.md`. F1 (`next-session:` → launcher)
    реализован в 0.5.19, D14; имя `--preset`/`workflowPreset` и наборы —
    открыты.
-3. Joint plan Ф0: контракт `status --json` (добавить `schemaVersion: 1`,
-   стабильные поля — `plan`, `state.run/current/completed/stop`, `next`;
-   `budgets.costOffsets` вне контракта) и `doctor --json`; зафиксировать в
-   `docs/contracts.md` + ссылка из вики.
-4. Joint plan Ф1: `doctor` в `bin/omp-orchestrate` — read-only, `--json`,
-   `--strict`, план опционален (нет плана → skip), 16 проверок по ТЗ; без
-   сети, таймаут пробы 2 с. Hub у соседей — только обёртка над `doctor --json`.
-5. Joint plan Ф2: `execution: omp|external` в `AUTOPLAN.md` — additive,
+3. Joint plan Ф2: `execution: omp|external` в `AUTOPLAN.md` — additive,
    default `omp`, stop-reason `external-run`, тест на старый план; включать
    после решения владельца (D10).
-6. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
+4. 0.6 economics — отложено: нужен машиночитаемый API cache-monitor
    (`costs --json`/tool).
-7. Настройки: `autoCompactPercent=60`; для окна 1M рекомендуется 40 —
+5. Настройки: `autoCompactPercent=60`; для окна 1M рекомендуется 40 —
    решение владельца.
-8. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
+6. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
-9. Решение владельца: npm/marketplace; опционально TUI E2E `/wrap`.
+7. Решение владельца: npm/marketplace; опционально TUI E2E `/wrap`.
 
 ## Риски
 
@@ -360,6 +357,10 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.
+- `doctor` — read-only: пробы ≤ 2 с, без сети, STATE не меняется; отсутствие
+  Orca/agent-team/cache-monitor — warn/skip; `ensemble.active` виден только
+  при рабочем `agent-team status --json`, иначе skip. `worktree.shared`
+  не проверяется — данных нет в CLI.
 - Имена команд: builtin OMP исполняется первым, extension с занятым именем
   хост отбрасывает; между плагинами побеждает загруженный позже. Новые
   команды — только через `npm run check:names`.

@@ -167,6 +167,7 @@ bin/omp-orchestrate start T1
 # 代理在打印出的 worktree 中工作、提交、返回 SHA
 bin/omp-orchestrate verify T1
 bin/omp-orchestrate finish T1 --commit <sha> --review ok
+bin/omp-orchestrate doctor --json
 ```
 
 `finish` 只在干净的 base 上做 **ff-only** 合并，记录 commit，然后删除 worktree——但必须通过清理守卫。否则返回 warning 并保留 worktree。
@@ -304,7 +305,7 @@ YODA · ⚠ HANDOFF      达到交接阈值
 | `/orchestrate [plan]` | 启动/继续 `AUTOPLAN.md`；按任务的动作在 `orchestrator` 工具中 |
 | `bin/omp-yoda` | 启动器：守护进程 + OMP（`yoda-supervised`） |
 | `bin/omp-handoff-supervisor.mjs` | 外部 marker watcher（不是 LLM） |
-| `bin/omp-orchestrate` | 相同动作的无头 CLI |
+| `bin/omp-orchestrate` | 相同动作及 `doctor` 的无头 CLI |
 
 ---
 
@@ -385,7 +386,7 @@ npm run typecheck
 
 ```bash
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts \
-  --no-session --no-tools --mode json -p 'Reply with exactly: OK'
+  --no-session --mode json -p 'Reply with exactly: OK'
 ```
 
 贡献：行为变更必须有测试，文档在同一次提交更新，永远不要提交会话/运行时文件。

@@ -167,6 +167,7 @@ bin/omp-orchestrate start T1
 # агент работает в напечатанном worktree, коммитит и возвращает SHA
 bin/omp-orchestrate verify T1
 bin/omp-orchestrate finish T1 --commit <sha> --review ok
+bin/omp-orchestrate doctor --json
 ```
 
 `finish` делает **ff-only** merge в чистый base, записывает commit и удаляет worktree — но только если cleanup guard согласен. Иначе возвращает warning и оставляет worktree.
@@ -307,7 +308,7 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 | `/orchestrate [план]` | Старт/продолжение `AUTOPLAN.md`; действия по задачам — tool `orchestrator` |
 | `bin/omp-yoda` | Launcher: supervisor + OMP в `yoda-supervised` |
 | `bin/omp-handoff-supervisor.mjs` | Внешний marker-watcher (не LLM) |
-| `bin/omp-orchestrate` | Headless CLI для тех же действий |
+| `bin/omp-orchestrate` | Headless CLI для тех же действий и `doctor` |
 
 ---
 
@@ -388,7 +389,7 @@ npm run typecheck
 
 ```bash
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts \
-  --no-session --no-tools --mode json -p 'Reply with exactly: OK'
+  --no-session --mode json -p 'Reply with exactly: OK'
 ```
 
 Вклад: поведенческое изменение — с тестом, docs в том же коммите, session/runtime-файлы не коммитить.

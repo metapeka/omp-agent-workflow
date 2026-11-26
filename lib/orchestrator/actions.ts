@@ -781,6 +781,7 @@ export function resume(ctx: ActionContext): { kind: "resumed" } {
 }
 
 export interface StatusResult {
+	schemaVersion: 1;
 	plan: {
 		path: string;
 		hash: string;
@@ -802,6 +803,7 @@ export function status(ctx: ActionContext): StatusResult {
 		state?.completed.map((task) => task.id) ?? [],
 	);
 	return {
+		schemaVersion: 1,
 		plan: {
 			path: plan.path,
 			hash: plan.hash,

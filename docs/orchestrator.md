@@ -191,6 +191,7 @@ bin/omp-orchestrate finish T1 --commit SHA --review ok [--json]
 bin/omp-orchestrate rebase T1 [--json]
 bin/omp-orchestrate stop --reason gate [--json]
 bin/omp-orchestrate resume [--json]
+bin/omp-orchestrate doctor [--json] [--strict]
 ```
 
 `start` выводит готовый промпт implementer'а: JSON task, абсолютный worktree,

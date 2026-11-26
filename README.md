@@ -166,6 +166,7 @@ bin/omp-orchestrate start T1
 # agent works in the printed worktree, commits, returns the SHA
 bin/omp-orchestrate verify T1
 bin/omp-orchestrate finish T1 --commit <sha> --review ok
+bin/omp-orchestrate doctor --json
 ```
 
 `finish` merges **ff-only** into a clean base, records the commit, then removes the worktree — but only if the cleanup guard agrees. Otherwise it returns a warning and keeps the worktree.
@@ -305,7 +306,7 @@ Detailed engineering notes: [`docs/commands.md`](docs/commands.md), [`docs/opera
 | `/orchestrate [plan]` | Start or continue `AUTOPLAN.md`; per-task actions live in the `orchestrator` tool |
 | `bin/omp-yoda` | Launcher: supervisor + OMP in `yoda-supervised` |
 | `bin/omp-handoff-supervisor.mjs` | External marker watcher (not an LLM) |
-| `bin/omp-orchestrate` | Headless CLI for the same actions |
+| `bin/omp-orchestrate` | Headless CLI for the same actions and `doctor` |
 
 ---
 
@@ -385,7 +386,7 @@ Tests use real temporary git repositories, no live Orca or model calls. The exte
 
 ```bash
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts \
-  --no-session --no-tools --mode json -p 'Reply with exactly: OK'
+  --no-session --mode json -p 'Reply with exactly: OK'
 ```
 
 Contributions: keep behavior changes covered by tests, update docs in the same commit, and never commit session/runtime files.

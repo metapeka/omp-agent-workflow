@@ -19,7 +19,7 @@ omp plugin list
 cd ~/projects/omp-agent-workflow
 npm test
 npm run typecheck
-omp --no-extensions -e ./index.ts --no-session --no-tools --mode json \
+omp --no-extensions -e ./index.ts --no-session --mode json \
   -p 'Reply with exactly: OK'        # exit 0, stderr пуст
 bin/omp-yoda --version               # launcher находит supervisor и omp
 ```
@@ -195,6 +195,8 @@ bin/omp-orchestrate finish T1 --commit SHA --review ok --json
 bin/omp-orchestrate rebase T1 --json
 bin/omp-orchestrate stop --reason gate --json
 bin/omp-orchestrate resume --json
+bin/omp-orchestrate doctor --json
+bin/omp-orchestrate doctor --strict
 ```
 
 Если run остановлен:

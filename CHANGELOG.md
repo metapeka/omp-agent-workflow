@@ -24,6 +24,34 @@ semantic for the plugin contract, not for OMP itself.
   on a real 400-turn session. Linked from all three READMEs and served by
   GitHub Pages from `main /docs`.
 
+## [0.5.20] — 2026-11-26
+
+### Added
+
+- `bin/omp-orchestrate doctor [--json] [--strict]` — read-only environment
+  check with a fixed order of 16 checks: node/omp versions, linked plugin and
+  settings, git repo/HEAD, `HANDOFF.md` size, `AUTOPLAN.md`, `STATE.json`,
+  writable worktree root, Orca CLI, supervisor lock, terminal handle,
+  cache-monitor, and an optional `agent-team status --json` probe. Each probe
+  is capped at 2 s with a 9 s total budget, no network, nothing is written;
+  missing Orca, agent-team,
+  or cache-monitor yields `warn`/`skip`, not `fail`. `--strict` raises `warn`
+  to `fail`; exit is 0 without `fail` and 1 with it. `--json` is contract v1
+  (`schemaVersion: 1`, `ok`, `strict`, `summary`, `checks[]`).
+- `schemaVersion: 1` at the top of `status --json`; stable fields are fixed
+  in `docs/contracts.md`.
+- Tests: golden check order and levels, PATH shims for `omp`/`orca`/
+  `agent-team`, no-Orca exit 0 + warn, `--strict`, broken settings/plan/state,
+  missing plan/HANDOFF, `workflowMode=off` skips, ensemble two-owners, CLI
+  exit codes, and no home/temp paths in `detail`.
+
+### Docs
+
+- `docs/contracts.md` — CLI JSON v1 section: `status` stable fields, the
+  `doctor` check table, exit codes, and non-contract fields.
+- `docs/commands.md`, the wiki index, the orchestrator/operations pages, and
+  all three READMEs mention `doctor`.
+
 ## [0.5.19] — 2026-11-25
 
 ### Added

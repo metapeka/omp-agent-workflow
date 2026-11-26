@@ -234,6 +234,81 @@ next-session: v=1 ts=2026-11-25T00:40Z model=cline-pass/deepseek-v4-pro thinking
   выигрывают, непроверенная модель не применяется.
 - Без строки ничего не меняется: формат аддитивен и опционален.
 
+## CLI JSON v1: `status` и `doctor` (0.5.20)
+
+Машинный контракт для внешних обёрток (Orca/Ensemble, личный hub): только
+файлы и CLI JSON, без импортов кода и общей БД. Оба ответа содержат верхнее
+поле `schemaVersion: 1`; ломающее изменение полей — бамп версии и запись в
+CHANGELOG. Семантика exit codes и `doctor` принадлежит этому репозиторию;
+hub читает JSON и не дублирует проверки.
+
+### `bin/omp-orchestrate status --json`
+
+Требует валидный `AUTOPLAN.md`: план не читается — `PlanError`, exit 1.
+«Среда без плана» проверяет только `doctor`.
+
+Стабильные поля (остальные не переставлять и не удалять без бампа):
+
+| Поле | Смысл |
+|---|---|
+| `schemaVersion` | `1` |
+| `plan{path,hash,goal,tasks,completed}` | план и счётчики |
+| `state` | объект `STATE.json` или `null`, если файла нет |
+| `state.version` | версия схемы `STATE.json` (`1`) |
+| `state.plan{path,hash}` | план, на котором основан state |
+| `state.run{id,active,startedAt,mode}` | текущий прогон |
+| `state.current{id,status,branch,worktree,commit}` | активная задача или `null` |
+| `state.completed[]` | завершённые задачи (`id`, `commit`, `mergedAt`, `checks`) |
+| `state.stop{reason,detail}` | стоп или `null` |
+| `next` | следующая задача или `null` |
+
+Не контракт: `state.budgets.costOffsets`, `state.budgets.spendUsd`, прочие
+runtime-поля и временные/legacy-файлы.
+
+### `bin/omp-orchestrate doctor [--json] [--strict]`
+
+Read-only, без сети, `STATE.json` и рабочие файлы не меняются; zero runtime
+deps. Каждый внешний проб — не дольше 2 с (`spawnSync` timeout), общий
+бюджет — 9 с (`PROBE_BUDGET_MS`): после дедлайна новые пробы не
+запускаются. `detail` — одна строка без домашних путей, env-значений и
+секретов. Порядок проверок фиксирован.
+
+| id | Источник | Уровень |
+|---|---|---|
+| `node.version` | `process.version` ≥ 22 | fail |
+| `omp.version` | `omp --version` | fail (нет бинаря), warn (вне 19.x) |
+| `plugin.linked` | `omp plugin list --json` | fail |
+| `plugin.version` | source `package.json` (`name: omp-agent-workflow`) vs linked | warn |
+| `plugin.settings` | `omp plugin config list … --json`: enum/тип/min/max | fail |
+| `git.repo` | `git rev-parse --show-toplevel` | fail |
+| `git.head` | `git rev-parse --abbrev-ref HEAD HEAD` | fail |
+| `handoff.state` | `HANDOFF.md`: нет — warn; ≤24k pass; >24k warn | warn |
+| `autoplan` | `readPlan()`; нет плана — skip | fail (битый) |
+| `state` | `readState()`; нет — skip | fail (битый) |
+| `worktree.root` | `plan.worktreeRoot` writable, только при плане | fail |
+| `orca.cli` | `orca status` | warn; skip при `orcaEnabled=false` |
+| `supervisor.lock` | lock `owner.json`, живой pid | warn; skip вне `yoda-supervised` |
+| `terminal.handle` | `ORCA_TERMINAL_HANDLE` | warn; skip вне `yoda-supervised` |
+| `cache.monitor` | `omp plugin list --json` | warn (нужно для 0.6) |
+| `ensemble.active` | `agent-team status --json` | warn; skip, если CLI/JSON нет |
+
+Правила:
+
+- exit 0 при `pass`/`warn`/`skip`, exit 1 при `fail`; `--strict` повышает
+  `warn` до `fail` (уровни в JSON уже повышены);
+- `--json`: `{schemaVersion: 1, ok, strict, summary{pass,warn,skip,fail,total},
+  checks[{id,level,detail}]}`; `ok` — нет `fail`;
+- нет `AUTOPLAN.md` → `autoplan` и `worktree.root` — `skip`, exit 0;
+- `workflowMode=off` → `handoff.state`, `orca.cli`, `supervisor.lock`,
+  `terminal.handle` — `skip`, не `warn`;
+- отсутствие Orca/agent-team/cache-monitor — `skip`/`warn`, не `fail`
+  (D11: OMP работает без Orca);
+- `ensemble.active` при живом `STATE.run` сообщает `two owners`; автоблокировки
+  нет — только `warn`, при `--strict` — `fail`;
+- коллизии имён команд остаются в CI (`npm run check:names`), не в `doctor`;
+- `doctor` не дублирует merge/upstream-проверки — это `/handoff-preflight`
+  и hub.
+
 ## Supervisor
 
 Запуск:

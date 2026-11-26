@@ -32,7 +32,7 @@ Extension smoke test:
 
 ```bash
 omp --no-extensions -e ./index.ts -e ./orchestrator.ts \
-  --no-session --no-tools --mode json -p 'Reply with exactly: OK'
+  --no-session --mode json -p 'Reply with exactly: OK'
 ```
 
 ## Safety-sensitive areas

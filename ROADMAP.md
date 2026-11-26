@@ -297,6 +297,20 @@ Orca-интеграция, Settings, handoff guards, kill switch и advisory
       отдельное решение.
 - [x] Тесты: 9 специфицированных кейсов + CLI/launcher; docs/contracts.
 
+## Этап 0.5.20 — CLI JSON v1 и `doctor` (готово)
+
+- [x] `status --json` получает верхнее `schemaVersion: 1`; стабильные поля
+      зафиксированы в `docs/contracts.md`.
+- [x] `bin/omp-orchestrate doctor [--json] [--strict]`: 16 read-only
+      проверок в фиксированном порядке, каждый проб ≤ 2 с, без сети;
+      отсутствие Orca/agent-team/cache-monitor — warn/skip; битые
+      настройки/план/state — fail.
+- [x] `--strict` повышает warn до fail; exit 0 без fail, 1 с fail;
+      `--json` — `schemaVersion`/`ok`/`summary`/`checks[]`.
+- [x] Тесты: golden-порядок и уровни, PATH-шимы, no-Orca exit 0, strict,
+      битые входы, `off`, ensemble two-owners, CLI, отсутствие путей в
+      `detail`.
+
 ## Этап 0.6 — экономика handoff (P2)
 
 - Совместно с `omp-cache-monitor`: стоимость компакции/handoff и эффект на
