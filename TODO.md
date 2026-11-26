@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-26. Версия: `0.5.24`.
+Дата: 2026-11-26. Версия: `0.5.25`.
 
 ## Сейчас
 
@@ -121,6 +121,10 @@
       (ветка, HEAD, до 6 путей, runtime-файлы исключены, бюджет 300
       символов), снимок только в тексте запроса; тесты и docs
       (`guards.md`, handoff-flow, FAQ, contracts, README EN/RU/ZH).
+- [x] 0.5.25 — вывод `/handoff-preflight`: таблица `GROUP  ST  DETAIL` с
+      расчётной шириной и переносом; fallback-группы с иконками уже 70
+      колонок; глифы `theme.symbol` (`✔ ⦸ ✘`, ascii `[+]`), unicode-фолбэк;
+      тесты на оба режима и ascii, docs (`commands.md`, FAQ, вики).
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

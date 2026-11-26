@@ -4,6 +4,27 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.5.25] — 2026-11-26
+
+### Changed
+
+- `/handoff-preflight` renders an aligned `GROUP  ST  DETAIL` table with
+  runtime column widths and wrapped detail lines; the verdict is its own
+  line (`✔ preflight: OK …` / `✘ preflight: блокеры …`).
+- Terminals narrower than 70 columns fall back to icon-grouped blocks with
+  the verdict and counts first (`▸ 💾 usage`, `▸ ⎇ git`), so the panel stays
+  readable instead of wrapping a table.
+- Status and action glyphs come from OMP's symbol vocabulary
+  (`theme.symbol`): the `ascii` Symbol Preset prints `[+]`/`[!]`/`[-]` and
+  drops icons, `nerd` uses Nerd Font glyphs, headless hosts get the Unicode
+  fallback. Action marks moved from `✓ – ✗` to the same `✔ ⦸ ✘`.
+- No colour: `notify` renders the whole notice in the dim theme colour.
+
+### Tests
+
+- Formatter tests for wide (table), narrow (groups) and ascii modes and for
+  detail wrapping; command tests assert content instead of render mode.
+
 ## [0.5.24] — 2026-11-26
 
 ### Added

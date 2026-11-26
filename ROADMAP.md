@@ -1,12 +1,12 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-26. Версия: `0.5.24`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-26. Версия: `0.5.25`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
-preflight и flight recorder в запросе HANDOFF готовы; публичный
-GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
-владельца.
+preflight, flight recorder в запросе HANDOFF и табличный вывод preflight
+готовы; публичный GitHub-репозиторий и release `v0.5.14` есть;
+npm/marketplace — по решению владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -358,6 +358,17 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
 - [x] Тесты: грязное/чистое дерево, вне git, исключение runtime-файлов.
 - [x] `docs/guards.md` — карта защит и точек в цикле; вики, `handoff-flow`,
       FAQ, contracts, README EN/RU/ZH, CHANGELOG.
+
+## Этап 0.5.25 — табличный вывод preflight (готово)
+
+- [x] Вариант C: таблица `GROUP  ST  DETAIL` с шириной колонки по
+      содержимому, переносом длинных деталей и вердиктом отдельной строкой.
+- [x] Вариант D как fallback уже 70 колонок: группы с иконками, вердикт и
+      счётчики сверху, без выравнивания.
+- [x] Глифы из `theme.symbol` (unicode/nerd/ascii), unicode-фолбэк для
+      headless; действия и вердикт используют тот же набор (`✔ ⦸ ✘`).
+- [x] Тесты: таблица, группы, ascii, перенос, ширина колонок; assertions
+      команд не зависят от режима рендера. Docs: `commands.md`, FAQ, вики.
 
 ## Этап 0.6 — экономика handoff (P2)
 

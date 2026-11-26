@@ -212,12 +212,16 @@ function git(
 	};
 }
 
-function commits(n: number): string {
+function plural(n: number, one: string, few: string, many: string): string {
 	const mod10 = n % 10;
 	const mod100 = n % 100;
-	if (mod10 === 1 && mod100 !== 11) return `${n} коммит`;
-	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} коммита`;
-	return `${n} коммитов`;
+	if (mod10 === 1 && mod100 !== 11) return one;
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+	return many;
+}
+
+function commits(n: number): string {
+	return `${n} ${plural(n, "коммит", "коммита", "коммитов")}`;
 }
 
 /**
@@ -577,26 +581,223 @@ export function runPreflight(
 }
 
 const DIVIDER = "────────────────────────────────────────────────";
+/** Ниже этой ширины таблица не влезает — печатаем группы с иконками. */
+const PREFLIGHT_NARROW_COLUMNS = 70;
 
+export interface PreflightSymbols {
+	status: Record<PreflightStatus, string>;
+	skip: string;
+	groups: Record<string, string>;
+}
+
+export interface PreflightFormatOptions {
+	symbols?: PreflightSymbols;
+	columns?: number;
+}
+
+/** Фолбэк, когда хост не даёт тему: значения unicode-пресета OMP. */
+export const UNICODE_PREFLIGHT_SYMBOLS: PreflightSymbols = {
+	status: { pass: "✔", warn: "⚠", fail: "✘" },
+	skip: "⦸",
+	groups: {
+		file: "📄",
+		usage: "💾",
+		plan: "🗺",
+		git: "⎇",
+		"git status": "⎇",
+		"ветка": "⑂",
+		upstream: "⤴",
+		marker: "📌",
+		"next-session": "🧭",
+	},
+};
+
+type PreflightSymbolKey =
+	| "status.success"
+	| "status.warning"
+	| "status.error"
+	| "status.disabled"
+	| "icon.cache"
+	| "icon.file"
+	| "icon.plan"
+	| "icon.git"
+	| "icon.branch"
+	| "icon.pr"
+	| "icon.pin"
+	| "icon.context";
+
+/**
+ * Глифы из словаря OMP (`theme.symbol`) вместо литералов: при `ascii`-пресете
+ * статусы становятся `[+]`/`[!]` и иконки выключаются, при `nerd` — Nerd Font.
+ * Живой TUI даёт тему; headless/тесты — нет, тогда unicode-фолбэк.
+ */
+export function preflightSymbols(ctx: ExtensionContext): PreflightSymbols {
+	const theme = ctx.ui?.theme;
+	if (!theme || typeof theme.symbol !== "function") return UNICODE_PREFLIGHT_SYMBOLS;
+	let preset = "unicode";
+	try {
+		preset = theme.getSymbolPreset() ?? "unicode";
+	} catch {
+		// старый хост без getSymbolPreset
+	}
+	const pick = (key: PreflightSymbolKey, fallback: string): string => {
+		try {
+			const value = theme.symbol(key);
+			return value ? value : fallback;
+		} catch {
+			return fallback;
+		}
+	};
+	const status = {
+		pass: pick("status.success", UNICODE_PREFLIGHT_SYMBOLS.status.pass),
+		warn: pick("status.warning", UNICODE_PREFLIGHT_SYMBOLS.status.warn),
+		fail: pick("status.error", UNICODE_PREFLIGHT_SYMBOLS.status.fail),
+	};
+	const skip = pick("status.disabled", UNICODE_PREFLIGHT_SYMBOLS.skip);
+	if (preset === "ascii") return { status, skip, groups: {} };
+	return {
+		status,
+		skip,
+		groups: {
+			file: pick("icon.file", "📄"),
+			usage: pick("icon.cache", "💾"),
+			plan: pick("icon.plan", "🗺"),
+			git: pick("icon.git", "⎇"),
+			"git status": pick("icon.git", "⎇"),
+			"ветка": pick("icon.branch", "⑂"),
+			upstream: pick("icon.pr", "⤴"),
+			marker: pick("icon.pin", "📌"),
+			"next-session": pick("icon.context", "🧭"),
+		},
+	};
+}
+
+/** Ширина чата с запасом на поля панели; вне TTY — 76. */
+function terminalColumns(): number {
+	const width = process.stdout.columns;
+	return Number.isFinite(width) && width && width > 0 ? Math.max(40, width - 4) : 76;
+}
+
+/** Ширина строки для выравнивания: символы группы и деталей — одноклеточные. */
+function cellWidth(text: string): number {
+	return Array.from(text).length;
+}
+
+function wrapText(text: string, width: number): string[] {
+	if (width < 8) return [text];
+	const lines: string[] = [];
+	let line = "";
+	for (const word of text.split(/\s+/).filter(Boolean)) {
+		const candidate = line ? `${line} ${word}` : word;
+		if (!line || cellWidth(candidate) <= width) line = candidate;
+		else {
+			lines.push(line);
+			line = word;
+		}
+	}
+	if (line) lines.push(line);
+	return lines.length ? lines : [""];
+}
+
+interface PreflightRow {
+	group: string;
+	detail: string;
+	status: PreflightStatus;
+}
+
+/** `git: чисто` → группа `git`, деталь `чисто`; строка без `:` идёт в деталь. */
+function preflightRows(report: PreflightReport): PreflightRow[] {
+	return report.checks.map((check) => {
+		const match = /^([^:]{1,24}):\s*(.*)$/.exec(check.text);
+		if (!match) {
+			return {
+				group: /^ветка/.test(check.text) ? "merge" : "—",
+				detail: check.text,
+				status: check.status,
+			};
+		}
+		let group = match[1];
+		let detail = match[2];
+		if (group.startsWith("upstream ")) {
+			detail = `${group.slice("upstream ".length)}: ${detail}`;
+			group = "upstream";
+		}
+		return { group, detail, status: check.status };
+	});
+}
+
+function groupIcon(group: string, symbols: PreflightSymbols): string {
+	if (/\.md$/i.test(group)) return symbols.groups.file ?? "";
+	return symbols.groups[group] ?? "";
+}
+
+/** Вариант D: вердикт первым, дальше группы с иконками, без выравнивания. */
+function formatGroupedPreflight(
+	rows: readonly PreflightRow[],
+	title: string,
+	verdict: string,
+	symbols: PreflightSymbols,
+): string {
+	const warns = rows.filter((row) => row.status === "warn").length;
+	const fails = rows.filter((row) => row.status === "fail").length;
+	const summary = [
+		`${rows.length} ${plural(rows.length, "проверка", "проверки", "проверок")}`,
+		warns ? `${warns} ${plural(warns, "замечание", "замечания", "замечаний")}` : "",
+		fails ? `${fails} ${plural(fails, "блокер", "блокера", "блокеров")}` : "",
+	]
+		.filter(Boolean)
+		.join(" · ");
+	const lines = [DIVIDER, `PREFLIGHT · ${title}`, verdict, summary];
+	let last = "";
+	for (const row of rows) {
+		if (row.group !== last) {
+			last = row.group;
+			const icon = groupIcon(row.group, symbols);
+			lines.push("", `▸ ${icon ? `${icon} ` : ""}${row.group}`);
+		}
+		lines.push(`  ${symbols.status[row.status]} ${row.detail}`);
+	}
+	lines.push(DIVIDER);
+	return lines.join("\n");
+}
+
+/**
+ * Вариант C: `GROUP  ST  DETAIL` с расчётной шириной колонок и переносом
+ * длинных деталей; уже `PREFLIGHT_NARROW_COLUMNS` — вариант D.
+ */
 export function formatPreflight(
 	report: PreflightReport,
 	title = "состояние",
+	options: PreflightFormatOptions = {},
 ): string {
+	const symbols = options.symbols ?? UNICODE_PREFLIGHT_SYMBOLS;
+	const columns = options.columns ?? 76;
 	const verdict = report.ready
 		? "preflight: OK — можно /handoff-new"
 		: "preflight: блокеры — /handoff-new рано";
-	const icons: Record<PreflightStatus, string> = {
-		pass: "✓",
-		warn: "⚠",
-		fail: "✗",
-	};
-	return [
+	const mark = report.ready ? symbols.status.pass : symbols.status.fail;
+	const rows = preflightRows(report);
+	if (columns < PREFLIGHT_NARROW_COLUMNS) {
+		return formatGroupedPreflight(rows, title, `${mark} ${verdict}`, symbols);
+	}
+	const groupWidth = Math.max(5, ...rows.map((row) => cellWidth(row.group)));
+	const detailWidth = Math.max(12, columns - groupWidth - 4);
+	const lines = [
 		DIVIDER,
 		`PREFLIGHT · ${title}`,
-		...report.checks.map((c) => `${icons[c.status]} ${c.text}`),
-		DIVIDER,
-		verdict,
-	].join("\n");
+		`${"GROUP".padEnd(groupWidth)} ST  DETAIL`,
+	];
+	for (const row of rows) {
+		const wrapped = wrapText(row.detail, detailWidth);
+		lines.push(
+			`${row.group.padEnd(groupWidth)} ${symbols.status[row.status]}  ${wrapped[0]}`,
+		);
+		for (const extra of wrapped.slice(1)) {
+			lines.push(`${" ".repeat(groupWidth + 3)}${extra}`);
+		}
+	}
+	lines.push(DIVIDER, `${mark} ${verdict}`);
+	return lines.join("\n");
 }
 
 /** Действия, которые preflight умеет выполнить сам; остальное — вручную/агентом. */
@@ -693,10 +894,17 @@ async function askHandoffActions(
 function formatPreflightResult(
 	report: PreflightReport,
 	actions: readonly HandoffActionReport[],
+	options: PreflightFormatOptions = {},
 ): string {
+	const symbols = options.symbols ?? UNICODE_PREFLIGHT_SYMBOLS;
+	const marks: Record<HandoffActionReport["status"], string> = {
+		done: symbols.status.pass,
+		skipped: symbols.skip,
+		failed: symbols.status.fail,
+	};
 	const actionLines =
 		actions.length > 0
-			? actions.map((action) => `${ACTION_MARKS[action.status]} ${action.text}`)
+			? actions.map((action) => `${marks[action.status]} ${action.text}`)
 			: ["— не выбраны"];
 	const sections = [
 		[DIVIDER, "PREFLIGHT · действия", ...actionLines].join("\n"),
@@ -705,7 +913,7 @@ function formatPreflightResult(
 			"PREFLIGHT · вручную/агентом",
 			...MANUAL_HANDOFF_STEPS.map((step) => `• ${step}`),
 		].join("\n"),
-		formatPreflight(report, "итог"),
+		formatPreflight(report, "итог", options),
 	];
 	return sections.join("\n\n");
 }
@@ -715,12 +923,6 @@ export interface HandoffActionReport {
 	status: "done" | "skipped" | "failed";
 	text: string;
 }
-
-const ACTION_MARKS: Record<HandoffActionReport["status"], string> = {
-	done: "✓",
-	skipped: "–",
-	failed: "✗",
-};
 
 /**
  * Черновик сообщения коммита: агент видит diff и предлагает subject, человек
@@ -1584,18 +1786,20 @@ export default function contextGuard(pi: ExtensionAPI): void {
 			if (!isMainTui(ctx)) return;
 			const stateFile = args.trim() || STATE_FILE;
 			const sessionFile = ctx.sessionManager.getSessionFile() ?? null;
+			const symbols = preflightSymbols(ctx);
+			const columns = terminalColumns();
 			const initial = runPreflight(ctx.cwd, sessionFile, stateFile);
 			if (!ctx.ui.askDialog) {
 				notify(
 					ctx,
-					formatPreflight(initial),
+					formatPreflight(initial, "состояние", { symbols, columns }),
 					initial.ready ? "info" : "warning",
 				);
 				return;
 			}
 			notify(
 				ctx,
-				formatPreflight(initial, "состояние до действий"),
+				formatPreflight(initial, "состояние до действий", { symbols, columns }),
 				initial.ready ? "info" : "warning",
 			);
 			const available = actionsForPreflight(initial);
@@ -1617,7 +1821,7 @@ export default function contextGuard(pi: ExtensionAPI): void {
 			const failed = actions.some((action) => action.status === "failed");
 			notify(
 				ctx,
-				formatPreflightResult(report, actions),
+				formatPreflightResult(report, actions, { symbols, columns }),
 				failed || !report.ready ? "warning" : "info",
 			);
 		},

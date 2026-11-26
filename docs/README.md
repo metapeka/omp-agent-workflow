@@ -4,7 +4,7 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.24` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.25` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
 `next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты + метрики
@@ -72,6 +72,10 @@ JSONL (`lib/session-metrics.ts`), прогресс плана с gate/deps и sp
 незакоммиченных путей (runtime-файлы исключены, бюджет 300 символов);
 handoff остаётся read-only, контракт marker/session не меняется. Карта всех
 защит и точек в цикле — [guards.md](guards.md).
+`0.5.25` — вывод `/handoff-preflight`: таблица `GROUP  ST  DETAIL` с
+расчётной шириной и переносом на широком терминале, группы с иконками и
+вердиктом сверху уже 70 колонок; глифы из `theme.symbol`, `ascii`-пресет
+даёт `[+]`/`[!]`/`[-]`. Формат — [commands.md](commands.md).
 
 ## С чего начать
 

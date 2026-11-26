@@ -3,11 +3,12 @@
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.5.24`; последний код — flight recorder в запросе HANDOFF
-(`workingTreeSnapshot()`, см. CHANGELOG 0.5.24).
-Ветки 0.5.1–0.5.24 (включая `feat/doctor`, `feat/oaw-name`,
+`main`, версия `0.5.25`; последний код — табличный вывод `/handoff-preflight`
+(вариант C + fallback D, глифы `theme.symbol`, см. CHANGELOG 0.5.25).
+Ветки 0.5.1–0.5.25 (включая `feat/doctor`, `feat/oaw-name`,
 `feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`,
-`feat/handoff-flight-recorder`) слиты ff-only, worktrees удалены. GitHub:
+`feat/handoff-flight-recorder`, `feat/preflight-output`) слиты ff-only,
+worktrees удалены. GitHub:
 `metapeka/omp-agent-workflow`
 (public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
 `docs/README.md`; backlog — `TODO.md`.
@@ -32,6 +33,11 @@ HANDOFF попадают ветка, короткий HEAD и до 6 незак�
 по-прежнему не трогает git и дерево. Карта защит и точек в цикле —
 `docs/guards.md`; обновлены вики, `handoff-flow.md`, FAQ, contracts,
 README EN/RU/ZH. Проверено `npm run verify`.
+
+0.5.25: вывод preflight — таблица `GROUP  ST  DETAIL` с расчётной шириной и
+переносом (широкий терминал) и группы с иконками + вердикт сверху (уже 70
+колонок); глифы из `theme.symbol` (`✔ ⦸ ✘`, ascii `[+]`). Push 0.5.24
+сделан (`8326f1c`), коммиты 0.5.25 — локальные, до разрешения.
 
 ## Что готово
 
@@ -69,6 +75,7 @@ README EN/RU/ZH. Проверено `npm run verify`.
 | Пресеты 0.5.22 | `docs/research/workflow-presets.md`: F1/F2 сделаны; F4 `--plan-yolo` — только после замера |
 | Метрики 0.5.23 | `lib/session-metrics.ts` + строки preflight: размер state против 32k, cache hit, reasoning share и spend сессии из root JSONL, прогресс плана с gate/deps, attempts, run spend; цена границы — `[blocked]` до `costs --json` |
 | Flight recorder 0.5.24 | `workingTreeSnapshot()`: ветка, короткий HEAD, до 6 незакоммиченных путей в тексте запроса HANDOFF; runtime-файлы исключены; контракт marker/session не меняется; карта защит — `docs/guards.md` |
+| Вывод preflight 0.5.25 | Таблица `GROUP  ST  DETAIL` (расчётная ширина, перенос деталей) и fallback-группы с иконками уже 70 колонок; глифы `theme.symbol` (unicode/nerd/ascii), unicode-фолбэк; `✔ ⦸ ✘` у действий и вердикта; формат — `docs/commands.md` |
 | Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md`: `costs --json` v1 для 0.6 economics; в cache-monitor 0.10.1 CLI нет (только `/cache-monitor costs` в TUI) |
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; Ф1 реализован в 0.5.20 |
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
@@ -358,7 +365,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.24; проверить `omp plugin list`, отсутствие
+1. Новая сессия загрузит 0.5.25; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
    с advisory-строкой и метриками (state/usage/plan), `SUP OFF` в TUI,
    `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и

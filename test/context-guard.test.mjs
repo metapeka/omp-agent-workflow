@@ -17,7 +17,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import contextGuard from "../index.ts";
+import contextGuard, {
+	formatPreflight,
+	UNICODE_PREFLIGHT_SYMBOLS,
+} from "../index.ts";
 import { createInitialState, writeState } from "../lib/orchestrator/state.ts";
 import {
 	acquireLock,
@@ -1622,6 +1625,60 @@ function actionDialog(selectedIds = []) {
 	return { asked, askDialog };
 }
 
+describe("preflight output", () => {
+	const report = {
+		ready: true,
+		checks: [
+			{ status: "warn", text: "HANDOFF.md: 25 125 символов / 32000 — сократи state" },
+			{ status: "pass", text: "usage: cache hit 97.8% — prompt 7.3M" },
+			{ status: "pass", text: "git: чисто" },
+			{ status: "pass", text: "marker: нет" },
+		],
+	};
+
+	it("renders aligned columns on a wide terminal", () => {
+		const text = formatPreflight(report, "состояние", { columns: 100 });
+		const lines = text.split("\n");
+		assert.match(lines[2], /^GROUP\s+ST\s+DETAIL$/);
+		assert.match(text, /^HANDOFF\.md\s+⚠\s+25 125 символов/m);
+		assert.match(text, /^git\s+✔\s+чисто/m);
+		assert.match(text, /^marker\s+✔\s+нет/m);
+		assert.match(text, /✔ preflight: OK — можно \/handoff-new/);
+	});
+
+	it("wraps long details under the detail column", () => {
+		const long = {
+			ready: true,
+			checks: [{ status: "pass", text: `usage: ${"word ".repeat(40).trim()}` }],
+		};
+		const text = formatPreflight(long, "состояние", { columns: 72 });
+		const wrapped = text.split("\n").filter((line) => line.includes("word"));
+		assert.ok(wrapped.length > 1, text);
+		assert.match(wrapped[1], /^ {8}word/);
+	});
+
+	it("falls back to groups with icons on a narrow terminal", () => {
+		const text = formatPreflight(report, "состояние", { columns: 60 });
+		assert.match(text, /^✔ preflight: OK/m);
+		assert.match(text, /4 проверки · 1 замечание/);
+		assert.match(text, new RegExp(`▸ ${UNICODE_PREFLIGHT_SYMBOLS.groups.usage} usage`));
+		assert.match(text, new RegExp(`▸ ${UNICODE_PREFLIGHT_SYMBOLS.groups.git} git`));
+		assert.doesNotMatch(text, /GROUP\s+ST\s+DETAIL/);
+	});
+
+	it("uses ascii status symbols and drops icons", () => {
+		const ascii = {
+			status: { pass: "[+]", warn: "[!]", fail: "[-]" },
+			skip: "[ ]",
+			groups: {},
+		};
+		const text = formatPreflight(report, "состояние", { symbols: ascii, columns: 60 });
+		assert.match(text, /\[!\] 25 125/);
+		assert.match(text, /▸ usage/);
+		assert.doesNotMatch(text, /💾|⎇|⚠|✔/);
+	});
+});
+
 describe("/handoff-preflight", () => {
 	it("passes a clean committed repo", async () => {
 		const { dir } = preflightRepo({
@@ -1636,9 +1693,9 @@ describe("/handoff-preflight", () => {
 			assert.equal(v.notes.length, 1);
 			assert.equal(v.notes[0].level, "info");
 			assert.match(v.notes[0].text, /preflight: OK/);
-			assert.match(v.notes[0].text, /HANDOFF\.md: закоммичен в HEAD/);
-			assert.match(v.notes[0].text, /git: чисто/);
-			assert.match(v.notes[0].text, /marker: нет/);
+			assert.match(v.notes[0].text, /HANDOFF\.md[\s\S]{0,8}✔\s+закоммичен в HEAD/);
+			assert.match(v.notes[0].text, /git[\s\S]{0,8}✔\s+чисто/);
+			assert.match(v.notes[0].text, /marker[\s\S]{0,8}✔\s+нет/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -1657,7 +1714,7 @@ describe("/handoff-preflight", () => {
 
 			assert.match(
 				v.notes[0].text,
-				/✓ next-session: v=1 ts=.* mode=plan reason=seams/,
+				/next-session[\s\S]{0,8}✔\s+v=1 ts=.* mode=plan reason=seams/,
 			);
 			assert.match(v.notes[0].text, /preflight: OK/);
 		} finally {
@@ -1675,7 +1732,7 @@ describe("/handoff-preflight", () => {
 			const v = view(40, { cwd: dir });
 			await command(commands, "handoff-preflight", v.ctx);
 
-			assert.match(v.notes[0].text, /⚠ next-session: версия v=2/);
+			assert.match(v.notes[0].text, /next-session[\s\S]{0,8}⚠\s+версия v=2/);
 			assert.match(v.notes[0].text, /preflight: OK/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1699,7 +1756,7 @@ describe("/handoff-preflight", () => {
 			const v = view(40, { cwd: dir });
 			await command(commands, "handoff-preflight", v.ctx);
 
-			assert.match(v.notes[0].text, /git: чисто/);
+			assert.match(v.notes[0].text, /git[\s\S]{0,8}✔\s+чисто/);
 			assert.equal(v.notes[0].level, "info");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1750,7 +1807,7 @@ describe("/handoff-preflight", () => {
 				asked[0].map((question) => question.id),
 				["checks", "commit"],
 			);
-			assert.match(v.notes[0].text, /git: изменено файлов 1/);
+			assert.match(v.notes[0].text, /изменено файлов 1/);
 			assert.match(v.notes.at(-1).text, /preflight: блокеры/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1770,7 +1827,7 @@ describe("/handoff-preflight", () => {
 			const v = view(40, { cwd: dir, askDialog });
 			await command(commands, "handoff-preflight", v.ctx);
 
-			assert.match(v.notes.at(-1).text, /✓ проверки: выполнено — test OK; typecheck OK/);
+			assert.match(v.notes.at(-1).text, /✔ проверки: выполнено — test OK; typecheck OK/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
 			assert.equal(v.notes.at(-1).level, "info");
 		} finally {
@@ -1800,9 +1857,9 @@ describe("/handoff-preflight", () => {
 			);
 			assert.equal(run("log", "-1", "--format=%s"), "test: handoff");
 			assert.equal(run("status", "--porcelain"), "");
-			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — test: handoff/);
+			assert.match(v.notes.at(-1).text, /✔ коммит: создан [0-9a-f]+ — test: handoff/);
 			assert.match(v.notes.at(-1).text, /PREFLIGHT · итог/);
-			assert.match(v.notes.at(-1).text, /git: чисто/);
+			assert.match(v.notes.at(-1).text, /git[\s\S]{0,8}✔\s+чисто/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1822,7 +1879,7 @@ describe("/handoff-preflight", () => {
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(run("log", "-1", "--format=%s"), "handoff: перед сменой сессии");
-			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /✔ коммит: создан [0-9a-f]+/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -1859,7 +1916,7 @@ describe("/handoff-preflight", () => {
 			);
 			assert.match(prompts[0].promptText, /code\.ts/);
 			assert.equal(prompts[0].tools, false);
-			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — feat\(preflight\)/);
+			assert.match(v.notes.at(-1).text, /✔ коммит: создан [0-9a-f]+ — feat\(preflight\)/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -1885,7 +1942,7 @@ describe("/handoff-preflight", () => {
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(run("log", "-1", "--format=%s"), "handoff: перед сменой сессии");
-			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /✔ коммит: создан [0-9a-f]+/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -1941,7 +1998,7 @@ describe("/handoff-preflight", () => {
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(run("log", "-1", "--format=%s"), "fix: edited by hand");
-			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — fix: edited by hand/);
+			assert.match(v.notes.at(-1).text, /✔ коммит: создан [0-9a-f]+ — fix: edited by hand/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -1962,7 +2019,7 @@ describe("/handoff-preflight", () => {
 			assert.equal(run("log", "-1", "--format=%s"), "init");
 			assert.match(
 				v.notes.at(-1).text,
-				/– коммит: пропущено — ввод сообщения отменён/,
+				/⦸ коммит: пропущено — ввод сообщения отменён/,
 			);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -1984,7 +2041,7 @@ describe("/handoff-preflight", () => {
 			assert.equal(run("log", "-1", "--format=%s"), "init");
 			assert.match(
 				v.notes.at(-1).text,
-				/– коммит: пропущено — ввод сообщения отменён/,
+				/⦸ коммит: пропущено — ввод сообщения отменён/,
 			);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -2034,7 +2091,7 @@ describe("/handoff-preflight", () => {
 				asked[0].map((question) => question.id),
 				["checks", "merge"],
 			);
-			assert.match(v.notes.at(-1).text, /✓ merge: main @ [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /✔ merge: main @ [0-9a-f]+/);
 			assert.match(v.notes.at(-1).text, /влита в main/);
 			assert.equal(
 				gitAt(mainDir, "rev-parse", "HEAD"),
@@ -2069,8 +2126,8 @@ describe("/handoff-preflight", () => {
 
 			assert.equal(inputs, 0);
 			assert.equal(run("log", "-1", "--format=%s"), "init");
-			assert.match(v.notes.at(-1).text, /✗ проверки: ошибка — test FAIL/);
-			assert.match(v.notes.at(-1).text, /– коммит: пропущено — проверки не прошли/);
+			assert.match(v.notes.at(-1).text, /✘ проверки: ошибка — test FAIL/);
+			assert.match(v.notes.at(-1).text, /⦸ коммит: пропущено — проверки не прошли/);
 			assert.equal(v.notes.at(-1).level, "warning");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -2099,8 +2156,8 @@ describe("/handoff-preflight", () => {
 
 			assert.equal(inputs, 0);
 			assert.equal(run("log", "-1", "--format=%s"), "init");
-			assert.match(v.notes.at(-1).text, /✗ проверки: ошибка — package.json битый JSON/);
-			assert.match(v.notes.at(-1).text, /– коммит: пропущено — проверки не прошли/);
+			assert.match(v.notes.at(-1).text, /✘ проверки: ошибка — package.json битый JSON/);
+			assert.match(v.notes.at(-1).text, /⦸ коммит: пропущено — проверки не прошли/);
 			assert.equal(v.notes.at(-1).level, "warning");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -2126,7 +2183,7 @@ describe("/handoff-preflight", () => {
 				"code.ts",
 			]);
 			assert.match(run("status", "--porcelain"), /\?\? \.omp-handoff-session\.json/);
-			assert.match(v.notes.at(-1).text, /git: чисто/);
+			assert.match(v.notes.at(-1).text, /git[\s\S]{0,8}✔\s+чисто/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -2156,7 +2213,7 @@ describe("/handoff-preflight", () => {
 			assert.deepEqual(run("show", "--name-only", "--format=", "HEAD").split("\n"), [
 				"code.ts",
 			]);
-			assert.match(v.notes.at(-1).text, /✓ коммит: создан [0-9a-f]+ — test: ignored runtime/);
+			assert.match(v.notes.at(-1).text, /✔ коммит: создан [0-9a-f]+ — test: ignored runtime/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -2236,7 +2293,7 @@ describe("/handoff-preflight", () => {
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(v.notes[0].level, "warning");
-			assert.match(v.notes[0].text, /HANDOFF\.md: изменён, не закоммичен/);
+			assert.match(v.notes[0].text, /изменён, не закоммичен/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -2250,7 +2307,7 @@ describe("/handoff-preflight", () => {
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(v.notes[0].level, "warning");
-			assert.match(v.notes[0].text, /HANDOFF\.md: нет/);
+			assert.match(v.notes[0].text, /HANDOFF\.md[\s\S]{0,8}нет — сначала обнови state/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -2287,7 +2344,7 @@ describe("/handoff-preflight", () => {
 			const { commands } = install();
 			const v = view(40, { cwd: dir, sessionFile: "/tmp/session.jsonl" });
 			await command(commands, "handoff-preflight", v.ctx);
-			assert.match(v.notes[0].text, /marker: от другой сессии/);
+			assert.match(v.notes[0].text, /marker[\s\S]{0,8}⚠\s+от другой сессии/);
 
 			writeFileSync(
 				marker,
@@ -2310,7 +2367,7 @@ describe("/handoff-preflight", () => {
 			await command(commands, "handoff-preflight", v.ctx);
 
 			assert.equal(v.notes[0].level, "info");
-			assert.match(v.notes[0].text, /git: не репозиторий/);
+			assert.match(v.notes[0].text, /git[\s\S]{0,8}⚠\s+не репозиторий/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -2357,7 +2414,7 @@ describe("/handoff-preflight", () => {
 			const v = view(40, { cwd: dir });
 			await command(commands, "handoff-preflight", v.ctx);
 
-			assert.match(v.notes[0].text, /upstream base: синхронизирован/);
+			assert.match(v.notes[0].text, /upstream[\s\S]{0,8}✔\s+base: синхронизирован/);
 			assert.equal(v.notes[0].level, "info");
 
 			writeFileSync(join(dir, "later.txt"), "later\n");
@@ -2431,7 +2488,7 @@ describe("/handoff-preflight", () => {
 			await command(commands, "handoff-preflight", v.ctx, "ALT.md");
 
 			assert.equal(v.notes[0].level, "info");
-			assert.match(v.notes[0].text, /ALT\.md: закоммичен в HEAD/);
+			assert.match(v.notes[0].text, /ALT\.md[\s\S]{0,8}✔\s+закоммичен в HEAD/);
 			assert.doesNotMatch(v.notes[0].text, /HANDOFF\.md: нет/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });

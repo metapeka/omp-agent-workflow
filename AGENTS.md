@@ -35,7 +35,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.24`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.25`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -71,6 +71,10 @@ hit rate, этот проект управляет контекстом и см�
   короткий HEAD и до 6 незакоммиченных путей (read-only git, runtime-файлы
   исключены); handoff остаётся read-only, контракт marker/session не
   меняется; карта защит — `docs/guards.md`.
+- 0.5.25 — вывод `/handoff-preflight`: таблица `GROUP  ST  DETAIL` (ширина
+  по содержимому, перенос деталей) и fallback-группы с иконками уже 70
+  колонок; глифы `theme.symbol` (unicode/nerd/ascii), действия и вердикт —
+  `✔ ⦸ ✘`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.

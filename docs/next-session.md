@@ -1,14 +1,14 @@
-# Next session: OAW (`omp-agent-workflow`) 0.5.24
+# Next session: OAW (`omp-agent-workflow`) 0.5.25
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.5.24`.
-- Ветки 0.5.1–0.5.24 (включая `feat/doctor`, `feat/oaw-name`,
-  `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`) слиты
-  ff-only; worktrees удалены.
+- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.5.25`.
+- Ветки 0.5.1–0.5.25 (включая `feat/doctor`, `feat/oaw-name`,
+  `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
+  `feat/preflight-output`) слиты ff-only; worktrees удалены.
 - Готово: 0.3 (guard/handoff/Yoda), 0.5 (orchestrator), 0.5.1 (`/wrap`),
   0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4–0.5.5
   (Settings, 14 ключей), 0.5.6–0.5.11 (`/handoff-preflight`: таблица, меню
@@ -23,7 +23,8 @@
   reasoning share и spend сессии, план/gate/deps, run spend; цена
   границы — до `costs --json`), 0.5.24 (flight recorder: ветка, HEAD и до
   6 незакоммиченных путей в тексте запроса HANDOFF; карта защит —
-  `docs/guards.md`).
+  `docs/guards.md`), 0.5.25 (вывод preflight: таблица `GROUP  ST  DETAIL`
+  с переносом и fallback-группы с иконками; глифы `theme.symbol`).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
