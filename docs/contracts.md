@@ -143,6 +143,19 @@ Settings (аварийное выключение). Команды остают�
 - Runtime-файлы `.omp-handoff-session.json`, `.omp-handoff-request.json`,
   `.omp-handoff-supervisor.lock*`, `.omp-handoff-done.json` не считаются
   грязным деревом и не коммитятся.
+- Метрики 0.5.23 — только чтение, без изменения контракта:
+  - размер state: pass `N символов / 32000`, warn > 24 000 и ≥ 32 000;
+  - сессия: cache hit (`cacheRead/(input+cacheRead)`, warn < 80% только
+    при prompt ≥ 50k и ≥ 5 запросах), reasoning share последнего хода и
+    spend — из `message.assistant.usage` root session JSONL
+    (`lib/session-metrics.ts`); записи `model_usage` не считаются, дочерние
+    сессии не читаются;
+  - план/run: `AUTOPLAN.md` опционален; при наличии — прогресс, следующая
+    задача с gate/deps; `STATE.attempts` > 0 — warn; run spend ≥ 90%
+    `maxSpendUsd` — warn.
+- Цена границы handoff не показывается: записанная ставка `usage.cost`
+  гуляет ~2× на одной модели, листовые цены `omp models --json` расходятся
+  с ней ≈1.6×; нужна таблица ставок cache-monitor (`costs --json`).
 - Блокеры (`fail`): нет state-файла (default `HANDOFF.md`); грязное дерево;
   detached HEAD; нет коммитов; git-репозиторий не читается; незапушенные
   коммиты при наличии upstream.

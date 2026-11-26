@@ -4,10 +4,11 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.22` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.23` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
-`next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты).
+`next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты + метрики
+preflight).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -62,6 +63,11 @@ stop-reason `external-run` и не трогает `STATE.json`/worktree; `doctor
 Settings `workflowPreset` (14-й) и флаг `--preset`; задают модель,
 thinking, пороги и continue prompt, явные настройки/флаги выигрывают;
 `plan` советует advisory `model=flash mode=routine`. D16.
+`0.5.23` — метрики в `/handoff-preflight` (F3): размер state против
+лимита 32k, cache hit, reasoning share и spend сессии из root session
+JSONL (`lib/session-metrics.ts`), прогресс плана с gate/deps и spend run
+из `AUTOPLAN.md`/`STATE.json`. Цена границы handoff отложена до таблицы
+ставок cache-monitor: записанные `usage.cost` гуляют ~2× на одной модели.
 
 ## С чего начать
 

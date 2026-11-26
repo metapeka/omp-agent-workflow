@@ -42,11 +42,23 @@ import {
 	readState,
 	STATE_FILE as ORCHESTRATOR_STATE_FILE,
 } from "./lib/orchestrator/state.ts";
+import { readPlan, selectNextTask } from "./lib/orchestrator/plan.ts";
+import type {
+	Autoplan,
+	OrchestratorState,
+} from "./lib/orchestrator/types.ts";
 import {
 	describeNextSession,
 	loadModelCatalog,
 	parseNextSession,
 } from "./lib/next-session.ts";
+import {
+	cacheHitPercent,
+	formatTokens,
+	formatUsd,
+	lastReasoningShare,
+	readSessionMetrics,
+} from "./lib/session-metrics.ts";
 
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
 const HANDOFF_INSTRUCTIONS =
@@ -77,6 +89,8 @@ const RUNTIME_EXCLUDES = RUNTIME_PATHS.map((path) => `:(exclude)${path}`);
  * заметную долю промпта на 1M.
  */
 const HANDOFF_STATE_LIMIT = 32_000;
+/** С этого размера state просим сократить: лимит близко, payload тяжелеет. */
+const STATE_WARN_CHARS = 24_000;
 
 /** Повторный запрос HANDOFF после стольких завершённых ходов без marker. */
 const HANDOFF_RETRY_TURNS = 2;
@@ -166,14 +180,8 @@ function commits(n: number): string {
  * читается только если в строке есть `model`; иначе вызов `omp` не нужен.
  */
 function advisoryCheck(
-	statePath: string,
+	text: string,
 ): { status: PreflightStatus; text: string } | null {
-	let text: string;
-	try {
-		text = readFileSync(statePath, "utf8");
-	} catch {
-		return null;
-	}
 	let parsed = parseNextSession(text);
 	if (parsed.status === "none") return null;
 	if (parsed.advice?.model !== undefined) {
@@ -196,6 +204,150 @@ function advisoryCheck(
 	};
 }
 
+/** Строка размера state: лимит 32k обрезает, 24k — уже пора сокращать. */
+function stateSizeCheck(
+	stateFile: string,
+	chars: number,
+): PreflightCheck {
+	const base = `${stateFile}: ${chars} символов / ${HANDOFF_STATE_LIMIT}`;
+	if (chars >= HANDOFF_STATE_LIMIT) {
+		return { status: "warn", id: "state", text: `${base} — обрежется при handoff` };
+	}
+	if (chars > STATE_WARN_CHARS) {
+		return { status: "warn", id: "state", text: `${base} — сократи state` };
+	}
+	return { status: "pass", id: "state", text: base };
+}
+
+/**
+ * Метрики сессии из JSONL: cache hit, reasoning share последнего хода,
+ * spend. Только измеренные величины; цена границы — вне этого модуля.
+ * Read-only, файла нет — строк нет.
+ */
+function sessionChecks(sessionFile: string | null): PreflightCheck[] {
+	const metrics = readSessionMetrics(sessionFile);
+	if (!metrics.available || metrics.requests === 0) return [];
+	const checks: PreflightCheck[] = [];
+
+	const hit = cacheHitPercent(metrics);
+	const prompt = metrics.input + metrics.cacheRead;
+	if (hit !== null) {
+		// На короткой сессии hit ещё не показателен: warn только после ~5 запросов.
+		const meaningful = prompt >= 50_000 && metrics.requests >= 5;
+		checks.push({
+			status: meaningful && hit < 80 ? "warn" : "pass",
+			id: "usage-cache",
+			text:
+				`usage: cache hit ${hit.toFixed(1)}% — prompt ${formatTokens(prompt)} ` +
+				`(input ${formatTokens(metrics.input)}, cacheRead ${formatTokens(metrics.cacheRead)})`,
+		});
+	}
+
+	const share = lastReasoningShare(metrics);
+	const last = metrics.last;
+	if (share !== null && last) {
+		checks.push({
+			status: "pass",
+			id: "usage-last",
+			text:
+				`usage: reasoning ${Math.round(share)}% последнего хода ` +
+				`(${formatTokens(last.reasoning)} из ${formatTokens(last.output)}), ` +
+				`${formatUsd(metrics.costUsd)} за сессию`,
+		});
+	}
+
+	return checks;
+}
+
+/**
+ * План и run из `AUTOPLAN.md` + `STATE.json`: задачи/gates/deps и spend
+ * волны. План опционален; отсутствие не предупреждение.
+ */
+function orchestratorChecks(cwd: string): PreflightCheck[] {
+	const checks: PreflightCheck[] = [];
+
+	let state: OrchestratorState | null = null;
+	const statePath = resolve(cwd, ORCHESTRATOR_STATE_FILE);
+	if (existsSync(statePath)) {
+		try {
+			state = readState(statePath);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			checks.push({
+				status: "warn",
+				id: "run",
+				text: `state: ${ORCHESTRATOR_STATE_FILE} не читается — ${message}`,
+			});
+		}
+	}
+
+	let plan: Autoplan | null = null;
+	const planPath = resolve(cwd, "AUTOPLAN.md");
+	if (existsSync(planPath)) {
+		try {
+			plan = readPlan(planPath);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			checks.push({
+				status: "warn",
+				id: "plan",
+				text: `план: AUTOPLAN.md не читается — ${message}`,
+			});
+		}
+	} else {
+		checks.push({
+			status: "pass",
+			id: "plan",
+			text: "план: нет AUTOPLAN.md — работа без оркестратора",
+		});
+	}
+
+	if (plan) {
+		const completed = state ? state.completed.map((task) => task.id) : [];
+		const nextTask = selectNextTask(plan, completed);
+		let line = `план: ${completed.length}/${plan.tasks.length} задач`;
+		if (nextTask.kind === "task") {
+			const gate = nextTask.task.gate ? `, gate ${nextTask.task.gate}` : "";
+			const deps = nextTask.task.deps.length
+				? `, deps ${nextTask.task.deps.join(",")}`
+				: "";
+			line += `, следующая ${nextTask.task.id}${gate}${deps}`;
+		} else if (nextTask.kind === "plan-done") {
+			line += ", все выполнены";
+		} else {
+			line += ", нет готовой задачи — проверь deps";
+		}
+		checks.push({ status: "pass", id: "plan", text: line });
+	}
+
+	const attempts = state
+		? Object.entries(state.attempts).filter(([, count]) => count > 0)
+		: [];
+	if (attempts.length > 0) {
+		checks.push({
+			status: "warn",
+			id: "attempts",
+			text: `попытки: ${attempts.map(([id, count]) => `${id}×${count}`).join(", ")}`,
+		});
+	}
+
+	if (state && (state.run?.active || state.budgets.spendUsd > 0)) {
+		const configured = plan?.config.budgets.maxSpendUsd ?? 0;
+		const spend = state.budgets.spendUsd;
+		const task = state.current
+			? `${state.current.id} ${taskStatusLabel(state.current.status)}`
+			: "нет текущей задачи";
+		const limit = configured > 0 ? ` / ${formatUsd(configured)}` : "";
+		checks.push({
+			status: configured > 0 && spend >= configured * 0.9 ? "warn" : "pass",
+			id: "run",
+			text: `run: ${task}, spend ${formatUsd(spend)}${limit}`,
+		});
+	}
+
+	return checks;
+}
+
 /** Read-only проверка перед `/handoff-new`: ничего не пишет и не чинит. */
 export function runPreflight(
 	cwd: string,
@@ -208,13 +360,25 @@ export function runPreflight(
 	};
 
 	const statePath = resolve(cwd, stateFile);
+	let stateText: string | null = null;
 	if (existsSync(statePath)) {
-		add("pass", `${stateFile}: есть`, "state");
-		const advisory = advisoryCheck(statePath);
+		try {
+			stateText = readFileSync(statePath, "utf8");
+		} catch {
+			stateText = null;
+		}
+	}
+	if (stateText !== null) {
+		const size = stateSizeCheck(stateFile, stateText.length);
+		add(size.status, size.text, size.id);
+		const advisory = advisoryCheck(stateText);
 		if (advisory) add(advisory.status, advisory.text, "next-session");
 	} else {
 		add("fail", `${stateFile}: нет — сначала обнови state`, "state");
 	}
+
+	for (const check of sessionChecks(sessionFile)) checks.push(check);
+	for (const check of orchestratorChecks(cwd)) checks.push(check);
 
 	const repo = git(cwd, ["rev-parse", "--is-inside-work-tree"]);
 	if (!repo.ok || repo.out !== "true") {

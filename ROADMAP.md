@@ -332,6 +332,19 @@ Orca-интеграция, Settings, handoff guards, kill switch и advisory
   Settings и отменяет advisory; модель — только по `omp models --json`.
 - [x] Тесты: таблица, приоритеты, `off`, флаги, CLI; docs и D16.
 
+## Этап 0.5.23 — F3 метрики preflight (готово)
+
+- [x] `lib/session-metrics.ts`: чанковое чтение root session JSONL,
+      `message.assistant.usage` только (служебные `model_usage` — не чат),
+      cache hit, reasoning share, spend.
+- [x] Preflight: размер state против 32k (warn > 24k), строки `usage`,
+      прогресс плана с gate/deps, attempts, run spend против бюджета;
+      отсутствие `AUTOPLAN.md` — pass.
+- [x] Цена границы — `[blocked]`: записанные ставки гуляют ~2× на одной
+      модели, листовые цены каталога расходятся ≈1.6×; нужна таблица
+      ставок cache-monitor (`costs --json`).
+- [x] Тесты (`test/session-metrics.test.mjs`), docs и CHANGELOG.
+
 ## Этап 0.6 — экономика handoff (P2)
 
 - Совместно с `omp-cache-monitor`: стоимость компакции/handoff и эффект на

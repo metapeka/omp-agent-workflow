@@ -4,6 +4,36 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.5.23] — 2026-11-26
+
+### Added
+
+- F3 metrics in `/handoff-preflight` (read-only, no contract change):
+  - `HANDOFF.md` size against the 32k handoff limit, warning above 24k;
+  - session cache hit, reasoning share of the last turn and session spend
+    from the root session JSONL (`lib/session-metrics.ts`);
+  - plan progress, next task with gate/deps, attempts and run spend from
+    `AUTOPLAN.md`/`STATE.json`; a missing plan is not a warning.
+- `lib/session-metrics.ts` streams the JSONL in 1 MiB chunks, counts only
+  `message.assistant.usage` (service `model_usage` records are not chat),
+  and keeps UTF-8 intact across chunk boundaries.
+- Preflight reads the state file once and passes the text to the advisory
+  parser instead of re-reading it.
+
+### Deferred
+
+- Price estimate of the handoff boundary stays out of preflight: recorded
+  `usage.cost` rates for one model varied ~2× within a single session
+  (flash $0.35–1.02 per 1M output tokens) and list prices from
+  `omp models --json` differ ≈1.6×. It needs the cache-monitor price table
+  (`costs --json`), not a local guess.
+
+### Docs
+
+- `docs/research/workflow-presets.md` (F3 status and evidence),
+  `model-modes.md` (boundary row), preflight sections in
+  `docs/commands.md` and `docs/contracts.md`, wiki, ROADMAP, TODO, HANDOFF.
+
 ## [0.5.22] — 2026-11-26
 
 ### Added

@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-26. Версия: `0.5.22`.
+Дата: 2026-11-26. Версия: `0.5.23`.
 
 ## Сейчас
 
@@ -27,8 +27,11 @@
       `bin/omp-next-session`, `--model`/`--thinking` при старте, показ в
       preflight; тесты.
 - [x] F2 пресеты (`routine`/`plan`/`review`/`budget`) — 0.5.22 (D16):
-      `--preset`, Settings `workflowPreset`, `bin/omp-preset`, тесты; F3
-      метрики и F4 `--plan-yolo` остаются `[design]`.
+      `--preset`, Settings `workflowPreset`, `bin/omp-preset`, тесты.
+- [x] F3 метрики preflight — 0.5.23: размер state, cache hit, reasoning
+      share, spend сессии, план/gate/deps, attempts, run spend. Цена
+      границы — ждёт таблицу ставок cache-monitor (`costs --json`).
+- [ ] F4 `--plan-yolo` — `[design]`, только после замера.
 - [ ] Интеграция с Orca orchestration Runs/gates — `[future]` 0.6+.
 - [ ] Параллельные задачи и multi-repo — `[future]`.
 - [ ] Свои agent definitions (`implementer`/`verifier`) через `.omp/agents`.
@@ -110,6 +113,10 @@
       `bin/omp-preset`, Settings `workflowPreset` (14-й ключ), `--preset`
       важнее Settings и отменяет advisory; модель только по каталогу;
       `autoCompactPercent=40` в Settings владельца; тесты и docs.
+- [x] 0.5.23 — F3 метрики preflight: `lib/session-metrics.ts` (чанковый
+      разбор root session JSONL, `message.assistant.usage`), размер state
+      против 32k, cache hit/reasoning/spend, план с gate/deps, attempts,
+      run spend; цена границы отложена до `costs --json`; тесты и docs.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;
