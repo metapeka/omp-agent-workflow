@@ -322,6 +322,16 @@ Orca-интеграция, Settings, handoff guards, kill switch и advisory
 - [x] Тесты: legacy hash, explicit-значения, отказы четырёх действий без
   state/worktree, CLI start, doctor warn/pass; D15 и docs.
 
+## Этап 0.5.22 — пресеты запуска (готово)
+
+- [x] `lib/presets.ts`: `routine`/`plan`/`review`/`budget` — модель,
+  thinking, пороги, continue prompt; единственная таблица значений.
+- [x] Settings `workflowPreset` (14-й ключ) и `--preset` launcher'а; env
+  fallback `OMP_WORKFLOW_PRESET`, launcher-override `OMP_PRESET_OVERRIDE`.
+- [x] Приоритет Settings > env > пресет > режим; явный `--preset` важнее
+  Settings и отменяет advisory; модель — только по `omp models --json`.
+- [x] Тесты: таблица, приоритеты, `off`, флаги, CLI; docs и D16.
+
 ## Этап 0.6 — экономика handoff (P2)
 
 - Совместно с `omp-cache-monitor`: стоимость компакции/handoff и эффект на

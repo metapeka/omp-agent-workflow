@@ -3,14 +3,15 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-26. Версия: `0.5.21`.
+Дата: 2026-11-26. Версия: `0.5.22`.
 
 ## Сейчас
 
 - [x] Remote/GitHub и CI на remote: публичный `metapeka/omp-agent-workflow`,
       release `v0.5.14`, CI green (2026-11-23).
 - [x] Английский README — часть 1.0; добавлены китайский и русский.
-- [ ] npm/marketplace — только по решению владельца.
+- [x] npm/marketplace — не публикуем, только `omp plugin link` (D10,
+      2026-11-26). Изменение — отдельным разрешением владельца.
 - [ ] Опционально: полный TUI E2E `/wrap` на Orca-managed worktree
       (confirm/cancel и branch retained); core Orca и TUI confirm/cancel
       уже проверены.
@@ -21,11 +22,13 @@
       влияние на hit rate; без TTL/warming без данных провайдера.
       Вход готов: `docs/research/model-modes.md` — цены 9 моделей, замеры
       reasoning (n=3) и handoff-payload (20 сессий), цена границы, режим v1.
+      Запрос API: `docs/research/cache-monitor-costs-api.md` (`costs --json`).
 - [x] F1 advisory `next-session:` + launcher (0.5.19, D14): parser,
       `bin/omp-next-session`, `--model`/`--thinking` при старте, показ в
       preflight; тесты.
-- [ ] F2 пресеты (`routine`/`plan`/`review`/`budget`) — дизайн и варианты:
-      `docs/research/workflow-presets.md`; ждёт выбора владельца.
+- [x] F2 пресеты (`routine`/`plan`/`review`/`budget`) — 0.5.22 (D16):
+      `--preset`, Settings `workflowPreset`, `bin/omp-preset`, тесты; F3
+      метрики и F4 `--plan-yolo` остаются `[design]`.
 - [ ] Интеграция с Orca orchestration Runs/gates — `[future]` 0.6+.
 - [ ] Параллельные задачи и multi-repo — `[future]`.
 - [ ] Свои agent definitions (`implementer`/`verifier`) через `.omp/agents`.
@@ -103,6 +106,10 @@
 - [x] Joint plan Ф4 — `test/contracts.test.mjs`: конверт и стабильные поля
       `status --json` (с `STATE.json` и без), игнор неизвестных полей плана,
       конверт/форма `doctor --json`; README-счётчики заменены на `200+`.
+- [x] 0.5.22 — пресеты `routine/plan/review/budget` (D16): `lib/presets.ts`,
+      `bin/omp-preset`, Settings `workflowPreset` (14-й ключ), `--preset`
+      важнее Settings и отменяет advisory; модель только по каталогу;
+      `autoCompactPercent=40` в Settings владельца; тесты и docs.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

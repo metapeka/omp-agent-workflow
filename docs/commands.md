@@ -1,6 +1,6 @@
 # Команды и CLI OAW
 
-Статус: `[готово]`, версия `0.5.21`. Источник истины — код
+Статус: `[готово]`, версия `0.5.22`. Источник истины — код
 (`index.ts`, `orchestrator.ts`, `bin/`); этот файл — подробный гид.
 Контракт режимов и файлов — [contracts.md](contracts.md).
 
@@ -161,6 +161,19 @@ bin/omp-yoda [флаги omp]
 | `OMP_YODA_LOG` | лог supervisor (по умолчанию `$TMPDIR/omp-yoda-supervisor.log`) |
 | Аргументы | передаются `omp` как есть (`--model`, `--thinking`, `--version`, …) |
 | Advisory | `next-session:` из `HANDOFF.md` → `--model`/`--thinking`; явные флаги пользователя выигрывают |
+| `--preset NAME` | `routine`/`plan`/`review`/`budget`: модель, thinking, пороги и continue prompt; явный флаг важнее Settings `workflowPreset` и отменяет advisory. `--preset` снимается из argv, остальное уходит `omp` |
+
+### `bin/omp-preset` — пресет-флаги для launcher
+
+Внутренний helper `bin/omp-yoda`; печатает по одному аргументу на строку.
+
+| Флаг | По умолчанию | Что делает |
+|---|---|---|
+| `--preset NAME` | — | обязателен: `routine`/`plan`/`review`/`budget`; иначе exit 2 |
+| `--omp PATH` | `omp` | бинарь для `omp models --json` |
+| `--flags` | режим по умолчанию | `--model`/`--thinking` с учётом явных флагов после `--` |
+| `--prompt` | — | preset continue prompt; пусто — общий default |
+| `--` | — | дальше — аргументы omp |
 
 ### `bin/omp-next-session` — advisory для launcher
 

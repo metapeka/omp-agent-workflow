@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  200+ tests · 0 runtime deps · 4 modes · 13 settings · MIT
+  200+ tests · 0 runtime deps · 4 modes · 14 settings · MIT
 </p>
 
 <p align="center">

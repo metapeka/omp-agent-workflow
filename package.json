@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.5.21",
+  "version": "0.5.22",
   "type": "module",
   "description": "Deterministic context guard, session handoff, and worktree orchestration for OMP (oh-my-pi)",
   "keywords": [
@@ -75,6 +75,13 @@
         "default": true,
         "env": "OMP_STATUS_ENABLED",
         "description": "Показывать ключ workflow в статус-строке: YODA/YODA-SUP и ⚠ HANDOFF; false — не публиковать"
+      },
+      "workflowPreset": {
+        "type": "enum",
+        "values": ["off", "routine", "plan", "review", "budget"],
+        "default": "off",
+        "env": "OMP_WORKFLOW_PRESET",
+        "description": "Пресет запуска: routine/plan/review/budget задаёт модель, thinking, пороги и continue prompt; off — без пресета; явные ключи, env и флаги выигрывают"
       },
       "handoffAtPercent": {
         "type": "number",

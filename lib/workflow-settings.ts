@@ -5,6 +5,12 @@
  * `getPluginSettings` приходят только для явно заданных ключей, поэтому
  * режим (`assisted`/`yoda`) сохраняет свои дефолты, пока ключ не задан.
  */
+import {
+	PRESETS,
+	resolvePreset,
+	type PresetName,
+} from "./presets.ts";
+
 export type WorkflowMode =
 	| "off"
 	| "manual"
@@ -12,12 +18,15 @@ export type WorkflowMode =
 	| "yoda"
 	| "yoda-supervised";
 export type SupervisorLogLevel = "quiet" | "info" | "debug";
+export type WorkflowPreset = "off" | PresetName;
 
 export const DEFAULT_CONTINUE_PROMPT =
 	"Прочитай HANDOFF.md и продолжи следующую задачу. Не начинай заново уже сделанное.";
 
 export interface WorkflowSettings {
 	workflowMode: WorkflowMode;
+	/** `off` — без пресета; иначе набор значений по умолчанию. */
+	workflowPreset: WorkflowPreset;
 	/** Показывать ключ `workflow` в статус-строке. */
 	statusEnabled: boolean;
 	/** null — handoff выключен. */
@@ -140,13 +149,18 @@ export function resolveSettings(
 				envMode ??
 				"assisted");
 
+	const presetName = workflowMode === "off" ? null : resolvePreset(raw, env);
+	const preset = presetName === null ? null : PRESETS[presetName];
+
 	const contextWarnPercent =
 		numberIn(raw.contextWarnPercent, 1, 99) ??
 		envNumber(env, "OMP_CONTEXT_WARN", 1, 99) ??
+		preset?.contextWarnPercent ??
 		35;
 	const contextSuggestPercent =
 		numberIn(raw.contextSuggestPercent, 1, 99) ??
 		envNumber(env, "OMP_CONTEXT_SUGGEST", 1, 99) ??
+		preset?.contextSuggestPercent ??
 		50;
 
 	// `off` — kill switch: автоматика выключена независимо от явных порогов.
@@ -156,14 +170,14 @@ export function resolveSettings(
 		: percentOff(
 				raw.handoffAtPercent,
 				envOffNumber(env, "OMP_HANDOFF_AT", 1, 100),
-				defaultHandoffPercent(workflowMode),
+				preset?.handoffAtPercent ?? defaultHandoffPercent(workflowMode),
 			);
 	const autoCompactPercent = offMode
 		? null
 		: percentOff(
 				raw.autoCompactPercent,
 				envOffNumber(env, "OMP_CONTEXT_AUTO", 1, 100),
-				defaultAutoPercent(workflowMode),
+				preset?.autoCompactPercent ?? defaultAutoPercent(workflowMode),
 			);
 
 	const cooldownRaw = numberIn(raw.handoffCooldownSeconds, 0, 86_400);
@@ -178,7 +192,9 @@ export function resolveSettings(
 	const continuePrompt =
 		typeof raw.continuePrompt === "string" && raw.continuePrompt.trim().length > 0
 			? raw.continuePrompt.trim()
-			: (env.OMP_HANDOFF_PROMPT?.trim() || DEFAULT_CONTINUE_PROMPT);
+			: (env.OMP_HANDOFF_PROMPT?.trim() ||
+				preset?.continuePrompt ||
+				DEFAULT_CONTINUE_PROMPT);
 	const supervisorRetries =
 		numberIn(raw.supervisorRetries, 1, 10) ??
 		envNumber(env, "OMP_SUPERVISOR_RETRIES", 1, 10) ??
@@ -193,6 +209,7 @@ export function resolveSettings(
 
 	return {
 		workflowMode,
+		workflowPreset: presetName ?? "off",
 		statusEnabled:
 			(typeof raw.statusEnabled === "boolean" ? raw.statusEnabled : undefined) ??
 			boolFromEnv(env, "OMP_STATUS_ENABLED") ??

@@ -33,6 +33,7 @@ bin/omp-yoda --version               # launcher находит supervisor и omp
 
 ```bash
 OMP_WORKFLOW_MODE=yoda-supervised bin/omp-yoda
+bin/omp-yoda --preset plan            # pro + auto, пороги 25/40/70/80
 ```
 
 Launcher:

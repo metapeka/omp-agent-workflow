@@ -4,6 +4,34 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.5.22] — 2026-11-26
+
+### Added
+
+- Launch presets `routine`, `plan`, `review`, `budget`: model, thinking,
+  context thresholds and continue prompt. `bin/omp-yoda --preset NAME`
+  strips the flag, applies `--model`/`--thinking` unless the user passed
+  them, exports the preset prompt for the supervisor/extension, and cancels
+  the `next-session:` advisory for that launch.
+- Settings key `workflowPreset` (14th, default `off`), env
+  `OMP_WORKFLOW_PRESET`; `OMP_PRESET_OVERRIDE` is the launcher-only channel
+  so an explicit `--preset` beats Settings. Per-key precedence:
+  Settings > env > preset > mode/default.
+- `lib/presets.ts` is the single preset table; `bin/omp-preset` computes
+  flags (model only if `omp models --json` lists it) and the prompt.
+- `plan` continue prompt asks the next session to record a
+  `next-session: model=flash mode=routine` advisory; `review` asks for a
+  diff review; `routine`/`budget` keep the default prompt.
+
+### Docs
+
+- D16, `docs/research/workflow-presets.md` (F2 done), `docs/contracts.md`
+  (14 settings), `docs/commands.md`, README badges, wiki and HANDOFF.
+- `docs/research/cache-monitor-costs-api.md`: requested `costs --json` v1
+  for 0.6 economics; no parsing of cache-monitor internals.
+- Owner decision: publication stays local (D10); `autoCompactPercent=40`
+  applied in the owner's Settings.
+
 ## [0.5.21] — 2026-11-26
 
 ### Added

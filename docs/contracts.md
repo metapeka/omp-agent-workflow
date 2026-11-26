@@ -28,15 +28,17 @@ Settings (аварийное выключение). Команды остают�
 
 ## Settings
 
-`package.json#omp.settings` даёт 13 ключей; UI — Settings → Plugins. Приоритет:
-**Settings > env > режим/дефолт**. Значения читаются extension на
+`package.json#omp.settings` даёт 14 ключей; UI — Settings → Plugins. Приоритет:
+**Settings > env > пресет > режим/дефолт**. Значения читаются extension на
 `session_start` и `session_switch`, launcher — при старте. Для порогов `0`
 и `off` означают выключение; `handoffAtPercent`/`autoCompactPercent` без
-явного значения берутся из режима.
+явного значения берутся из пресета, затем из режима. Пресет задаёт только
+не заданные явно ключи; `workflowPreset=off` — без пресета.
 
 | Ключ | Тип | Default |
 |---|---|---|
 | `workflowMode` | enum | `assisted` |
+| `workflowPreset` | enum | `off` (пресеты: `routine`/`plan`/`review`/`budget`) |
 | `statusEnabled` | boolean | `true` (false очищает ключ `workflow`) |
 | `handoffAtPercent` | number 0–95 | режим: `55` / off |
 | `handoffCooldownSeconds` | number 0–86400 | `300` |
@@ -68,6 +70,8 @@ Settings (аварийное выключение). Команды остают�
 | Переменная | Default | Смысл |
 |---|---|---|
 | `OMP_WORKFLOW_MODE` | `assisted` | Режим |
+| `OMP_WORKFLOW_PRESET` | `off` | Пресет, если Settings не задан |
+| `OMP_PRESET_OVERRIDE` | — | Launcher-only: явный `--preset` важнее Settings |
 | `OMP_STATUS_ENABLED` | `true` | Публиковать ключ `workflow` |
 | `OMP_CONTEXT_WARN` | `35` | Warning «планируй HANDOFF» |
 | `OMP_CONTEXT_SUGGEST` | `50` | Warning «пора HANDOFF» |

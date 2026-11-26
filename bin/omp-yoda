@@ -37,6 +37,47 @@ orca_cli_setting="$(plugin_setting orcaCli)"
 continue_prompt_setting="$(plugin_setting continuePrompt)"
 supervisor_retries_setting="$(plugin_setting supervisorRetries)"
 supervisor_log_setting="$(plugin_setting supervisorLogLevel)"
+preset_setting="$(plugin_setting workflowPreset)"
+
+# `--preset` — наш флаг: снимаем его из argv и передаём OMP только остальное.
+preset_flag=""
+omp_args=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --preset)
+      if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        echo "Yoda: --preset требует значение" >&2
+        exit 2
+      fi
+      preset_flag="$2"
+      shift 2
+      ;;
+    --preset=*)
+      preset_flag="${1#--preset=}"
+      if [ -z "$preset_flag" ]; then
+        echo "Yoda: --preset требует значение" >&2
+        exit 2
+      fi
+      shift
+      ;;
+    *)
+      omp_args+=("$1")
+      shift
+      ;;
+  esac
+done
+
+is_preset() {
+  case "$1" in
+    routine | plan | review | budget) return 0 ;;
+  esac
+  return 1
+}
+
+if [ -n "$preset_flag" ] && ! is_preset "$preset_flag"; then
+  echo "Yoda: неизвестный --preset «$preset_flag»: routine|plan|review|budget" >&2
+  exit 2
+fi
 
 # Kill switch: off — OMP как есть, без supervisor и без наших порогов.
 # env `off` побеждает Settings, чтобы выключение работало в аварии.
@@ -48,16 +89,53 @@ else
 fi
 if [ "$mode_value" = "off" ]; then
   echo "Yoda: off — дефолты OMP, supervisor не запускается" >&2
-  OMP_WORKFLOW_MODE=off exec "$omp_bin" "$@"
+  OMP_WORKFLOW_MODE=off exec "$omp_bin" "${omp_args[@]}"
+fi
+
+# Пресет: явный --preset > Settings > env. Пороги читает extension через
+# OMP_PRESET_OVERRIDE; модель/thinking и prompt добавляет launcher.
+preset_value=""
+if [ -n "$preset_flag" ]; then
+  preset_value="$preset_flag"
+elif is_preset "$preset_setting"; then
+  preset_value="$preset_setting"
+elif [ "$preset_setting" = "off" ]; then
+  preset_value=""
+elif is_preset "${OMP_WORKFLOW_PRESET:-}"; then
+  preset_value="${OMP_WORKFLOW_PRESET}"
+fi
+
+preset_args=()
+preset_prompt=""
+if [ -n "$preset_value" ] && [ -f "$here/omp-preset" ]; then
+  preset_out="$(node --experimental-strip-types --disable-warning=ExperimentalWarning \
+    "$here/omp-preset" --preset "$preset_value" --omp "$omp_bin" --flags -- "${omp_args[@]}" 2>/dev/null)" || preset_out=""
+  if [ -n "$preset_out" ]; then
+    set -f
+    # shellcheck disable=SC2206
+    preset_args=($preset_out)
+    set +f
+    echo "Yoda: preset $preset_value → ${preset_args[*]}" >&2
+  fi
+  preset_prompt="$(node --experimental-strip-types --disable-warning=ExperimentalWarning \
+    "$here/omp-preset" --preset "$preset_value" --prompt 2>/dev/null)" || preset_prompt=""
+fi
+
+# Только явный --preset важнее Settings; Settings/env extension читает сам.
+# Унаследованный override не должен пережить запуск.
+if [ -n "$preset_flag" ]; then
+  export OMP_PRESET_OVERRIDE="$preset_flag"
+else
+  unset OMP_PRESET_OVERRIDE
 fi
 
 # Advisory `next-session:` из HANDOFF.md: launcher добавляет --model/--thinking,
-# только если пользователь не передал их сам. Невалидная или устаревшая строка
-# ничего не меняет; модель уже проверена по `omp models --json`.
+# только если пользователь не передал их сам и не выбран явный пресет.
+# Невалидная или устаревшая строка ничего не меняет.
 advisory_args=()
-if [ -f "$dir/HANDOFF.md" ] && [ -f "$here/omp-next-session" ]; then
+if [ -z "$preset_value" ] && [ -f "$dir/HANDOFF.md" ] && [ -f "$here/omp-next-session" ]; then
   advisory_out="$(node --experimental-strip-types --disable-warning=ExperimentalWarning \
-    "$here/omp-next-session" --dir "$dir" --omp "$omp_bin" -- "$@" 2>/dev/null)" || advisory_out=""
+    "$here/omp-next-session" --dir "$dir" --omp "$omp_bin" -- "${omp_args[@]}" 2>/dev/null)" || advisory_out=""
   if [ -n "$advisory_out" ]; then
     set -f
     # shellcheck disable=SC2206
@@ -77,7 +155,7 @@ if [ -n "$orca_cli_setting" ]; then
   export ORCA_CLI_COMMAND="$orca_cli_setting"
 fi
 
-continue_prompt_value="${continue_prompt_setting:-${OMP_HANDOFF_PROMPT:-}}"
+continue_prompt_value="${continue_prompt_setting:-${OMP_HANDOFF_PROMPT:-$preset_prompt}}"
 supervisor_retries_value="${supervisor_retries_setting:-${OMP_SUPERVISOR_RETRIES:-}}"
 supervisor_log_value="${supervisor_log_setting:-${OMP_SUPERVISOR_LOG_LEVEL:-}}"
 if [ -n "$continue_prompt_value" ]; then
@@ -128,10 +206,18 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+handoff_env="${OMP_HANDOFF_AT:-55}"
+auto_env="${OMP_CONTEXT_AUTO:-off}"
+if [ -n "$preset_value" ]; then
+  # Пресет сам задаёт пороги; пустой env не перекрывает его.
+  handoff_env="${OMP_HANDOFF_AT:-}"
+  auto_env="${OMP_CONTEXT_AUTO:-}"
+fi
+
 OMP_WORKFLOW_MODE="${OMP_WORKFLOW_MODE:-yoda-supervised}" \
-OMP_HANDOFF_AT="${OMP_HANDOFF_AT:-55}" \
-OMP_CONTEXT_AUTO="${OMP_CONTEXT_AUTO:-off}" \
-"$omp_bin" "${advisory_args[@]}" "$@"
+OMP_HANDOFF_AT="$handoff_env" \
+OMP_CONTEXT_AUTO="$auto_env" \
+"$omp_bin" "${preset_args[@]}" "${advisory_args[@]}" "${omp_args[@]}"
 status=$?
 
 cleanup

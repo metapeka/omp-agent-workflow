@@ -4,10 +4,10 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.21` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.5.22` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
-`next-session:` + CLI JSON v1 и `doctor` + `execution`).
+`next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -58,6 +58,10 @@ marker без живого supervisor; рекомендация для 1M — `a
 владельцем задач Ensemble, OAW отказывает `start/verify/finish/rebase` со
 stop-reason `external-run` и не трогает `STATE.json`/worktree; `doctor`
 предупреждает, если `external` без активного прогона. D15.
+`0.5.22` — пресеты запуска `routine`/`plan`/`review`/`budget`: ключ
+Settings `workflowPreset` (14-й) и флаг `--preset`; задают модель,
+thinking, пороги и continue prompt, явные настройки/флаги выигрывают;
+`plan` советует advisory `model=flash mode=routine`. D16.
 
 ## С чего начать
 
@@ -86,7 +90,7 @@ stop-reason `external-run` и не трогает `STATE.json`/worktree; `doctor
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |
 | [research/market-landscape.md](research/market-landscape.md) | Рынок на 2026-11-23: PI, OMP и GitHub; ближайшие аналоги, чего нет ни у кого, выводы для позиционирования; переводы [RU](research/market-landscape.ru.md), [ZH](research/market-landscape.zh-CN.md) |
 | [research/model-modes.md](research/model-modes.md) | `[design]` Цены cline-pass, стоимость хода на 100k, замер handoff-payload (20 сессий), цена границы handoff, режим v1 и синтаксис `next-session:`; не контракт |
-| [research/workflow-presets.md](research/workflow-presets.md) | `[design]` Пресеты `routine/plan/review/budget`, `next-session:` в launcher, метрики выбора, `--plan-yolo`; ждёт решения владельца |
+| [research/workflow-presets.md](research/workflow-presets.md) | `[готово F1/F2]` Пресеты `routine/plan/review/budget`, `--preset` и `workflowPreset`, `next-session:` в launcher, метрики выбора, `--plan-yolo`; F3–F4 `[design]` |
 | [Pages](https://metapeka.github.io/omp-agent-workflow/) | HTML-разбор: prompt cache, сессии, где помогает плагин, инцидент 2026-11-24, пороги; EN + [RU](https://metapeka.github.io/omp-agent-workflow/ru/) + [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |
 
 ## Правила этой вики

@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  200+ тестов · 0 runtime-зависимостей · 4 режима · 13 настроек · MIT
+  200+ тестов · 0 runtime-зависимостей · 4 режима · 14 настроек · MIT
 </p>
 
 <p align="center">
@@ -117,7 +117,7 @@
 | План → worktree → verify → ff-merge | ✅ | ⚠️ вручную / subagents | ⚠️ вручную | ⚠️ ручные коммиты | ⚠️ | ⚠️ | ⚠️ только worktree |
 | Cleanup guard + backup-ref | ✅ merged/clean/current/live | — | — | — | — | — | ⚠️ worktree remove |
 | Мастер завершения с подтверждением | ✅ `/wrap` | ⚠️ | — | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| Settings UI + env fallback | ✅ OMP Settings, 13 ключей | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Settings UI + env fallback | ✅ OMP Settings, 14 ключей | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Работает слоем над OMP | ✅ | — свой агент | — свой агент | — свой агент | — свой агент | — свой агент | ✅ хост |
 
 **Легенда:** ✅ first-class · ⚠️ вручную или частично · — не заявлено как first-class.

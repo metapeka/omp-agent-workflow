@@ -100,6 +100,10 @@ merge, бюджеты и handoff.
 **Следствие:** новые функции — additive; любое изменение схемы — отдельное
 решение и тест на старый файл.
 
+**Дополнение 2026-11-26:** публикация остаётся локальной
+(`omp plugin link`); npm/marketplace не одобрены. Изменение этого решения —
+только явное разрешение владельца.
+
 ## D11. OMP first, Orca — additive integration
 
 **Статус:** accepted (2026-11-23).
@@ -195,6 +199,38 @@ handoff работают; `stop`/`resume` задачи не запускают. 
 Автоблокировки по факту живого Ensemble нет — только предупреждения
 `doctor`; меню выбора режима старта остаётся в личном hub/промте, не в
 продукте.
+
+## D16. Пресеты запуска `routine|plan|review|budget`
+
+**Статус:** accepted (2026-11-26).
+**Решение:** OAW добавляет 14-й ключ Settings `workflowPreset`
+(`off|routine|plan|review|budget`, default `off`) и флаг launcher'а
+`--preset NAME`; env fallback — `OMP_WORKFLOW_PRESET`. Пресет задаёт только
+не заданные явно значения; приоритет по каждому ключу:
+Settings > env > пресет > режим/дефолт. Явный `--preset` важнее Settings и
+отменяет advisory `next-session:` на этот запуск (launcher передаёт выбор
+extension через `OMP_PRESET_OVERRIDE`).
+
+| Пресет | Модель | Thinking | Warn/Suggest/Handoff/Auto |
+|---|---|---|---|
+| `routine` | flash | `off` | 35/50/55/70 |
+| `plan` | pro | `auto` | 25/40/70/80 |
+| `review` | flash | `auto` | 35/50/55/70 |
+| `budget` | flash | `off` | 35/50/50/60 |
+
+Модель применяется только если она есть в `omp models --json`; явные
+`--model`/`--thinking` выигрывают по ключам. `plan` даёт continue prompt с
+просьбой записать advisory `model=flash mode=routine`; `review` — ревью
+диффа; `routine`/`budget` используют общий prompt. Пресет не меняет модель
+внутри сессии, не пишет marker/session и не трогает статус-строку.
+`workflowMode=off` игнорирует пресет.
+**Причина:** решения о модели/порогах не должны теряться при смене сессии;
+F1 advisory не покрывает явный выбор на старте. Пресет — это набор
+дефолтов, а не скрытое переключение: явные настройки и флаги всегда важнее.
+**Следствие:** `lib/presets.ts` — единственная таблица значений;
+`bin/omp-preset` считает флаги/prompt; `workflow-settings.ts` — приоритеты;
+тесты фиксируют таблицу, приоритеты, `off` и CLI. Публикация остаётся
+локальной (D10).
 
 ## Отклонённые альтернативы
 

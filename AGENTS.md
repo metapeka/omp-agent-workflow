@@ -35,7 +35,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.21`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.5.22`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -61,7 +61,9 @@ hit rate, этот проект управляет контекстом и см�
   `status --json`/`doctor --json` с `schemaVersion: 1`, `doctor` — 16
   read-only проверок (проба ≤ 2 с, без сети, `--strict`); 0.5.21 —
   `plan.execution: omp|external` (D15): `external` ведёт Ensemble, OAW
-  отказывает `start/verify/finish/rebase` со stop-reason `external-run`.
+  отказывает `start/verify/finish/rebase` со stop-reason `external-run`;
+  0.5.22 — пресеты `routine|plan|review|budget` (D16): ключ Settings
+  `workflowPreset` (14-й) и флаг `--preset`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.
@@ -135,8 +137,13 @@ launcher не поднимает supervisor; явные пороги игнор�
 
 `OMP_CONTEXT_WARN`, `OMP_CONTEXT_SUGGEST`, `OMP_CONTEXT_AUTO`,
 `OMP_HANDOFF_AT`, `OMP_HANDOFF_COOLDOWN_SECONDS` — env fallback, если ключ
-не задан в Settings. Приоритет: Settings > env > режим/дефолт.
+не задан в Settings. Приоритет: Settings > env > пресет > режим/дефолт.
 `off` в значении порога отключает соответствующее действие.
+
+`workflowPreset` (Settings, 14-й ключ) или явный `--preset` launcher'а
+выбирает `routine|plan|review|budget`: модель, thinking, пороги и continue
+prompt. Пресет заполняет только незаданные ключи; `--preset` важнее
+Settings и отменяет advisory `next-session:` на этот запуск.
 
 Проценты — от окна активной модели (`ctx.getContextUsage().percent`), не
 абсолютные токены. Пример: 1M × 18/25/30/60% = 180k/250k/300k/600k;
