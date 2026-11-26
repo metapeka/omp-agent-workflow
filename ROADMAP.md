@@ -1,10 +1,12 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-25. Версия: `0.5.19`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-26. Версия: `0.5.24`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
-Orca-интеграция, Settings, handoff guards, kill switch и advisory
-`next-session:` готовы; публичный GitHub-репозиторий и release `v0.5.14`
-есть; npm/marketplace — по решению владельца.
+Orca-интеграция, Settings, handoff guards, kill switch, advisory
+`next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
+preflight и flight recorder в запросе HANDOFF готовы; публичный
+GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
+владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -344,6 +346,18 @@ Orca-интеграция, Settings, handoff guards, kill switch и advisory
       модели, листовые цены каталога расходятся ≈1.6×; нужна таблица
       ставок cache-monitor (`costs --json`).
 - [x] Тесты (`test/session-metrics.test.mjs`), docs и CHANGELOG.
+
+## Этап 0.5.24 — flight recorder в запросе HANDOFF (готово)
+
+- [x] `workingTreeSnapshot()` (read-only, 3 git-вызова с timeout 3 с):
+      ветка, короткий HEAD, до 6 незакоммиченных путей, остальное — «и ещё
+      N»; runtime `.omp-handoff-*` исключены; чистое дерево — «изменений
+      нет»; вне git — строка опускается.
+- [x] Снимок вставляется в текст запроса HANDOFF; контракт marker/session
+      не меняется, в новую сессию снимок не попадает.
+- [x] Тесты: грязное/чистое дерево, вне git, исключение runtime-файлов.
+- [x] `docs/guards.md` — карта защит и точек в цикле; вики, `handoff-flow`,
+      FAQ, contracts, README EN/RU/ZH, CHANGELOG.
 
 ## Этап 0.6 — экономика handoff (P2)
 

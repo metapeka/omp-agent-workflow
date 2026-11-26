@@ -3,10 +3,12 @@
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.5.23`; последний код-коммит `4eeff3d` — метрики preflight.
-Ветки 0.5.1–0.5.23 (включая `feat/doctor`, `feat/oaw-name`,
-`feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`)
-слиты ff-only, worktrees удалены. GitHub: `metapeka/omp-agent-workflow`
+`main`, версия `0.5.24`; последний код — flight recorder в запросе HANDOFF
+(`workingTreeSnapshot()`, см. CHANGELOG 0.5.24).
+Ветки 0.5.1–0.5.24 (включая `feat/doctor`, `feat/oaw-name`,
+`feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`,
+`feat/handoff-flight-recorder`) слиты ff-only, worktrees удалены. GitHub:
+`metapeka/omp-agent-workflow`
 (public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
 `docs/README.md`; backlog — `TODO.md`.
 
@@ -20,7 +22,15 @@ runtime-путей с индекса. Дерево чистое после ко�
 остаётся локальной (D10); запрос `costs --json` для 0.6 сформулирован и
 ждёт cache-monitor (в 0.10.1 CLI нет — только `/cache-monitor costs` в TUI).
 
-`main` впереди `origin/main` на несколько коммитов; push не делался (D10).
+`main` совпадал с `origin/main` (`cb00d0d`) до коммитов 0.5.24; их push не
+делался (D10) — на момент записи `main` опережает origin только на них.
+
+Сессия 2026-11-26 (третья): добавлен flight recorder — в текст запроса
+HANDOFF попадают ветка, короткий HEAD и до 6 незакоммиченных путей
+(read-only git, runtime-файлы исключены, бюджет 300 символов); handoff
+по-прежнему не трогает git и дерево. Карта защит и точек в цикле —
+`docs/guards.md`; обновлены вики, `handoff-flow.md`, FAQ, contracts,
+README EN/RU/ZH. Проверено `npm run verify`.
 
 ## Что готово
 
@@ -57,6 +67,7 @@ runtime-путей с индекса. Дерево чистое после ко�
 | Замеры 2026-11-24/25 | `docs/research/model-modes.md`: цены 9 моделей, reasoning flash/pro, handoff-payload 20 сессий, цена границы, рекомендации R1–R8 |
 | Пресеты 0.5.22 | `docs/research/workflow-presets.md`: F1/F2 сделаны; F4 `--plan-yolo` — только после замера |
 | Метрики 0.5.23 | `lib/session-metrics.ts` + строки preflight: размер state против 32k, cache hit, reasoning share и spend сессии из root JSONL, прогресс плана с gate/deps, attempts, run spend; цена границы — `[blocked]` до `costs --json` |
+| Flight recorder 0.5.24 | `workingTreeSnapshot()`: ветка, короткий HEAD, до 6 незакоммиченных путей в тексте запроса HANDOFF; runtime-файлы исключены; контракт marker/session не меняется; карта защит — `docs/guards.md` |
 | Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md`: `costs --json` v1 для 0.6 economics; в cache-monitor 0.10.1 CLI нет (только `/cache-monitor costs` в TUI) |
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; Ф1 реализован в 0.5.20 |
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
@@ -300,6 +311,7 @@ Lifecycle-логи supervisor — stderr; `--dry-run` JSON остаётся чи
 | Тесты settings | `test/workflow-settings.test.mjs` |
 | Тесты safe remove | `test/worktree-remove.test.mjs` |
 | Решения | `docs/decisions.md` (D11–D14) |
+| Карта защит | `docs/guards.md` |
 | Runbook | `docs/operations.md` |
 
 ## Explainer site 2026-11-24
@@ -345,17 +357,19 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.23; проверить `omp plugin list`, отсутствие
+1. Новая сессия загрузит 0.5.24; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
    с advisory-строкой и метриками (state/usage/plan), `SUP OFF` в TUI,
    `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и
    `bin/omp-yoda --preset plan --version` (флаги модели, supervisor,
    exit 0). `doctor --json` на чистом репо — exit 0, без Orca — warn;
-   `--strict` — exit 1.
+   `--strict` — exit 1. На пороге handoff проверить строку `Дерево:` в
+   запросе (ветка, HEAD, грязные пути).
 2. 0.6 economics: запрос `costs --json` сформулирован в
    `docs/research/cache-monitor-costs-api.md`; реализация — у
    cache-monitor (в 0.10.1 ещё нет). OAW не парсит его внутренности.
-3. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
+3. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
+   `--plan-yolo` — только после замера.
 4. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
 5. TUI E2E `/wrap` — опционально. Публикация остаётся локальной (D10).

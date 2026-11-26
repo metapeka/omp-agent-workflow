@@ -147,7 +147,7 @@ The public landscape study behind this claim — PI, OMP and GitHub, 2026-11-23:
 ### Handoff protocol (file-based, no magic)
 
 1. The agent updates `HANDOFF.md`: goal, state, decisions, files, checks, next step.
-2. At a safe boundary it writes `.omp-handoff-request.json` (marker).
+2. At a safe boundary it writes `.omp-handoff-request.json` (marker). The request text names the branch, short HEAD and up to six uncommitted paths (read-only git, runtime files excluded) so WIP is carried into `HANDOFF.md`.
 3. The supervisor sees the marker and sends `/handoff-new` to the terminal handle of the session entry matching `marker.sessionFile` in `.omp-handoff-session.json`.
 4. `/handoff-new` builds a new session message from `continuePrompt` + the state file (32k limit, truncation marker, read-error fallback).
 5. The new session reads `HANDOFF.md` and continues. No compact event in the middle of a tool loop; the plugin waits for `turn_end` and `ctx.isIdle()`.

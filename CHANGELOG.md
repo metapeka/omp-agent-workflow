@@ -4,6 +4,30 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.5.24] — 2026-11-26
+
+### Added
+
+- The HANDOFF request carries a read-only working-tree snapshot: branch,
+  short HEAD and up to six uncommitted paths (`M src/a.ts`, `?? b.md`),
+  the rest folded into `и ещё N`. Runtime `.omp-handoff-*` files are
+  excluded, the path list is capped at 300 characters, and the snapshot
+  costs three git calls with 3 s timeouts and no repository writes. A clean
+  tree says `изменений нет`; outside a git repository the line is omitted.
+  `HANDOFF.md` remains the only thing the new session sees, so the request
+  tells the agent to list the WIP there (`workingTreeSnapshot()` in
+  `index.ts`).
+- `docs/guards.md`: guard map (threat → guard → point in the cycle →
+  version), the handoff cycle diagram with the 0.5.24 insertion, and the
+  explicit limits of the snapshot.
+
+### Changed
+
+- Wiki index and navigation link `guards.md`; `handoff-flow.md` documents
+  the snapshot; the FAQ answer on uncommitted work reflects it; the
+  contracts invariants list it; README EN/RU/ZH step 2 names it.
+- Version `0.5.24`, ROADMAP stage, TODO, HANDOFF and next-session state.
+
 ## [0.5.23] — 2026-11-26
 
 ### Added

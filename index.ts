@@ -96,6 +96,52 @@ const STATE_WARN_CHARS = 24_000;
 const HANDOFF_RETRY_TURNS = 2;
 /** Всего запросов до остановки: первый + повторы, чтобы не крутить цикл. */
 const HANDOFF_MAX_REQUESTS = 3;
+/** Сколько незакоммиченных путей показывать в handoff-запросе. */
+const HANDOFF_TREE_MAX_PATHS = 6;
+/** Бюджет символов на список путей: запрос не должен раздувать промпт. */
+const HANDOFF_TREE_MAX_CHARS = 300;
+
+/**
+ * Read-only снимок дерева для handoff-запроса: ветка, HEAD и
+ * незакоммиченные пути. Сам handoff git не трогает, поэтому без этой строки
+ * работа в дереве не видна новой сессии, если её нет в `HANDOFF.md`.
+ * Не git-репозиторий, ошибка бинаря или пустая ветка — пустая строка.
+ */
+function workingTreeSnapshot(cwd: string): string {
+	const branch = git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"], 3_000);
+	if (!branch.ok || !branch.out) return "";
+	const head = git(cwd, ["rev-parse", "--short", "HEAD"], 3_000);
+	const headText = head.ok && head.out ? ` @ ${head.out}` : "";
+	const status = git(cwd, ["status", "--porcelain"], 3_000);
+	if (!status.ok) {
+		return `Дерево: ветка ${branch.out}${headText}; состояние не прочитать.`;
+	}
+	const entries = status.out
+		.split("\n")
+		.filter(Boolean)
+		.map((line) => ({
+			code: line.slice(0, 2).trim() || "??",
+			path: line.slice(3).trim(),
+		}))
+		.filter((entry) => entry.path && !entry.path.startsWith(".omp-handoff-"))
+		.map((entry) => `${entry.code} ${entry.path}`);
+	if (!entries.length) return `Дерево: ветка ${branch.out}${headText}, изменений нет.`;
+	const shown: string[] = [];
+	let budget = HANDOFF_TREE_MAX_CHARS;
+	for (const entry of entries.slice(0, HANDOFF_TREE_MAX_PATHS)) {
+		if (entry.length > budget) break;
+		shown.push(entry);
+		budget -= entry.length + 2;
+	}
+	const rest = entries.length - shown.length;
+	const listed = shown.length
+		? ` (${shown.join(", ")}${rest > 0 ? `, и ещё ${rest}` : ""})`
+		: "";
+	return (
+		`Дерево: ветка ${branch.out}${headText}, незакоммиченных файлов: ${entries.length}${listed}. ` +
+		"Перечисли их в HANDOFF.md — новая сессия видит только файл."
+	);
+}
 
 /**
  * Сообщение для новой сессии: continuation prompt + содержимое state-файла.
@@ -1385,9 +1431,11 @@ export default function contextGuard(pi: ExtensionAPI): void {
 		handoffTurnsSinceRequest = 0;
 		handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;
 		const marker = JSON.stringify({ reason: "context", sessionFile });
+		const tree = workingTreeSnapshot(ctx.cwd);
 		const text =
 			`HANDOFF: контекст ${usageText(usage)}. Заверши текущую задачу, обнови HANDOFF.md, ` +
 			`запиши .omp-handoff-request.json с ${marker} и заверши ход. ` +
+			(tree ? `${tree} ` : "") +
 			"Не начинай новую задачу.";
 		try {
 			await pi.sendUserMessage(text);

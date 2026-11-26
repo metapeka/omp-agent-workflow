@@ -148,7 +148,7 @@
 ### Протокол handoff (файловый, без магии)
 
 1. Агент обновляет `HANDOFF.md`: цель, состояние, решения, файлы, проверки, следующий шаг.
-2. На безопасной границе пишет `.omp-handoff-request.json` (marker).
+2. На безопасной границе пишет `.omp-handoff-request.json` (marker). В тексте запроса — ветка, короткий HEAD и до шести незакоммиченных путей (git только на чтение, runtime-файлы исключены), чтобы WIP попал в `HANDOFF.md`.
 3. Supervisor видит marker и отправляет `/handoff-new` в terminal handle записи с совпавшим `marker.sessionFile` из `.omp-handoff-session.json`.
 4. `/handoff-new` собирает сообщение новой сессии из `continuePrompt` + state-файла (лимит 32k, маркер обрезки, fallback при ошибке чтения).
 5. Новая сессия читает `HANDOFF.md` и продолжает. Компакции посреди tool-loop нет: плагин ждёт `turn_end` и `ctx.isIdle()`.

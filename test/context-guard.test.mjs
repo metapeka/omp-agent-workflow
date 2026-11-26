@@ -382,6 +382,61 @@ describe("automatic handoff request", () => {
 		assert.equal(sent.length, 2);
 	});
 
+	it("reports branch, HEAD and dirty files in the request", async () => {
+		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			writeFileSync(join(dir, "tracked.md"), "first\n");
+			run("add", "tracked.md");
+			run("commit", "-q", "-m", "tracked");
+			writeFileSync(join(dir, "tracked.md"), "changed\n");
+			writeFileSync(join(dir, "notes.md"), "draft\n");
+			const head = run("rev-parse", "--short", "HEAD");
+			const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+			const v = view(56, { cwd: dir });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(sent[0], /ветка main/);
+			assert.ok(sent[0].includes(`@ ${head}`), sent[0]);
+			assert.match(sent[0], /незакоммиченных файлов: 2/);
+			assert.match(sent[0], /M tracked\.md/);
+			assert.match(sent[0], /\?\? notes\.md/);
+			assert.doesNotMatch(sent[0], /\.omp-handoff-session\.json/, "runtime files stay out");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("says when the working tree is clean", async () => {
+		const { dir } = preflightRepo({ "HANDOFF.md": "# state\n" });
+		try {
+			const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+			const v = view(56, { cwd: dir });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(sent[0], /ветка main @ [0-9a-f]+/);
+			assert.match(sent[0], /изменений нет/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("omits the tree line outside a git repository", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-nogit-"));
+		try {
+			const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
+			const v = view(56, { cwd: dir });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.doesNotMatch(sent[0], /Дерево:/);
+			assert.match(sent[0], /HANDOFF: контекст/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("does not ask below the threshold", async () => {
 		const { handlers, sent } = install({ OMP_HANDOFF_AT: "55" });
 		const v = view(54);

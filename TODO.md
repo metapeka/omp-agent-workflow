@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-26. Версия: `0.5.23`.
+Дата: 2026-11-26. Версия: `0.5.24`.
 
 ## Сейчас
 
@@ -117,6 +117,10 @@
       разбор root session JSONL, `message.assistant.usage`), размер state
       против 32k, cache hit/reasoning/spend, план с gate/deps, attempts,
       run spend; цена границы отложена до `costs --json`; тесты и docs.
+- [x] 0.5.24 — flight recorder в запросе HANDOFF: `workingTreeSnapshot()`
+      (ветка, HEAD, до 6 путей, runtime-файлы исключены, бюджет 300
+      символов), снимок только в тексте запроса; тесты и docs
+      (`guards.md`, handoff-flow, FAQ, contracts, README EN/RU/ZH).
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;

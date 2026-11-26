@@ -148,7 +148,7 @@
 ### 交接协议（基于文件，无魔法）
 
 1. 代理更新 `HANDOFF.md`：目标、状态、决策、文件、检查、下一步。
-2. 在安全边界写入 `.omp-handoff-request.json`（marker）。
+2. 在安全边界写入 `.omp-handoff-request.json`（marker）。请求文本包含分支、短 HEAD 和最多六个未提交路径（git 只读，运行时文件已排除），以便 WIP 写入 `HANDOFF.md`。
 3. 守护进程看到 marker，向 `.omp-handoff-session.json` 中 `marker.sessionFile` 匹配记录的终端 handle 发送 `/handoff-new`。
 4. `/handoff-new` 用 `continuePrompt` + 状态文件构造新会话消息（32k 上限、截断标记、读取失败回退）。
 5. 新会话读取 `HANDOFF.md` 并继续。不会在工具循环中间压缩；插件等待 `turn_end` 和 `ctx.isIdle()`。
