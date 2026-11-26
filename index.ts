@@ -698,8 +698,29 @@ async function performCommit(ctx: ExtensionContext): Promise<HandoffActionReport
 	if (typeof message !== "string" || !message.trim()) {
 		return { id: "commit", ok: true, text: "коммит: пропущен (нет сообщения)" };
 	}
-	const add = git(ctx.cwd, ["add", "-A", "--", ".", ...RUNTIME_EXCLUDES], 60_000);
+	// Явный `:(exclude)`-pathspec заставляет git падать «paths are ignored»,
+	// если runtime-файлы перечислены в .gitignore (тест GridSnap 2026-11-26).
+	// Поэтому добавляем всё и снимаем runtime-пути с индекса.
+	const add = git(ctx.cwd, ["add", "-A", "--", "."], 60_000);
 	if (!add.ok) return { id: "commit", ok: false, text: `коммит: git add — ${add.error}` };
+	for (const path of RUNTIME_PATHS) {
+		git(ctx.cwd, ["reset", "-q", "--", path], 10_000);
+	}
+	const stagedRuntime = git(ctx.cwd, [
+		"diff",
+		"--cached",
+		"--name-only",
+		"--",
+		...RUNTIME_PATHS,
+	]);
+	if (stagedRuntime.ok && stagedRuntime.out) {
+		git(ctx.cwd, ["reset", "-q"], 10_000);
+		return {
+			id: "commit",
+			ok: false,
+			text: `коммит: runtime-файлы в индексе — отменено (${stagedRuntime.out.replace(/\n/g, ", ")})`,
+		};
+	}
 	const commit = git(ctx.cwd, ["commit", "-m", message.trim()], 120_000);
 	if (!commit.ok) {
 		return { id: "commit", ok: false, text: `коммит: git commit — ${commit.error}` };

@@ -30,6 +30,9 @@ semantic for the plugin contract, not for OMP itself.
 
 ### Fixed
 
+- Preflight `commit` no longer fails with `paths are ignored` when runtime
+  files are listed in `.gitignore` (GridSnap 2026-11-26): it adds everything,
+  then unstages the runtime paths and aborts if any stay in the index.
 - `usage-last` keeps the session spend row when the last usage record has
   `output: 0` (aborted turn) instead of dropping reasoning and cost together.
 - The plan check reads `STATE.plan.path` (a `--plan PATH` run) instead of

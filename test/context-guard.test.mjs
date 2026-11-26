@@ -1892,6 +1892,36 @@ describe("/handoff-preflight", () => {
 		}
 	});
 
+	it("commits when runtime files are gitignored", async () => {
+		const { dir, run } = preflightRepo({
+			"HANDOFF.md": "# state\n",
+			".gitignore": ".omp-handoff-*\n",
+			"code.ts": "export {};\n",
+		});
+		try {
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
+			writeFileSync(join(dir, ".omp-handoff-session.json"), "{}\n");
+			writeFileSync(join(dir, ".omp-handoff-supervisor.lock"), "x\n");
+			const { commands } = install();
+			const { askDialog } = actionDialog(["commit"]);
+			const v = view(40, {
+				cwd: dir,
+				askDialog,
+				input: async () => "test: ignored runtime",
+			});
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.equal(run("log", "-1", "--format=%s"), "test: ignored runtime");
+			assert.deepEqual(run("show", "--name-only", "--format=", "HEAD").split("\n"), [
+				"code.ts",
+			]);
+			assert.match(v.notes.at(-1).text, /✓ коммит: [0-9a-f]+/);
+			assert.match(v.notes.at(-1).text, /preflight: OK/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("refuses to commit on detached HEAD", async () => {
 		const { dir, run } = preflightRepo({ "HANDOFF.md": "# state\n" });
 		try {

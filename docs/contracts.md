@@ -142,7 +142,8 @@ Settings (аварийное выключение). Команды остают�
   headless/sub команда молчит.
 - Runtime-файлы `.omp-handoff-session.json`, `.omp-handoff-request.json`,
   `.omp-handoff-supervisor.lock*`, `.omp-handoff-done.json` не считаются
-  грязным деревом и не коммитятся.
+  грязным деревом и не коммитятся: `commit` добавляет всё, затем снимает
+  runtime-пути с индекса (явный exclude-pathspec падал бы на ignored-путях).
 - Метрики 0.5.23 — только чтение, без изменения контракта:
   - размер state: pass `N символов / 32000`, warn > 24 000 и ≥ 32 000;
   - сессия: cache hit (`cacheRead/(input+cacheRead)`, warn < 80% только

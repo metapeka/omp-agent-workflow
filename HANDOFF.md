@@ -13,7 +13,10 @@ OAW — короткое имя продукта; `workflow` — только е
 Сессия 2026-11-26 (вторая) закрыта: F3-метрики preflight проверены
 (`npm run verify`, `check:names`, extension load) и закоммичены `4eeff3d`;
 review-находки исправлены (spend при нулевом output, `STATE.plan.path`,
-`formatTokens`, UTF-8 тест); дерево чистое после коммитов. Публикация
+`formatTokens`, UTF-8 тест); найден и исправлен боевой дефект preflight
+`commit`: в репозитории, где `.omp-handoff-*` в `.gitignore` (GridSnap),
+явный exclude-pathspec ронял `git add` — теперь add-all + снятие
+runtime-путей с индекса. Дерево чистое после коммитов. Публикация
 остаётся локальной (D10); запрос `costs --json` для 0.6 сформулирован и
 ждёт cache-monitor (в 0.10.1 CLI нет — только `/cache-monitor costs` в TUI).
 
