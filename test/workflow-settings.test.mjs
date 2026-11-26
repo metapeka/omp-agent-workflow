@@ -22,6 +22,7 @@ describe("workflow settings", () => {
 		assert.equal(s.contextSuggestPercent, 50);
 		assert.equal(s.autoCompactPercent, 60);
 		assert.equal(s.handoffAtPercent, null);
+		assert.equal(s.handoffAtSpendUsd, null);
 		assert.equal(s.handoffCooldownSeconds, 300);
 		assert.equal(s.orcaEnabled, true);
 		assert.equal(s.orcaPreflight, true);
@@ -76,6 +77,75 @@ describe("workflow settings", () => {
 		assert.equal(pinned.workflowMode, "off");
 		assert.equal(pinned.handoffAtPercent, null);
 		assert.equal(pinned.autoCompactPercent, null);
+	});
+
+	it("resolves the spend threshold: settings > env > preset > mode", () => {
+		assert.equal(resolveSettings(EMPTY, EMPTY).handoffAtSpendUsd, null);
+
+		const fromEnv = resolveSettings(EMPTY, { OMP_HANDOFF_AT_USD: "2.5" });
+		assert.equal(fromEnv.handoffAtSpendUsd, 2.5);
+
+		const explicit = resolveSettings(
+			{ handoffAtSpendUsd: 1.5 },
+			{ OMP_HANDOFF_AT_USD: "2.5" },
+		);
+		assert.equal(explicit.handoffAtSpendUsd, 1.5);
+
+		// Явный 0 в Settings — выключение, даже если env задаёт порог.
+		const disabled = resolveSettings(
+			{ handoffAtSpendUsd: 0 },
+			{ OMP_HANDOFF_AT_USD: "2.5" },
+		);
+		assert.equal(disabled.handoffAtSpendUsd, null);
+		assert.equal(
+			resolveSettings(EMPTY, { OMP_HANDOFF_AT_USD: "0" }).handoffAtSpendUsd,
+			null,
+		);
+		assert.equal(
+			resolveSettings(EMPTY, { OMP_HANDOFF_AT_USD: "off" }).handoffAtSpendUsd,
+			null,
+		);
+
+		// off-режим выключает триггер независимо от явных значений.
+		const off = resolveSettings(
+			{ workflowMode: "off", handoffAtSpendUsd: 1 },
+			{ OMP_HANDOFF_AT_USD: "2" },
+		);
+		assert.equal(off.handoffAtSpendUsd, null);
+
+		// Пресеты поле не задают.
+		for (const workflowPreset of ["routine", "plan", "review", "budget"]) {
+			assert.equal(
+				resolveSettings({ workflowPreset }, EMPTY).handoffAtSpendUsd,
+				null,
+			);
+		}
+
+		// Явное значение в manual действует: это не авто-порог режима.
+		assert.equal(
+			resolveSettings({ workflowMode: "manual", handoffAtSpendUsd: 4 }, EMPTY)
+				.handoffAtSpendUsd,
+			4,
+		);
+
+		// Дробный минимум принимается, вне диапазона — env fallback, затем null.
+		assert.equal(
+			resolveSettings({ handoffAtSpendUsd: 0.01 }, EMPTY).handoffAtSpendUsd,
+			0.01,
+		);
+		assert.equal(
+			resolveSettings({ handoffAtSpendUsd: -1 }, { OMP_HANDOFF_AT_USD: "3" })
+				.handoffAtSpendUsd,
+			3,
+		);
+		assert.equal(
+			resolveSettings({ handoffAtSpendUsd: 20_000 }, EMPTY).handoffAtSpendUsd,
+			null,
+		);
+		assert.equal(
+			resolveSettings(EMPTY, { OMP_HANDOFF_AT_USD: "oops" }).handoffAtSpendUsd,
+			null,
+		);
 	});
 
 	it("falls back to environment values", () => {

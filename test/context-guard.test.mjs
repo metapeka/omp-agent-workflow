@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import {
+	appendFileSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -38,6 +39,7 @@ const ENV_KEYS = [
 	"OMP_CONTEXT_SUGGEST",
 	"OMP_CONTEXT_AUTO",
 	"OMP_HANDOFF_AT",
+	"OMP_HANDOFF_AT_USD",
 	"OMP_HANDOFF_COOLDOWN_SECONDS",
 	"OMP_WORKFLOW_MODE",
 	"OMP_STATUS_ENABLED",
@@ -181,6 +183,14 @@ function view(percent, options = {}) {
 async function fire(handlers, name, event, ctx) {
 	const list = handlers.get(name) ?? [];
 	for (const handler of list) await handler(event, ctx);
+}
+
+/** Одна строка session JSONL с измеренной стоимостью хода. */
+function costLine(total) {
+	return `${JSON.stringify({
+		type: "message",
+		message: { role: "assistant", usage: { cost: { total } } },
+	})}\n`;
 }
 
 async function command(commands, name, ctx, args = "") {
@@ -537,6 +547,181 @@ describe("automatic handoff request", () => {
 			const warnings = v.notes.filter((note) => /terminal handle нет/.test(note.text));
 			assert.equal(warnings.length, 1);
 			assert.match(warnings[0].text, /automatic handoff не сработает/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("spend handoff trigger", () => {
+	it("does not ask below the spend threshold", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-below-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.005));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.01" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("asks with spend text and a spend marker when the context is low", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-over-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.02));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.01" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(sent[0], /HANDOFF: spend \$0\.020 из порога \$0\.010\./);
+			assert.doesNotMatch(sent[0], /контекст/);
+			assert.ok(sent[0].includes('"reason":"spend"'), sent[0]);
+			assert.match(sent[0], /Не начинай новую задачу\./);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps the context trigger and marker reason when spend is low", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-context-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.001));
+			const { handlers, sent } = install({
+				OMP_HANDOFF_AT: "55",
+				OMP_HANDOFF_AT_USD: "1",
+			});
+			const v = view(56, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(sent[0], /HANDOFF: контекст 56%/);
+			assert.ok(sent[0].includes('"reason":"context"'), sent[0]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("uses the context reason when both triggers fire", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-both-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.02));
+			const { handlers, sent } = install({
+				OMP_HANDOFF_AT: "55",
+				OMP_HANDOFF_AT_USD: "0.01",
+			});
+			const v = view(56, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(sent[0], /HANDOFF: spend \$0\.020 из порога \$0\.010; контекст 56%/);
+			assert.ok(sent[0].includes('"reason":"context"'), sent[0]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("treats 0 and off as disabled", async () => {
+		for (const value of ["0", "off"]) {
+			const dir = mkdtempSync(join(tmpdir(), "cg-spend-off-"));
+			try {
+				const session = join(dir, "session.jsonl");
+				writeFileSync(session, costLine(1));
+				const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: value });
+				const v = view(10, { cwd: dir, sessionFile: session });
+				await fire(handlers, "turn_end", {}, v.ctx);
+				assert.equal(sent.length, 0, `OMP_HANDOFF_AT_USD=${value}`);
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
+			}
+		}
+	});
+
+	it("keeps the cooldown and retry behaviour", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-retry-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.02));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.01" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1, "cooldown holds the second request");
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 2, "retry after the turn deadline");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("shows the handoff warning at the spend threshold", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-status-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.02));
+			const { handlers } = install({ OMP_HANDOFF_AT_USD: "0.01" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(v.statuses.length, 1);
+			assert.match(v.statuses.at(-1).text, /⚠ HANDOFF/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("accumulates spend across turns and keeps it through compaction", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-growth-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			writeFileSync(session, costLine(0.02));
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.05" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0, "0.02 is below 0.05");
+
+			appendFileSync(session, costLine(0.04));
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			assert.match(sent[0], /HANDOFF: spend \$0\.060 из порога \$0\.050\./);
+
+			// Compaction clears handoff state but not the measured spend.
+			await fire(handlers, "session_compact", {}, v.ctx);
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 2);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("reads only the new tail, not the whole session file", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-spend-offsets-"));
+		try {
+			const session = join(dir, "session.jsonl");
+			const first = costLine(0.02);
+			writeFileSync(session, first);
+			const { handlers, sent } = install({ OMP_HANDOFF_AT_USD: "0.5" });
+			const v = view(10, { cwd: dir, sessionFile: session });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0);
+
+			// Переписываем уже прочитанный префикс (та же длина) на $9.99 и
+			// добавляем $0.01. Полное перечитывание дало бы $10.00 ≥ $0.50;
+			// offsets читают только хвост: $0.02 + $0.01 = $0.03 < $0.50.
+			const rewritten = costLine(9.99);
+			assert.equal(rewritten.length, first.length);
+			writeFileSync(session, rewritten + costLine(0.01));
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 0, "the consumed prefix was not re-read");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
