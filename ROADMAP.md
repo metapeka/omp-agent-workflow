@@ -398,6 +398,36 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
       контракт CLI, как у `doctor`.
 - Не добавлять TTL или warming без данных провайдера.
 
+## Этап 0.7 — продукт после 0.6 (план 2026-11-27)
+
+Основание — `docs/research/market-landscape.md` и
+`omp-cache-monitor/docs/research/cache-extensions.md`. Берём только
+проверяемые пробелы; визуальные, платные и недоказуемые на текущем
+провайдере фичи отклонены.
+
+- [ ] **0.7.0 Spend-aware handoff.** Settings `handoffAtSpendUsd` (15-й
+      ключ) и env `OMP_HANDOFF_AT_USD`; `0`/`off` = выключено. Триггер
+      handoff по фактическому `usage.cost.total` сессии (инкрементальные
+      offsets, без полного перечитывания JSONL каждый ход); тот же
+      cooldown, supervisor и `⚠ HANDOFF`; причина в marker — `spend`.
+      Деньги только измеренные, не оценка по прайсу.
+- [ ] **0.7.1 Quality gate в preflight.** Advisory-warning, если в
+      `HANDOFF.md` нет ключевых секций (цель/состояние/решения/файлы/
+      проверки/дальше) или после обновления state была компакция. Ничего
+      не блокирует, кастомные форматы не ломаются.
+- [ ] **0.7.2 `economics --summary`.** Агрегат по всей цепочке: сессии,
+      границы, средняя цена границы, тренд hit rate; поверх готового
+      `omp-orchestrate economics`.
+- [ ] **0.7.3 Discovery.** `.omp-plugin/marketplace.json` и страница
+      сравнения; npm/marketplace — только с явного разрешения владельца.
+- [ ] **0.7.4 Ledger субагентов.** Проверить, что `maxSpendUsd` учитывает
+      дочерние сессии (уже читает `lib/orchestrator/cost.ts`), и вынести
+      расход в `status --json`; stop при перерасходе.
+
+Не делаем в 0.7: TTL-countdown без данных провайдера; warming/optimizer
+(не read-only, платно); `/compact` payback (ложная модель); TUI-дашборды;
+cross-harness handoff; PR-автоматизацию; уведомления.
+
 ## Этап 1.0 — release
 
 - Английский README.

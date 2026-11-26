@@ -18,7 +18,25 @@
 
 ## Будущее
 
-- [ ] 0.6: экономика handoff/компакции с `omp-cache-monitor` — стоимость,
+### 0.7 — план 2026-11-27
+
+- [ ] 0.7.0 spend-aware handoff: Settings `handoffAtSpendUsd` (15-й ключ),
+      env `OMP_HANDOFF_AT_USD`, `0`/`off` = выкл; триггер по фактическому
+      `usage.cost.total` (инкрементальные offsets), cooldown/supervisor/
+      `⚠ HANDOFF`, marker `reason: spend`; тесты, docs.
+- [ ] 0.7.1 quality gate: ключевые секции `HANDOFF.md` и компакция после
+      обновления state — advisory-warning в preflight.
+- [ ] 0.7.2 `economics --summary`: агрегат цепочки, средняя цена границы,
+      тренд hit.
+- [ ] 0.7.3 discovery: `.omp-plugin/marketplace.json` + страница сравнения;
+      npm/marketplace — только по разрешению владельца.
+- [ ] 0.7.4 ledger субагентов: проверить `maxSpendUsd` по дочерним сессиям,
+      вынести в `status --json`, stop при перерасходе.
+
+Не делаем: TTL-countdown без данных, warming/optimizer, `/compact` payback,
+TUI-дашборды, cross-harness handoff, PR-автоматизация, уведомления.
+
+- [x] 0.6: экономика handoff/компакции с `omp-cache-monitor` — стоимость,
       влияние на hit rate; без TTL/warming без данных провайдера.
       Вход готов: `docs/research/model-modes.md` — цены 9 моделей, замеры
       reasoning (n=3) и handoff-payload (20 сессий), цена границы, режим v1.
