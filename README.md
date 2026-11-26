@@ -331,6 +331,17 @@ Blockers are **advisory**: they explain what is missing and offer only actions t
 
 With `omp-cache-monitor` on `PATH` (or `OMP_CACHE_MONITOR_CLI`), the table also shows the handoff border price from `costs --json`: the median cost of cold turns against warm turns, plus a row per model when the session used more than one. No CLI — no extra rows.
 
+### `omp-orchestrate economics` — what a handoff costs
+
+Read-only report over the session chain (`parentSession` upward); a border is only a child that carries the `handoff` custom message, so subagent sessions never count. For each border it shows the median cost per turn and the cache hit rate of the last N parent turns against the first N child turns, the price of the first child turn, and how many cold turns it took to refill the cache. Compactions are listed separately; when there are none the report says so instead of inventing zeros.
+
+```bash
+bin/omp-orchestrate economics --session "$SESSION" --turns 10
+bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
+```
+
+Without `--session` it takes the freshest live entry of `.omp-handoff-session.json` in `--dir`. No cache-monitor CLI (or a broken report) leaves `boundaries` empty with a note and exit 0; a missing session is exit 1, invalid arguments exit 2. Nothing is written and no network is used.
+
 ### Real CLI: plan → verify → merge
 
 ![orchestrate](docs/assets/terminal-orchestrate.png)

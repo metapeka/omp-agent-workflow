@@ -330,6 +330,17 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 若 `omp-cache-monitor` 在 `PATH` 中（或设置了 `OMP_CACHE_MONITOR_CLI`），表格还会显示来自 `costs --json` 的 handoff 边界价格：冷回合成本中位数对热回合，并在会话使用多个模型时按模型列出。没有 CLI 时不会多出任何行。
 
+### `omp-orchestrate economics` — handoff 的代价
+
+沿 `parentSession` 向上遍历会话链的只读报告；只有带 `handoff` 自定义消息的子会话才算边界，subagent 会话不计。每条边界给出父会话最后 N 回合与子会话最初 N 回合的回合成本中位数和缓存命中率、子会话第一回合的价格，以及回填缓存所需的冷回合数。压缩记录单独列出；没有记录时报告如实说明，而不会编造零。
+
+```bash
+bin/omp-orchestrate economics --session "$SESSION" --turns 10
+bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
+```
+
+没有 `--session` 时取 `--dir` 中 `.omp-handoff-session.json` 最新且存活的记录。没有 cache-monitor CLI（或报告损坏）时 `boundaries` 为空并附 note，exit 0；会话不存在为 exit 1，参数错误为 exit 2。不写文件，不走网络。
+
 ### 真实 CLI：计划 → 验证 → 合并
 
 ![orchestrate](docs/assets/terminal-orchestrate.png)

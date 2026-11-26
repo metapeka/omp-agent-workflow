@@ -333,6 +333,17 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 Если `omp-cache-monitor` есть в `PATH` (или задан `OMP_CACHE_MONITOR_CLI`), таблица показывает цену границы из `costs --json`: медиану холодных ходов против тёплых и строку на модель, когда моделей больше одной. CLI нет — лишних строк нет.
 
+### `omp-orchestrate economics` — сколько стоит handoff
+
+Read-only отчёт по цепочке сессий (вверх по `parentSession`); границей считается только ребёнок с записью `handoff`, поэтому subagent-сессии в неё не попадают. Для каждой границы — медиана цены хода и hit rate последних N ходов родителя против первых N ходов ребёнка, цена первого хода ребёнка и число холодных ходов до восстановления кэша. Компакции выводятся отдельно; когда их нет, отчёт так и пишет, а не подставляет нули.
+
+```bash
+bin/omp-orchestrate economics --session "$SESSION" --turns 10
+bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
+```
+
+Без `--session` берётся самая свежая живая запись `.omp-handoff-session.json` в `--dir`. Нет CLI cache-monitor (или отчёт битый) — `boundaries` пустые с note и exit 0; нет сессии — exit 1, плохие аргументы — exit 2. Ничего не пишется, сеть не используется.
+
 ### Реальный CLI: план → verify → merge
 
 ![orchestrate](docs/assets/terminal-orchestrate.png)

@@ -1,11 +1,12 @@
-# Next session: OAW (`omp-agent-workflow`) 0.6.0
+# Next session: OAW (`omp-agent-workflow`) 0.6.1
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.6.0`.
+- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.6.0`;
+  ветка `feat/handoff-economics` — `0.6.1` (ещё не слита).
 - Ветки 0.5.1–0.6.0 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
   `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`)
@@ -29,7 +30,9 @@
   (действие `push` в меню preflight: только при upstream и незапушенных
   коммитах, без `--force`), 0.6.0 (цена границы из
   `omp-cache-monitor costs --json`: медиана холодных/тёплых, разрез по
-  моделям, graceful skip без CLI; `lib/costs-client.ts`).
+  моделям, graceful skip без CLI; `lib/costs-client.ts`), 0.6.1
+  (`omp-orchestrate economics`: цепочка по `parentSession`, окна «до/после»,
+  hit rate, цена первого хода, `recoveryTurns`, компакции; JSON v1).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
@@ -50,9 +53,12 @@
 
 ## Следующий этап
 
-1. **0.6 economics**: запрос `costs --json` готов в
-   `docs/research/cache-monitor-costs-api.md`; реализация — у cache-monitor.
-   Не парсить его внутренности.
+1. **0.6 economics**: реализовано в `feat/handoff-economics` (0.6.1) —
+   `omp-orchestrate economics`: цепочка по `parentSession`, граница только у
+   ребёнка с маркером `handoff`, окна «до/после», hit rate, цена первого
+   хода, `recoveryTurns`, детектор компакций; JSON v1, graceful skip без CLI.
+   Компакций в локальных данных нет — вывод data-gated. Осталось слить
+   ветку. Не парсить внутренности cache-monitor.
 2. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
 3. Публикация остаётся локальной (`omp plugin link`; D10).
 4. Hub старта сессии и `brief` — личный runbook, вне продукта (joint plan
@@ -87,12 +93,13 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.6.0. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.6.1. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11–D16).
 > Settings → Plugins — основной способ настройки, env — fallback.
 > `/handoff-preflight` advisory. `next-session:` применяет только launcher
 > при старте; `--preset` важнее Settings и отменяет advisory.
 > `execution: external` в `AUTOPLAN.md` отдаёт задачи Ensemble и блокирует
-> `start/verify/finish/rebase` в OAW. 0.6 economics: `costs --json` есть
-> (cache-monitor 0.11.0), цена границы — в preflight; не парсить внутренности
-> cache-monitor. Публикация — по разрешению владельца (D10); 0.6.0 запушен.
+> `start/verify/finish/rebase` в OAW. 0.6 economics: `omp-orchestrate
+> economics` — read-only «до/после handoff» (цепочка `parentSession`, JSON v1,
+> graceful skip без CLI); не парсить внутренности cache-monitor.
+> Публикация — по разрешению владельца (D10); 0.6.0 запушен.

@@ -1,6 +1,6 @@
 # Команды и CLI OAW
 
-Статус: `[готово]`, версия `0.6.0`. Источник истины — код
+Статус: `[готово]`, версия `0.6.1`. Источник истины — код
 (`index.ts`, `orchestrator.ts`, `bin/`); этот файл — подробный гид.
 Контракт режимов и файлов — [contracts.md](contracts.md).
 
@@ -150,7 +150,7 @@
 ### `bin/omp-orchestrate` — headless orchestrator
 
 ```
-bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit SHA|rebase [TASK]|stop --reason R|resume|doctor
+bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit SHA|rebase [TASK]|stop --reason R|resume|doctor|economics [--session FILE] [--turns N]
 ```
 
 | Флаг | Назначение |
@@ -164,6 +164,8 @@ bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit 
 | `--backend orca\|git` | backend worktree |
 | `--verify-timeout SEC` | таймаут verify (по умолчанию 900) |
 | `--strict` | `doctor`: повысить `warn` до `fail` |
+| `--session FILE` | `economics`: стартовый session JSONL |
+| `--turns N` | `economics`: окно ходов, 1..100 (по умолчанию 10) |
 | `--json` | машинный вывод |
 
 `doctor` — read-only диагностика среды: 16 проверок в фиксированном порядке,
@@ -172,6 +174,31 @@ agent-team или cache-monitor — `warn`/`skip`; битые настройки
 — `fail` (exit 1). `--json` — контракт v1 (`schemaVersion: 1`, `ok`,
 `summary`, `checks[]`), список проверок и стабильные поля `status` — в
 [contracts.md](contracts.md#cli-json-v1-status-и-doctor-0520).
+
+`economics` — read-only отчёт «до/после handoff» по цепочке сессий: вверх по
+`parentSession` (до 20 узлов, циклы и отсутствующие файлы — note), границей
+считается только ребёнок с записью `custom_message/handoff`, поэтому
+subagent-дети границу не создают. Ходы и деньги — из
+`omp-cache-monitor costs --json` (клиент `lib/costs-client.ts`, timeout 2 с,
+без сети); `before` — последние N ходов родителя, `after` — первые N ходов
+ребёнка, `costPerTurnUsd` — медиана цен окна, `hitPercent` —
+`cacheRead/(input+cacheRead)` по сумме окна. `boundary.firstTurnUsd` — цена
+первого хода ребёнка, `recoveryTurns` — холодные ходы (`cacheRead == 0`)
+подряд до первого тёплого, `delta` — абсолютная разница. Компакции
+собираются по всей цепочке (`type:"compaction"`, `customType:"compaction"`,
+`model_usage` с `purpose`, начинающимся с `compaction`), стоимость —
+`usage.cost.total`.
+
+```bash
+node --experimental-strip-types bin/omp-orchestrate economics \
+  [--session FILE] [--turns N] [--json] [--dir PATH]
+```
+
+Без `--session` — самая свежая живая запись `.omp-handoff-session.json` в
+`--dir`. Коды: 0 — отчёт (в том числе без CLI: `boundaries: []` + note),
+1 — нет/нечитаема сессия, 2 — плохие аргументы. `--json` — контракт
+`schemaVersion: 1` (`session`, `turnsWindow`, `chain[]`, `boundaries[]`,
+`compactions[]`, `notes[]`); ничего не пишется, сеть не используется.
 
 При `execution: external` в `AUTOPLAN.md` `start`, `verify`, `finish` и
 `rebase` возвращают `stop: external-run`: задачи ведёт Ensemble (Orca

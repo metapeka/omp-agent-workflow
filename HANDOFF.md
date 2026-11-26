@@ -3,8 +3,10 @@
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.6.0`; последний код — цена границы handoff в preflight из
-`omp-cache-monitor costs --json` (CLI нет — graceful skip, см. CHANGELOG
+`main`, версия `0.6.0`; в ветке `feat/handoff-economics` — `0.6.1`:
+read-only отчёт `omp-orchestrate economics` «до/после handoff» (см.
+CHANGELOG 0.6.1). Последний код в `main` — цена границы handoff в preflight
+из `omp-cache-monitor costs --json` (CLI нет — graceful skip, см. CHANGELOG
 0.6.0).
 Ветки 0.5.1–0.5.26 (включая `feat/doctor`, `feat/oaw-name`,
 `feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`,
@@ -82,6 +84,7 @@ tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
 | Flow 0.5.11 | preflight: состояние → меню незакрытых действий → итог |
 | Status 0.5.12 | ключ `workflow`: `YODA`/`YODA-SUP`, `⚠ HANDOFF` |
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
+| Economics 0.6.1 | `omp-orchestrate economics`: цепочка `parentSession`, граница только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1; ветка `feat/handoff-economics` |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -401,10 +404,13 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
    supervisor, exit 0). `doctor --json` на чистом репо — exit 0, без Orca —
    warn; `--strict` — exit 1. На пороге handoff проверить строку `Дерево:`
    в запросе (ветка, HEAD, грязные пути).
-2. 0.6 economics: вход `costs --json` готов (cache-monitor 0.11.0,
-   `5c9eeb8`), цена границы показывается в preflight; осталось сравнить
-   стоимость компакции и влияние на hit rate «до/после handoff». OAW не
-   парсит внутренности cache-monitor.
+2. 0.6 economics закрыт содержательно в `feat/handoff-economics` (0.6.1):
+   `omp-orchestrate economics` строит цепочку по `parentSession`, считает
+   окна «до/после», hit rate, цену первого хода и `recoveryTurns`, ищет
+   компакции. Компакций в локальных данных нет — вывод data-gated, отчёт
+   пишет «нет записей». Осталось слить ветку ff-only в `main` и проверить
+   на живой цепочке (`--session`/`--dir`). OAW не парсит внутренности
+   cache-monitor.
 3. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
    `--plan-yolo` — только после замера.
 4. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)

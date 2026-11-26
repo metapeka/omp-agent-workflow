@@ -4,6 +4,42 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.6.1] — 2026-11-27
+
+### Added
+
+- `omp-orchestrate economics [--session FILE] [--turns N] [--json] [--dir PATH]` —
+  read-only "before/after handoff" report over the `parentSession` chain (up
+  to 20 nodes; cycles and missing files become notes, never crashes). A border
+  is only a child that carries the `custom_message/handoff` record, so
+  subagent children never count.
+- Per border: the median cost per turn and the cache hit rate
+  (`cacheRead/(input+cacheRead)` over the window) of the last N parent turns
+  against the first N child turns, the first child turn price, and
+  `recoveryTurns` — consecutive cold turns (`cacheRead == 0`) before the first
+  warm one. `delta` is the absolute difference; missing prices stay `null`.
+  Turns come from `omp-cache-monitor costs --json` through the existing
+  `lib/costs-client.ts` (no parsing of the neighbour's internals).
+- Compaction detector over the whole chain: `type:"compaction"`,
+  `customType:"compaction"`, or `model_usage` with a `compaction…` purpose;
+  cost from `usage.cost.total` when present. Local data has no compactions
+  yet, so the report says "no records" instead of inventing zeros — the
+  output is data-gated.
+- `--json` is the contract (`schemaVersion: 1`: `session`, `turnsWindow`,
+  `chain[]`, `boundaries[]`, `compactions[]`, `notes[]`). Without `--session`
+  the freshest live `.omp-handoff-session.json` entry in `--dir` is used.
+  Exit codes: 0 — report (including the no-CLI graceful skip with empty
+  `boundaries` and a note), 1 — missing/unreadable session, 2 — bad arguments.
+- Tests: `test/handoff-economics.test.mjs` (24) — chain order, handoff vs
+  subagent children, medians/hit/recovery/delta, `--turns` clamping,
+  missing/broken parent, cycles, compaction records, latest live session,
+  exit codes and human output without JSON.
+
+### Docs
+
+- README EN/RU/ZH, `docs/commands.md` (flags and JSON contract), `ROADMAP.md`
+  (0.6 item closed as data-gated), `HANDOFF.md` and `docs/next-session.md`.
+
 ## [0.6.0] — 2026-11-27
 
 ### Added

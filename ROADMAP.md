@@ -1,11 +1,12 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-27. Версия: `0.6.0`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-27. Версия: `0.6.1`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
 preflight, flight recorder в запросе HANDOFF, табличный вывод preflight,
-действие `push` в меню и цена границы из `costs --json` готовы; публичный
+действие `push` в меню, цена границы из `costs --json` и отчёт
+`omp-orchestrate economics` «до/после handoff» готовы; публичный
 GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
 владельца.
 Оперативный список — `TODO.md`.
@@ -387,8 +388,14 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
 - [x] Цена границы в `/handoff-preflight` (0.6.0): медиана холодных ходов
       (`cacheRead == 0` после первого) против тёплых, разрез по моделям при
       >1 модели, graceful skip без CLI.
-- [ ] Стоимость компакции и влияние на hit rate «до/после handoff» — по
-      данным `costs --json`/`lib/orchestrator/cost.ts`.
+- [x] Стоимость компакции и влияние на hit rate «до/после handoff» — 0.6.1:
+      `omp-orchestrate economics` (цепочка по `parentSession`, граница только
+      у ребёнка с маркером `handoff`, окна ходов, hit rate, цена первого хода,
+      `recoveryTurns`, детектор компакций по JSONL). Компакций в локальных
+      данных нет (`compactionEpoch` = 0) — вывод data-gated: детектор есть,
+      отчёт честно пишет «нет записей»; деньги компакций не выдумываются.
+- [x] JSON `schemaVersion: 1` и graceful skip без cache-monitor (exit 0) —
+      контракт CLI, как у `doctor`.
 - Не добавлять TTL или warming без данных провайдера.
 
 ## Этап 1.0 — release
