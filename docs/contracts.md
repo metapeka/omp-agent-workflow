@@ -164,9 +164,12 @@ Settings (аварийное выключение). Команды остают�
     `STATE.json` ссылается на отсутствующий файл — warn; при наличии плана
     — прогресс, следующая задача с gate/deps; `STATE.attempts` > 0 — warn;
     run spend ≥ 90% `maxSpendUsd` — warn.
-- Цена границы handoff не показывается: записанная ставка `usage.cost`
-  гуляет ~2× на одной модели, листовые цены `omp models --json` расходятся
-  с ней ≈1.6×; нужна таблица ставок cache-monitor (`costs --json`).
+- Цена границы handoff (0.6.0): `lib/costs-client.ts` читает
+  `omp-cache-monitor costs --json` v1 (CLI в `PATH` или
+  `OMP_CACHE_MONITOR_CLI`); `usage-border` — медиана `usage.cost.total`
+  холодных ходов (`cacheRead == 0` после первого) против тёплых,
+  `usage-model` — при >1 модели. CLI нет/timeout 2 с/exit ≠ 0/другая схема
+  — строк нет; JSON-контракт соседнего продукта OAW не меняет.
 - Блокеры (`fail`): нет state-файла (default `HANDOFF.md`); грязное дерево;
   detached HEAD; нет коммитов; git-репозиторий не читается; незапушенные
   коммиты при наличии upstream.

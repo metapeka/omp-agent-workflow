@@ -4,6 +4,24 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.6.0] — 2026-11-27
+
+### Added
+
+- `/handoff-preflight` shows the handoff border price from
+  `omp-cache-monitor costs --json` (schemaVersion 1): the median provider cost
+  of cold turns (`cacheRead == 0` after the first turn) against warm turns
+  (`cacheRead > 0`), plus a per-model row when the session used more than one
+  model. Values are actual `usage.cost.total`, never list-price estimates.
+- `lib/costs-client.ts`: strict envelope validation, border medians and a
+  graceful skip (no command, timeout 2 s, exit ≠ 0, broken JSON, another
+  schema) — preflight then renders exactly as before and stays read-only.
+- The CLI is discovered via `OMP_CACHE_MONITOR_CLI` or `omp-cache-monitor` in
+  `PATH`; `omp plugin link` alone does not put the bin in `PATH`.
+- Tests: `test/costs-client.test.mjs` (8) — envelope parsing, medians, first
+  turn excluded, unknown price stays `null`, exit codes, missing CLI, and both
+  preflight row modes.
+
 ## [0.5.26] — 2026-11-26
 
 ### Added

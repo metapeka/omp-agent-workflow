@@ -42,6 +42,7 @@ flowchart TD
 | Cleanup worktree убивает SIGTERM'ом живую сессию | guard: merged, clean, не current, нет процессов/JIT-терминалов; без `--force`/`-D`; ветка остаётся, tip в backup-ref | `/wrap`, `finish` | 0.5.14 |
 | Commit в preflight утаскивает runtime-файлы или падает на `.gitignore` | add-all, затем снятие `.omp-handoff-*` с индекса; остались — abort | меню preflight | 0.5.23 |
 | Незапушенные коммиты | действие `push` в меню preflight (только по выбору, `git push` без `--force`, отказ remote не форсится) | меню preflight | 0.5.26 |
+| CLI `costs --json` отсутствует/упал/другая схема | строки `usage-border`/`usage-model` не выводятся; timeout 2 с, строгая проверка `schemaVersion: 1`, preflight не падает | `costsChecks` в preflight | 0.6.0 |
 | State раздут и съедает контекст новой сессии | лимит 32 000 символов + маркер обрезки с полным размером и путём | `/handoff-new` | 0.5.8, 0.5.15 |
 | **Незакоммиченная работа не видна новой сессии** | **flight recorder: ветка, HEAD и до 6 грязных путей в тексте handoff-запроса** | `checkHandoff` перед `sendUserMessage` | **0.5.24** |
 | Плагин мешает, когда не нужен | `workflowMode: off` — ни статуса, ни предупреждений, ни session info, launcher без supervisor | все хуки | 0.5.18 |

@@ -59,6 +59,7 @@ import {
 	lastReasoningShare,
 	readSessionMetrics,
 } from "./lib/session-metrics.ts";
+import { readCostsSummary } from "./lib/costs-client.ts";
 
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
 const HANDOFF_INSTRUCTIONS =
@@ -311,6 +312,57 @@ function sessionChecks(sessionFile: string | null): PreflightCheck[] {
 }
 
 /**
+ * Цена границы handoff и разрезы по моделям из `costs --json` cache-monitor.
+ * CLI нет, он упал или отдал другую схему — строк нет: preflight не падает и
+ * не выдумывает деньги. Данные — фактический `usage.cost.total`, не оценка
+ * по прайсу.
+ */
+function costsChecks(sessionFile: string | null): PreflightCheck[] {
+	const summary = readCostsSummary(sessionFile);
+	if (!summary) return [];
+	const { border } = summary;
+	const turns = summary.report.turns;
+	const checks: PreflightCheck[] = [];
+
+	if (border.coldUsd !== null || border.warmUsd !== null) {
+		const parts: string[] = [];
+		if (border.coldTurns === 0) {
+			parts.push("холодных ходов нет");
+		} else {
+			const cold = border.coldUsd === null ? "цены нет" : formatUsd(border.coldUsd);
+			parts.push(`холодный ход ${cold}`);
+			parts.push(`холодных ${border.coldTurns} из ${turns.length}`);
+		}
+		if (border.warmUsd === null) parts.push("тёплый ход: цены нет");
+		else parts.push(`тёплый ход ${formatUsd(border.warmUsd)}`);
+		checks.push({
+			status: "pass",
+			id: "usage-border",
+			text: `usage-border: ${parts.join(" · ")}`,
+		});
+	}
+
+	// Одна модель — уже покрыта строкой выше; разрез нужен только при выборе.
+	if (summary.report.models.length > 1) {
+		for (const model of summary.report.models) {
+			const name = model.model ?? "(без модели)";
+			const cost = model.costUsd === null ? "цены нет" : formatUsd(model.costUsd);
+			const hit =
+				model.hitPercent === null ? "hit n/a" : `hit ${model.hitPercent.toFixed(1)}%`;
+			checks.push({
+				status: "pass",
+				id: "usage-model",
+				text:
+					`models: ${name} — ${model.turns} ` +
+					`${plural(model.turns, "ход", "хода", "ходов")} · ${cost} · ${hit}`,
+			});
+		}
+	}
+
+	return checks;
+}
+
+/**
  * План и run из `AUTOPLAN.md` + `STATE.json`: задачи/gates/deps и spend
  * волны. План опционален; отсутствие не предупреждение.
  */
@@ -437,6 +489,7 @@ export function runPreflight(
 	}
 
 	for (const check of sessionChecks(sessionFile)) checks.push(check);
+	for (const check of costsChecks(sessionFile)) checks.push(check);
 	for (const check of orchestratorChecks(cwd)) checks.push(check);
 
 	const repo = git(cwd, ["rev-parse", "--is-inside-work-tree"]);

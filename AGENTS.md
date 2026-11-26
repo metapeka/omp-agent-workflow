@@ -35,7 +35,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.5.26`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.6.0`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -65,8 +65,8 @@ hit rate, этот проект управляет контекстом и см�
   0.5.22 — пресеты `routine|plan|review|budget` (D16): ключ Settings
   `workflowPreset` (14-й) и флаг `--preset`; 0.5.23 — метрики в
   `/handoff-preflight` (F3): размер state, cache hit, reasoning share и
-  spend сессии, план/gate/deps, run spend; цена границы — `[blocked]` до
-  таблицы ставок cache-monitor.
+  spend сессии, план/gate/deps, run spend; цена границы — реализована в
+  0.6.0 через `omp-cache-monitor costs --json`.
 - 0.5.24 — flight recorder: в текст запроса HANDOFF попадают ветка,
   короткий HEAD и до 6 незакоммиченных путей (read-only git, runtime-файлы
   исключены); handoff остаётся read-only, контракт marker/session не
@@ -78,6 +78,10 @@ hit rate, этот проект управляет контекстом и см�
 - 0.5.26 — действие `push` в меню preflight: предлагается при upstream и
   незапушенных коммитах, `git push` без `--force`, отказ remote не двигает
   ref; упавшие проверки/commit пропускают push.
+- 0.6.0 — цена границы в `/handoff-preflight` из `omp-cache-monitor
+  costs --json` v1: медиана холодных ходов против тёплых, разрез по моделям
+  при >1 модели; CLI нет/упал/другая схема — строк нет (graceful skip);
+  `OMP_CACHE_MONITOR_CLI` или bin в `PATH`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.

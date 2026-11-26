@@ -331,6 +331,8 @@ YODA · ⚠ HANDOFF      достигнут порог handoff
 
 Блокеры **advisory**: объясняют, чего не хватает, и предлагают только незакрытые действия. `/handoff-new` не блокируется ими тайно.
 
+Если `omp-cache-monitor` есть в `PATH` (или задан `OMP_CACHE_MONITOR_CLI`), таблица показывает цену границы из `costs --json`: медиану холодных ходов против тёплых и строку на модель, когда моделей больше одной. CLI нет — лишних строк нет.
+
 ### Реальный CLI: план → verify → merge
 
 ![orchestrate](docs/assets/terminal-orchestrate.png)

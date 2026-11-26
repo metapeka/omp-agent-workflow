@@ -329,6 +329,8 @@ The card is enabled only when a merged, clean, non-current worktree without live
 
 Blockers are **advisory**: they explain what is missing and offer only actions that are still open. `/handoff-new` does not secretly block on them.
 
+With `omp-cache-monitor` on `PATH` (or `OMP_CACHE_MONITOR_CLI`), the table also shows the handoff border price from `costs --json`: the median cost of cold turns against warm turns, plus a row per model when the session used more than one. No CLI — no extra rows.
+
 ### Real CLI: plan → verify → merge
 
 ![orchestrate](docs/assets/terminal-orchestrate.png)

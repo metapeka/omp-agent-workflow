@@ -164,7 +164,7 @@ reasoning при фиксированном output 2k; эмпирический 
 | `modelRoles.plan` / `slow` | `cline-pass/deepseek-v4-pro`; `default`/`smol` — flash | `[future]`, Settings-ключ, не env |
 | Advisory в state | строка `next-session: model=… thinking=… mode=…`; preflight только показывает, launcher ставит флаги | `[готово]` 0.5.19 (D14) |
 | Счётчик переходов модели | advisory-поле в `STATE.json`, не блокер | `[future]`, изменение контракта |
-| Оценка границы в preflight | «холодная цель $0.006–0.008, тёплая $0.0001–0.001» | `[blocked]`: нужна таблица ставок cache-monitor; записанные `usage.cost` гуляют ~2× на одной модели (0.5.23, `workflow-presets.md`) |
+| Оценка границы в preflight | «холодная цель $0.006–0.008, тёплая $0.0001–0.001» | `[готово]` 0.6.0: медиана фактических `usage.cost.total` холодных/тёплых ходов из `omp-cache-monitor costs --json`; без CLI строк нет |
 | TTL кэша | неизвестен; в документе — риск, не факт | открытый риск |
 
 Плагин не переключает модель: `ctx.newSession()` доступен только в command

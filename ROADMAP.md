@@ -1,12 +1,13 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-26. Версия: `0.5.26`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-27. Версия: `0.6.0`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
-preflight, flight recorder в запросе HANDOFF, табличный вывод preflight и
-действие `push` в меню готовы; публичный GitHub-репозиторий и release
-`v0.5.14` есть; npm/marketplace — по решению владельца.
+preflight, flight recorder в запросе HANDOFF, табличный вывод preflight,
+действие `push` в меню и цена границы из `costs --json` готовы; публичный
+GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
+владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -342,9 +343,8 @@ preflight, flight recorder в запросе HANDOFF, табличный выв�
 - [x] Preflight: размер state против 32k (warn > 24k), строки `usage`,
       прогресс плана с gate/deps, attempts, run spend против бюджета;
       отсутствие `AUTOPLAN.md` — pass.
-- [x] Цена границы — `[blocked]`: записанные ставки гуляют ~2× на одной
-      модели, листовые цены каталога расходятся ≈1.6×; нужна таблица
-      ставок cache-monitor (`costs --json`).
+- [x] Цена границы — вынесена в 0.6.0: реализация в preflight через
+      `omp-cache-monitor costs --json` (медиана холодных/тёплых ходов).
 - [x] Тесты (`test/session-metrics.test.mjs`), docs и CHANGELOG.
 
 ## Этап 0.5.24 — flight recorder в запросе HANDOFF (готово)
@@ -382,8 +382,13 @@ preflight, flight recorder в запросе HANDOFF, табличный выв�
 
 ## Этап 0.6 — экономика handoff (P2)
 
-- Совместно с `omp-cache-monitor`: стоимость компакции/handoff и эффект на
-  hit rate.
+- [x] `omp-cache-monitor costs --json` v1 — реализовано в cache-monitor
+      0.11.0 (`5c9eeb8`); OAW не парсит его внутренности.
+- [x] Цена границы в `/handoff-preflight` (0.6.0): медиана холодных ходов
+      (`cacheRead == 0` после первого) против тёплых, разрез по моделям при
+      >1 модели, graceful skip без CLI.
+- [ ] Стоимость компакции и влияние на hit rate «до/после handoff» — по
+      данным `costs --json`/`lib/orchestrator/cost.ts`.
 - Не добавлять TTL или warming без данных провайдера.
 
 ## Этап 1.0 — release

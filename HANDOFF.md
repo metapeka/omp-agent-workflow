@@ -3,9 +3,9 @@
 Дата: 2026-11-26. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
 (`workflowMode`, статус-ключ).
-`main`, версия `0.5.26`; последний код — действие `push` в меню preflight
-(только при upstream и незапушенных коммитах, без `--force`, см. CHANGELOG
-0.5.26).
+`main`, версия `0.6.0`; последний код — цена границы handoff в preflight из
+`omp-cache-monitor costs --json` (CLI нет — graceful skip, см. CHANGELOG
+0.6.0).
 Ветки 0.5.1–0.5.26 (включая `feat/doctor`, `feat/oaw-name`,
 `feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`,
 `feat/handoff-flight-recorder`, `feat/preflight-output`,
@@ -47,6 +47,15 @@ README EN/RU/ZH. Проверено `npm run verify`.
 запушены в `origin/main` (`667e72d`) с явного разрешения владельца; CI
 зелёный.
 
+0.6.0: `/handoff-preflight` показывает цену границы из
+`omp-cache-monitor costs --json` (schemaVersion 1) — медиана холодных ходов
+(`cacheRead == 0` после первого) против тёплых (`cacheRead > 0`) и разрез по
+моделям при >1 модели. Значения — фактический `usage.cost.total`, не оценка
+по прайсу. CLI ищется по `OMP_CACHE_MONITOR_CLI` или в `PATH`; нет/упал/
+timeout 2 с/другая схема — строк нет, preflight не меняется. В cache-monitor
+0.11.0 CLI влит в его `main` (`5c9eeb8`), ветка `feat/costs-json`
+сохранена; OAW-изменения — `lib/costs-client.ts`, `test/costs-client.test.mjs`.
+
 ## Что готово
 
 | Что | Состояние |
@@ -81,11 +90,12 @@ README EN/RU/ZH. Проверено `npm run verify`.
 | Гид по командам | `docs/commands.md`: слэш-команды, tool `orchestrator`, меню preflight, карточки `/wrap`, CLI launcher/supervisor/orchestrate, владельцы имён |
 | Замеры 2026-11-24/25 | `docs/research/model-modes.md`: цены 9 моделей, reasoning flash/pro, handoff-payload 20 сессий, цена границы, рекомендации R1–R8 |
 | Пресеты 0.5.22 | `docs/research/workflow-presets.md`: F1/F2 сделаны; F4 `--plan-yolo` — только после замера |
-| Метрики 0.5.23 | `lib/session-metrics.ts` + строки preflight: размер state против 32k, cache hit, reasoning share и spend сессии из root JSONL, прогресс плана с gate/deps, attempts, run spend; цена границы — `[blocked]` до `costs --json` |
+| Метрики 0.5.23 | `lib/session-metrics.ts` + строки preflight: размер state против 32k, cache hit, reasoning share и spend сессии из root JSONL, прогресс плана с gate/deps, attempts, run spend |
+| Цена границы 0.6.0 | `lib/costs-client.ts`: `omp-cache-monitor costs --json` (schemaVersion 1) с graceful skip; строка `usage-border` — медиана холодных ходов против тёплых, `usage-model` — разрез при >1 модели; CLI — `OMP_CACHE_MONITOR_CLI` или `PATH` |
 | Flight recorder 0.5.24 | `workingTreeSnapshot()`: ветка, короткий HEAD, до 6 незакоммиченных путей в тексте запроса HANDOFF; runtime-файлы исключены; контракт marker/session не меняется; карта защит — `docs/guards.md` |
 | Вывод preflight 0.5.25 | Таблица `GROUP  ST  DETAIL` (расчётная ширина, перенос деталей) и fallback-группы с иконками уже 70 колонок; глифы `theme.symbol` (unicode/nerd/ascii), unicode-фолбэк; `✔ ⦸ ✘` у действий и вердикта; формат — `docs/commands.md` |
 | Push в меню 0.5.26 | Действие `push` при upstream и незапушенных коммитах: `git push` без `--force`, timeout 120 с; отказ remote не двигает ref; skip после упавших проверок/commit; тесты на успех/отказ/пропуск |
-| Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md`: `costs --json` v1 для 0.6 economics; в cache-monitor 0.10.1 CLI нет (только `/cache-monitor costs` в TUI) |
+| Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md`: `costs --json` v1 реализован в cache-monitor 0.11.0 (`5c9eeb8`); OAW 0.6.0 — клиент, тесты и строка preflight |
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; Ф1 реализован в 0.5.20 |
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
@@ -321,8 +331,10 @@ Lifecycle-логи supervisor — stderr; `--dry-run` JSON остаётся чи
 | Advisory parser | `lib/next-session.ts` |
 | Presets | `lib/presets.ts`, `bin/omp-preset` |
 | Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md` |
+| Клиент costs | `lib/costs-client.ts` |
 | Advisory CLI | `bin/omp-next-session` |
 | Тесты guard/preflight | `test/context-guard.test.mjs` |
+| Тесты costs | `test/costs-client.test.mjs` |
 | Тесты advisory | `test/next-session.test.mjs` |
 | Тесты presets | `test/presets.test.mjs` |
 | Тесты settings | `test/workflow-settings.test.mjs` |
@@ -374,17 +386,19 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. Новая сессия загрузит 0.5.26; проверить `omp plugin list`, отсутствие
+1. Новая сессия загрузит 0.6.0; проверить `omp plugin list`, отсутствие
    `/handoff` в наших командах (builtin работает), `/handoff-preflight`
-   с advisory-строкой и метриками (state/usage/plan), `SUP OFF` в TUI,
-   `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и
-   `bin/omp-yoda --preset plan --version` (флаги модели, supervisor,
-   exit 0). `doctor --json` на чистом репо — exit 0, без Orca — warn;
-   `--strict` — exit 1. На пороге handoff проверить строку `Дерево:` в
-   запросе (ветка, HEAD, грязные пути).
-2. 0.6 economics: запрос `costs --json` сформулирован в
-   `docs/research/cache-monitor-costs-api.md`; реализация — у
-   cache-monitor (в 0.10.1 ещё нет). OAW не парсит его внутренности.
+   с advisory-строкой, метриками и строкой `usage-border` (при
+   `OMP_CACHE_MONITOR_CLI` или `omp-cache-monitor` в `PATH`; без CLI строки
+   нет), `SUP OFF` в TUI, `OMP_WORKFLOW_MODE=off bin/omp-yoda` без
+   supervisor и `bin/omp-yoda --preset plan --version` (флаги модели,
+   supervisor, exit 0). `doctor --json` на чистом репо — exit 0, без Orca —
+   warn; `--strict` — exit 1. На пороге handoff проверить строку `Дерево:`
+   в запросе (ветка, HEAD, грязные пути).
+2. 0.6 economics: вход `costs --json` готов (cache-monitor 0.11.0,
+   `5c9eeb8`), цена границы показывается в preflight; осталось сравнить
+   стоимость компакции и влияние на hit rate «до/после handoff». OAW не
+   парсит внутренности cache-monitor.
 3. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
    `--plan-yolo` — только после замера.
 4. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
@@ -395,6 +409,11 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 - Установленный пакет без резолвимого OMP loader → Settings игнорируются,
   работает env fallback.
+- `costs --json` — отдельный CLI соседнего продукта: `omp plugin link` bin в
+  `PATH` не добавляет. Нет команды, timeout 2 с, exit ≠ 0 или другая
+  `schemaVersion` → строк `usage-border`/`usage-model` нет; preflight
+  остаётся read-only и не падает. Цена — фактический `usage.cost.total`,
+  не ставка каталога; медиана не заменяет счёт провайдера.
 - `/handoff-preflight` — эвристика и advisory; не заменяет проверки
   supervisor'а и не блокирует `/handoff-new`. Выбранные действия `commit`
   и `merge` меняют репозиторий: merge только ff-only в чистый `main`

@@ -328,6 +328,8 @@ YODA · ⚠ HANDOFF      达到交接阈值
 
 阻断项是**建议性**的：它们解释缺什么，并只提供仍未完成的动作。`/handoff-new` 不会暗中被它们阻塞。
 
+若 `omp-cache-monitor` 在 `PATH` 中（或设置了 `OMP_CACHE_MONITOR_CLI`），表格还会显示来自 `costs --json` 的 handoff 边界价格：冷回合成本中位数对热回合，并在会话使用多个模型时按模型列出。没有 CLI 时不会多出任何行。
+
 ### 真实 CLI：计划 → 验证 → 合并
 
 ![orchestrate](docs/assets/terminal-orchestrate.png)

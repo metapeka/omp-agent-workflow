@@ -1,6 +1,6 @@
 # Команды и CLI OAW
 
-Статус: `[готово]`, версия `0.5.26`. Источник истины — код
+Статус: `[готово]`, версия `0.6.0`. Источник истины — код
 (`index.ts`, `orchestrator.ts`, `bin/`); этот файл — подробный гид.
 Контракт режимов и файлов — [contracts.md](contracts.md).
 
@@ -15,7 +15,7 @@
 | Команда | Аргументы | Что делает | Побочные эффекты |
 |---|---|---|---|
 | `/handoff` | `[фокус]` | **Builtin OMP**, не наш: алиас `/compact handoff` — сжатие в фоне с handoff-резюме | Пишет журнал сжатия; `HANDOFF.md` не создаёт и не правит |
-| `/handoff-preflight` | `[файл state]` | Read-only проверка готовности: state (и его размер), сессия (cache hit, reasoning, spend), план/run (`AUTOPLAN.md`/`STATE.json`), git, ветка, upstream, merge в base, актуальность state, marker. Затем меню только незакрытых действий | Меняет файлы только выбранными действиями (см. ниже) |
+| `/handoff-preflight` | `[файл state]` | Read-only проверка готовности: state (и его размер), сессия (cache hit, reasoning, spend, цена границы из `costs --json`), план/run (`AUTOPLAN.md`/`STATE.json`), git, ветка, upstream, merge в base, актуальность state, marker. Затем меню только незакрытых действий | Меняет файлы только выбранными действиями (см. ниже) |
 | `/handoff-new` | `[файл state]` | Ждёт idle, открывает новую сессию с `continuePrompt` + содержимым state (лимит 32 000 символов, при обрезке — маркер и путь) | Новая сессия; `parentSession` связывает её с текущей; без файла — отказ |
 | `/wrap` | — | Интерактивное завершение: карточки handoff, обновление `HANDOFF.md`, cleanup merged worktree, следующий worktree, ретро-review, выйти | Действия только после подтверждения; merge/publish не делает |
 | `/orchestrate` | `[путь к AUTOPLAN]` | Запускает или продолжает план: `start` следующей задачи, либо stop/handoff по политике | Создаёт worktree/ветку/STATE при старте задачи; шлёт prompt агенту |
@@ -30,6 +30,7 @@
 | advisory `next-session:` | warn: строка невалидна/устарела; валидная — pass (ничего не переключает) |
 | cache hit сессии | pass; warn ниже 80% при prompt ≥ 50k токенов и ≥ 5 запросов |
 | reasoning последнего хода и spend сессии | pass — измеренные величины из root session JSONL; spend показывается и при нулевом output последнего хода |
+| цена границы (`costs --json`) | pass: `usage-border` — медиана холодных ходов против тёплых; `usage-model` — разрез при >1 модели; CLI нет/упал/timeout/другая схема — строк нет |
 | план: задачи, gates, deps | путь — `STATE.plan.path` или `AUTOPLAN.md`; нет плана без state — pass «работа без оркестратора»; state ссылается на отсутствующий план — warn; план не читается — warn |
 | попытки `STATE.attempts` | warn при ≥ 1 |
 | run: текущая задача и spend | pass; warn при ≥ 90% `maxSpendUsd` |
@@ -55,10 +56,12 @@
 - Действия и вердикт используют те же глифы: `✔` сделано, `⦸` пропущено,
   `✘` ошибка.
 
-Цена границы handoff **не показывается**: `usage.cost` — фактические
-списания, их ставка на одну модель гуляет ~2× в пределах сессии, а
-листовые цены `omp models --json` расходятся с ними ≈1.6×. Строка
-появится вместе с таблицей ставок cache-monitor (`costs --json`).
+Цена границы handoff — из `omp-cache-monitor costs --json` (schemaVersion 1),
+если CLI есть в `PATH` или задан `OMP_CACHE_MONITOR_CLI`: строка
+`usage-border` показывает медиану `usage.cost.total` холодных ходов
+(`cacheRead == 0` после первого) против тёплых (`cacheRead > 0`), при >1
+модели — строки `usage-model`. CLI нет, timeout 2 с, exit ≠ 0 или другая
+схема — строк нет; preflight остаётся read-only.
 
 Меню действий (если хост умеет `askDialog`) предлагает только незакрытое:
 

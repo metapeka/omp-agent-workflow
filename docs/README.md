@@ -4,11 +4,11 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.5.26` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `0.6.0` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
 `next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты + метрики
-preflight + flight recorder handoff).
+preflight + flight recorder handoff + цена границы из `costs --json`).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -79,6 +79,9 @@ handoff остаётся read-only, контракт marker/session не мен�
 `0.5.26` — preflight предлагает действие `push`, когда у ветки есть upstream
 и незапушенные коммиты: `git push` без `--force`, только по выбору в меню;
 упавшие проверки или commit пропускают push.
+`0.6.0` — цена границы handoff в preflight из `omp-cache-monitor
+costs --json` v1: медиана холодных ходов против тёплых, разрез по моделям
+при >1 модели; CLI нет/упал/другая схема — строк нет (graceful skip).
 
 ## С чего начать
 

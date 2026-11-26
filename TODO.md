@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-26. Версия: `0.5.26`.
+Дата: 2026-11-27. Версия: `0.6.0`.
 
 ## Сейчас
 
@@ -31,10 +31,11 @@
         из tarball
   - [x] ревью и ff-merge в `main` cache-monitor (`5c9eeb8`); ветка
         `feat/costs-json` остаётся
-  - [ ] OAW: контрактный тест формы ответа + graceful skip без CLI
-  - [ ] OAW: preflight вместо `[blocked]` показывает цену границы и hit из
-        `costs --json`; `lib/orchestrator/cost.ts` остаётся fallback
-  - [ ] OAW: `npm run verify`, HANDOFF/CHANGELOG/ROADMAP 0.6
+  - [x] OAW: контрактный тест формы ответа + graceful skip без CLI —
+        `lib/costs-client.ts`, `test/costs-client.test.mjs` (8 тестов)
+  - [x] OAW: preflight показывает цену границы (медиана холодных/тёплых) и
+        разрез по моделям; `lib/orchestrator/cost.ts` остаётся fallback
+  - [x] OAW: `npm run verify`, HANDOFF/CHANGELOG/ROADMAP — версия 0.6.0
 - [x] F1 advisory `next-session:` + launcher (0.5.19, D14): parser,
       `bin/omp-next-session`, `--model`/`--thinking` при старте, показ в
       preflight; тесты.
@@ -42,7 +43,7 @@
       `--preset`, Settings `workflowPreset`, `bin/omp-preset`, тесты.
 - [x] F3 метрики preflight — 0.5.23: размер state, cache hit, reasoning
       share, spend сессии, план/gate/deps, attempts, run spend. Цена
-      границы — ждёт таблицу ставок cache-monitor (`costs --json`).
+      границы — с 0.6.0 из `costs --json` (медиана холодных/тёплых).
 - [ ] F4 `--plan-yolo` — `[design]`, только после замера.
 - [ ] Интеграция с Orca orchestration Runs/gates — `[future]` 0.6+.
 - [ ] Параллельные задачи и multi-repo — `[future]`.
