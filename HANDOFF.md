@@ -13,7 +13,12 @@ OAW — короткое имя продукта; `workflow` — только е
 Сессия 2026-11-26 закрыта: D15 (`execution`) и D16 (пресеты) приняты и
 реализованы; `autoCompactPercent=40` применён в Settings владельца;
 публикация остаётся локальной (D10); запрос `costs --json` для 0.6
-сформулирован и ждёт cache-monitor. Handoff запрошен по контексту.
+сформулирован и ждёт cache-monitor. Handoff запрошен по контексту (38%).
+
+Состояние на момент handoff: в дереве незакоммиченная F3-работа
+(`index.ts`, `lib/session-metrics.ts`, `test/session-metrics.test.mjs`,
+docs/README и research) — не потерять и разобрать в следующей сессии;
+`main` впереди `origin/main` на 6 коммитов, push не делался.
 
 ## Что готово
 
