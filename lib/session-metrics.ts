@@ -53,7 +53,7 @@ function emptyMetrics(): SessionMetrics {
 const CHUNK = 1 << 20;
 
 /** Строки файла без загрузки целиком; UTF-8 не рвётся на границе чанка. */
-function* lines(path: string): Generator<string> {
+export function* sessionLines(path: string): Generator<string> {
 	let fd: number;
 	try {
 		fd = openSync(path, "r");
@@ -130,7 +130,7 @@ export function readSessionMetrics(sessionFile: string | null): SessionMetrics {
 	const metrics = emptyMetrics();
 	if (!sessionFile || !existsSync(sessionFile)) return metrics;
 	metrics.available = true;
-	for (const line of lines(sessionFile)) {
+	for (const line of sessionLines(sessionFile)) {
 		const usage = usageOfLine(line);
 		if (!usage) continue;
 		const cost = recordOf(usage.cost);
@@ -165,7 +165,7 @@ export function lastReasoningShare(metrics: SessionMetrics): number | null {
 
 /** `950`, `1.2k`, `34k`, `4.2M` — без ложной точности. */
 export function formatTokens(tokens: number): string {
-	if (tokens >= 1_000_000)
+	if (tokens >= 999_500)
 		return `${(tokens / 1_000_000).toFixed(tokens >= 10_000_000 ? 0 : 1)}M`;
 	if (tokens >= 10_000) return `${Math.round(tokens / 1000)}k`;
 	if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`;

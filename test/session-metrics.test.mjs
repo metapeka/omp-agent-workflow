@@ -17,6 +17,7 @@ import {
 	formatUsd,
 	lastReasoningShare,
 	readSessionMetrics,
+	sessionLines,
 } from "../lib/session-metrics.ts";
 
 let tempDirs = [];
@@ -138,30 +139,20 @@ describe("session metrics", () => {
 	});
 
 	it("keeps UTF-8 intact across chunk boundaries", () => {
-		const padding = JSON.stringify({
-			type: "message",
-			message: { role: "user", content: "я".repeat(700_000) },
-		});
-		assert.ok(Buffer.byteLength(padding) > (1 << 20));
-		const usage = assistantUsage(
-			{
-				input: 200,
-				output: 20,
-				cacheRead: 800,
-				reasoningTokens: 5,
-				cost: { input: 0.0001, output: 0.0001, cacheRead: 0.0001, total: 0.0003 },
-			},
-			{ contextSnapshot: { nonMessageTokens: 12_000 } },
-		);
-		const metrics = readSessionMetrics(sessionFile([padding, usage]));
-		assert.equal(metrics.requests, 1);
-		assert.equal(metrics.cacheRead, 800);
+		// Первый байт «я» — последний байт первого MiB-чанка, второй — в следующем.
+		// Наивный chunk.toString("utf8") дал бы два U+FFFD и другой content.
+		const head = '{"type":"message","message":{"role":"assistant","content":';
+		const ascii = (1 << 20) - Buffer.byteLength(head) - 2;
+		const content = `${"x".repeat(ascii)}${"я".repeat(64)}`;
+		const row = `${head}${JSON.stringify(content)},"usage":{"input":0,"output":0}}}`;
+		const [line] = sessionLines(sessionFile([row]));
+		assert.equal(JSON.parse(line).message.content, content);
 	});
 
 	it("formats tokens and dollars without false precision", () => {
 		assert.deepEqual(
-			[950, 1200, 34_000, 4_200_000, 12_000_000].map(formatTokens),
-			["950", "1.2k", "34k", "4.2M", "12M"],
+			[950, 1200, 34_000, 4_200_000, 12_000_000, 999_500].map(formatTokens),
+			["950", "1.2k", "34k", "4.2M", "12M", "1.0M"],
 		);
 		assert.deepEqual(
 			[0, 0.0003, 0.1234, 1.2345].map(formatUsd),
@@ -310,5 +301,73 @@ describe("preflight metrics", () => {
 		const cache = report.checks.find((check) => check.id === "usage-cache");
 		assert.equal(cache.status, "warn");
 		assert.match(cache.text, /cache hit 20\.0%/);
+	});
+
+	it("keeps the spend row when the last turn produced no output", () => {
+		const dir = repo({ "HANDOFF.md": "# state\n" });
+		const path = sessionFile([
+			assistantUsage({
+				input: 10,
+				output: 5,
+				cacheRead: 90,
+				reasoningTokens: 2,
+				cost: { total: 0.001 },
+			}),
+			assistantUsage({
+				input: 10,
+				output: 0,
+				cacheRead: 90,
+				reasoningTokens: 0,
+				cost: { total: 0.002 },
+			}),
+		]);
+		const last = runPreflight(dir, path).checks.find(
+			(check) => check.id === "usage-last",
+		);
+		assert.equal(last.status, "pass");
+		assert.match(last.text, /\$0\.0030 за сессию/);
+		assert.doesNotMatch(last.text, /reasoning/);
+	});
+
+	it("reads the plan named by STATE.plan.path", () => {
+		const plan = `# PLAN
+\`\`\`json plan
+{ "version": 1, "goal": "custom", "worktreeRoot": "worktrees",
+  "verify": ["true"], "budgets": {} }
+\`\`\`
+## T1
+\`\`\`json task
+{ "id": "T1", "title": "first", "acceptance": ["works"] }
+\`\`\`
+`;
+		const state = {
+			version: 1,
+			plan: { path: "PLAN.md", hash: "sha256:x" },
+			run: null,
+			current: null,
+			completed: [],
+			attempts: {},
+			budgets: { tasksThisSession: 0, spendUsd: 0, costOffsets: {} },
+			context: null,
+			lastHandoff: null,
+			stop: null,
+		};
+		const found = runPreflight(
+			repo({
+				"HANDOFF.md": "# state\n",
+				"PLAN.md": plan,
+				"STATE.json": JSON.stringify(state),
+			}),
+			null,
+		).checks.find((check) => check.id === "plan");
+		assert.equal(found.status, "pass");
+		assert.match(found.text, /план: 0\/1 задач, следующая T1/);
+
+		const missing = runPreflight(
+			repo({ "HANDOFF.md": "# state\n", "STATE.json": JSON.stringify(state) }),
+			null,
+		).checks.find((check) => check.id === "plan");
+		assert.equal(missing.status, "warn");
+		assert.match(missing.text, /PLAN\.md не найден/);
 	});
 });

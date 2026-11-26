@@ -150,9 +150,11 @@ Settings (аварийное выключение). Команды остают�
     spend — из `message.assistant.usage` root session JSONL
     (`lib/session-metrics.ts`); записи `model_usage` не считаются, дочерние
     сессии не читаются;
-  - план/run: `AUTOPLAN.md` опционален; при наличии — прогресс, следующая
-    задача с gate/deps; `STATE.attempts` > 0 — warn; run spend ≥ 90%
-    `maxSpendUsd` — warn.
+  - план/run: путь плана — `STATE.plan.path`, иначе `AUTOPLAN.md`;
+    отсутствие плана без state — pass «работа без оркестратора»;
+    `STATE.json` ссылается на отсутствующий файл — warn; при наличии плана
+    — прогресс, следующая задача с gate/deps; `STATE.attempts` > 0 — warn;
+    run spend ≥ 90% `maxSpendUsd` — warn.
 - Цена границы handoff не показывается: записанная ставка `usage.cost`
   гуляет ~2× на одной модели, листовые цены `omp models --json` расходятся
   с ней ≈1.6×; нужна таблица ставок cache-monitor (`costs --json`).

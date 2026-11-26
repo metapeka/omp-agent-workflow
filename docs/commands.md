@@ -29,8 +29,8 @@
 | размер state | pass `N символов / 32000`; warn: > 24 000 «сократи state», ≥ 32 000 «обрежется при handoff» |
 | advisory `next-session:` | warn: строка невалидна/устарела; валидная — pass (ничего не переключает) |
 | cache hit сессии | pass; warn ниже 80% при prompt ≥ 50k токенов и ≥ 5 запросов |
-| reasoning последнего хода и spend сессии | pass — измеренные величины из root session JSONL |
-| план: задачи, gates, deps | pass; `AUTOPLAN.md` нет — pass «работа без оркестратора»; план не читается — warn |
+| reasoning последнего хода и spend сессии | pass — измеренные величины из root session JSONL; spend показывается и при нулевом output последнего хода |
+| план: задачи, gates, deps | путь — `STATE.plan.path` или `AUTOPLAN.md`; нет плана без state — pass «работа без оркестратора»; state ссылается на отсутствующий план — warn; план не читается — warn |
 | попытки `STATE.attempts` | warn при ≥ 1 |
 | run: текущая задача и spend | pass; warn при ≥ 90% `maxSpendUsd` |
 | git-репозиторий и коммиты | fail; не-репозиторий — warn и git-проверки пропускаются |

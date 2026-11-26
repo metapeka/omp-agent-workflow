@@ -245,16 +245,17 @@ function sessionChecks(sessionFile: string | null): PreflightCheck[] {
 
 	const share = lastReasoningShare(metrics);
 	const last = metrics.last;
-	if (share !== null && last) {
-		checks.push({
-			status: "pass",
-			id: "usage-last",
-			text:
-				`usage: reasoning ${Math.round(share)}% последнего хода ` +
-				`(${formatTokens(last.reasoning)} из ${formatTokens(last.output)}), ` +
-				`${formatUsd(metrics.costUsd)} за сессию`,
-		});
-	}
+	// Spend не зависит от reasoning: ход без output всё равно стоит денег.
+	const reasoning =
+		share !== null && last
+			? `reasoning ${Math.round(share)}% последнего хода ` +
+				`(${formatTokens(last.reasoning)} из ${formatTokens(last.output)}), `
+			: "";
+	checks.push({
+		status: "pass",
+		id: "usage-last",
+		text: `usage: ${reasoning}${formatUsd(metrics.costUsd)} за сессию`,
+	});
 
 	return checks;
 }
@@ -282,7 +283,9 @@ function orchestratorChecks(cwd: string): PreflightCheck[] {
 	}
 
 	let plan: Autoplan | null = null;
-	const planPath = resolve(cwd, "AUTOPLAN.md");
+	// План мог быть запущен с другим путём: `--plan PATH` пишет label в state.
+	const planLabel = state?.plan.path ?? "AUTOPLAN.md";
+	const planPath = resolve(cwd, planLabel);
 	if (existsSync(planPath)) {
 		try {
 			plan = readPlan(planPath);
@@ -291,9 +294,15 @@ function orchestratorChecks(cwd: string): PreflightCheck[] {
 			checks.push({
 				status: "warn",
 				id: "plan",
-				text: `план: AUTOPLAN.md не читается — ${message}`,
+				text: `план: ${planLabel} не читается — ${message}`,
 			});
 		}
+	} else if (state?.plan.path) {
+		checks.push({
+			status: "warn",
+			id: "plan",
+			text: `план: ${planLabel} не найден, хотя ${ORCHESTRATOR_STATE_FILE} на него ссылается`,
+		});
 	} else {
 		checks.push({
 			status: "pass",

@@ -28,6 +28,17 @@ semantic for the plugin contract, not for OMP itself.
   `omp models --json` differ ≈1.6×. It needs the cache-monitor price table
   (`costs --json`), not a local guess.
 
+### Fixed
+
+- `usage-last` keeps the session spend row when the last usage record has
+  `output: 0` (aborted turn) instead of dropping reasoning and cost together.
+- The plan check reads `STATE.plan.path` (a `--plan PATH` run) instead of
+  always `AUTOPLAN.md`; a state pointing at a missing plan is a warning.
+- `formatTokens` switches to `M` from 999 500, so near-1M values no longer
+  render as `1000k`.
+- The UTF-8 chunk-boundary test now splits a multibyte character across the
+  1 MiB boundary and compares the parsed content.
+
 ### Docs
 
 - `docs/research/workflow-presets.md` (F3 status and evidence),
