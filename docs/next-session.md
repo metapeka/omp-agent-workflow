@@ -28,7 +28,8 @@
   `HANDOFF.md`, если пользователь не передал их сам; невалидная/устаревшая
   строка ничего не меняет; модель в сессии не меняется (D14).
 - Проверки: `npm run verify` (тесты, typecheck, `check:names`),
-  extension load exit 0, schema 13 ключей, `doctor --json` exit 0.
+  extension load exit 0, schema 13 ключей, `doctor --json` exit 0;
+  `test/contracts.test.mjs` фиксирует конверт `status`/`doctor` v1 для hub.
 - Текущая сессия могла стартовать до merge: перезапустить `bin/omp-yoda`.
 
 ## Следующий этап

@@ -100,6 +100,9 @@
       планов не меняется; `external` → stop `external-run` в
       `start/verify/finish/rebase` без state/worktree; `doctor` warn, если
       external без активного Ensemble; тесты и docs/contracts.
+- [x] Joint plan Ф4 — `test/contracts.test.mjs`: конверт и стабильные поля
+      `status --json` (с `STATE.json` и без), игнор неизвестных полей плана,
+      конверт/форма `doctor --json`; README-счётчики заменены на `200+`.
 - [x] Reviewer `WrapSafetyReview`: subdir-процессы, Orca ENOENT fallback,
       handoff cwd, state/lock cwd, plan hash/planError; commit `ca93956`.
 - [x] TUI E2E `/wrap`: confirm/cancel, Yes удаляет, No/Esc оставляет;
