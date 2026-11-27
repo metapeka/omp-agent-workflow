@@ -138,7 +138,10 @@ git -C /home/db1/projects/omp-agent-workflow branch -d feat/<slug>
   останавливает PTY этого worktree (SIGTERM), поэтому живая сессия внутри
   него не должна дожидаться команды; `--delete-branch` не использовать.
 - после merge удалить worktree; ветку — только явно и `git branch -d`;
-  `removeWorktree` сохраняет tip в `refs/omp-worktree-backup/*`.
+  `removeWorktree` сохраняет tip в `refs/omp-worktree-backup/*`, список —
+  `node bin/omp-orchestrate refs`; `force`-удаление грязного worktree
+  сначала пишет WIP-патч в `~/.local/state/omp-agent-workflow/wip/`.
+  Восстановление ветки и WIP — [recovery.md](recovery.md).
 
 ## Статус-строка
 

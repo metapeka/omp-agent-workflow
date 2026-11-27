@@ -15,29 +15,35 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Сейчас (кратко для новой сессии)
 
-- Версия `1.0.0` выпущена: `main` = `origin/main`, тег и GitHub release
-  `v1.0.0` опубликованы, tarball приложен asset'ом, CI зелёный гейтом
-  `npm run verify`, Pages задеплоен.
+- Версия `1.0.1` в `main` (`0582edf`): WIP-патч перед `force`-удалением
+  упавшей задачи, `omp-orchestrate refs`, `docs/recovery.md`; 396 тестов,
+  typecheck и `check:names` зелёные. Не запушено и не тегировано.
+- 1.0.0 выпущен 2026-11-27: тег и GitHub release `v1.0.0`, tarball
+  asset'ом, CI на `npm run verify`, Pages задеплоен.
 - Живьём проверены (2026-11-27): preflight-таблица и меню, `/wrap`,
   `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
-- Открыто: решение по npm/marketplace (D10). Никаких работ по коду в полёте.
-- Очередь страховки (анализ готов, код не писался): WIP-patch перед
-  `force`-удалением упавшей задачи; `omp-orchestrate refs` + `docs/recovery.md`;
-  решение по копии session JSONL до handoff.
+- Открыто: push 1.0.1; решение по npm/marketplace (D10); решение по копии
+  session JSONL до handoff — последний пункт страховки без sandbox.
 - Этот файл больше 32k символов: `/handoff-new` встроит первые 32 000 и
   оставит маркер обрезки — хвостовые разделы дочитывать из файла.
 
 ## Состояние
 
-Версия `1.0.0`; `main` = `origin/main`, все коммиты 1.0.0 запушены:
-релиз (`0d54090` упаковка, `1be278c` CLI под `node_modules`, `e25a61c`
-пин и режимы), CI + release asset (`de0556d`), RU/ZH quick start
-(`c0fa6ea`), FAQ launcher (`fdedbe4`), регистрация живой проверки
-(`e600ab2`). Тег и GitHub release `v1.0.0` опубликованы, tarball приложен
-asset'ом (sha256 `aaed0a86…b495691`); CI зелёный уже гейтом
-`npm run verify` (389 тестов, Node 22), Pages задеплоен. Открытых работ по
-коду нет. В `main`:
+Версия `1.0.1`; `main` = `0582edf` и локально опережает `origin/main`
+(push 1.0.1 не выполнялся). 1.0.1 — страховка без sandbox:
+WIP-патч перед `force`-удалением упавшей задачи, read-only
+`omp-orchestrate refs` и `docs/recovery.md`; `npm run verify` — 396 тестов,
+typecheck, `check:names` зелёные. В `main`:
 
+- 1.0.1 страховка: `lib/orchestrator/wip.ts` снимает патч (tracked +
+  untracked через временный `GIT_INDEX_FILE`) и `.status` в
+  `$XDG_STATE_HOME/omp-agent-workflow/wip/` (`--wip-dir`), сбой снимка
+  отменяет удаление; `start` на `failed` возвращает `wip` и печатает
+  `wip:`/`wip-status:`, путь попадает и в текст ошибки после снимка;
+  `lib/orchestrator/refs.ts` + `omp-orchestrate refs [--json]`
+  (`schemaVersion: 1`) перечисляют `refs/omp-worktree-backup/*`; карта
+  защит, команды, контракт refs, вики и `docs/recovery.md` обновлены;
+  версия `1.0.1` в `package.json` и `.omp-plugin/marketplace.json`.
 - 1.0.0 релиз: версия `1.0.0` в `package.json` и
   `.omp-plugin/marketplace.json`; пакет — 83 файла, в него входят
   `.omp-plugin/marketplace.json` и `CONTRIBUTING.md`; установка из tarball
@@ -133,6 +139,8 @@ Push 1.0.0 выполнен с разрешения владельца; npm/mark
 | Discovery 0.7.3 | `.omp-plugin/marketplace.json`: каталог `metapeka-omp`, один плагин `source: "./"`, версия/имя/домашняя страница; `omp plugin marketplace add` парсит каталог, dry-run install резолвит `omp-agent-workflow@metapeka-omp` (упирается только в уже linked имя); `test/marketplace.test.mjs` (5) держит версию равной `package.json`. `docs/comparison.md` + RU/ZH: встроенные средства OMP, ближайшие плагины, «что выбрать», самопроверка, установка |
 | Ledger 0.7.4 | `lib/orchestrator/ledger.ts`: `projectBudgets` (дельта прибавляется, `restarted` заменяет вклад файла) и `ledgerSnapshot`; `cost.ts` отдаёт `entries[]{kind,readable,fullTotalUsd}`; `state.budgets.costTotals` — вклад по файлам, старый state читается как пустая карта; `syncSession` дочитывает хвост прошлой сессии; `status --json` → аддитивный `spend`, preflight `run:` — та же проекция; `start`/`finish` → stop `budget-spend`; тесты `test/ledger.test.mjs` (5) + `orchestrator` (+5) + контракт |
 | Release 1.0.0 | Пакет без сборки и runtime-зависимостей (83 файла: extension, `lib/`, `bin/`, docs, `.omp-plugin/`, `CONTRIBUTING.md`); установка из tarball проверена — `omp plugin link` распакованного каталога, Settings 15 ключей, `omp plugin doctor` ok, extension load exit 0, packaged `doctor --json` exit 0, launcher и preset — exit 0; релизные заметки `docs/release-notes-1.0.0.md`; CLI под `node_modules` работают через `lib/ts-loader.mjs` (шимы `bin/`), регрессия — `test/package-run.test.mjs` |
+| WIP-снимок 1.0.1 | `lib/orchestrator/wip.ts`: перед `force`-удалением грязного worktree — патч (tracked + untracked через временный `GIT_INDEX_FILE`, рабочее дерево и настоящий индекс не меняются) и `.status` (ветка, HEAD, `git status`, команда восстановления) в `$XDG_STATE_HOME/omp-agent-workflow/wip/`; сбой снимка отменяет удаление; `start` на `failed` отдаёт `wip`, печатает `wip:`/`wip-status:` и добавляет путь в stop/handoff detail; восстановление — `docs/recovery.md`; тесты — `test/worktree-remove.test.mjs` (3), `test/orchestrator.test.mjs` (1) |
+| Backup refs 1.0.1 | `omp-orchestrate refs [--json]` — read-only `refs/omp-worktree-backup/*` через `for-each-ref --sort=-committerdate`: `ref`, `branch`, `sha`, `short`, `subject`, `committedAt`, `schemaVersion: 1`; план опционален (base repo из git); ничего не пишет; тест — `test/refs.test.mjs` (3) |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -206,25 +214,30 @@ detached / нет коммитов / не влито; `/handoff-new` не тро
 
 Две дырки:
 
-1. **Retry упавшей задачи теряет WIP.** `start` на `failed` вызывает
-   `removeWorktree({force:true, requireMerged:false})`
-   (`lib/orchestrator/actions.ts:344`): коммиты целы (backup-ref +
-   `-failed-<ts>`), но `force` пропускает проверку чистоты и `--force`
-   удаляет каталог. Проба: backup-ref содержал коммит, WIP-файл — нет.
-   Рекомендация: перед force-удалением писать `git status --porcelain`,
-   `git diff HEAD` и untracked в
-   `~/.local/state/omp-agent-workflow/wip/<repo>-<branch>-<ts>.patch`,
-   путь — в stop/error detail (~40 строк + 2 теста).
-2. **Session JSONL удаляется OMP при `newSession`.** `economics` штатно
-   пишет «родительская сессия отсутствует», `null` в summary; «до»-окно
-   задним числом не восстановить. Решение владельца: best-effort копия
-   session-файла при записи marker (переписка — только локально) или
-   принять ограничение.
+1. **Retry упавшей задачи терял WIP — закрыто в 1.0.1.** `start` на
+   `failed` вызывает `removeWorktree({force:true, requireMerged:false})`
+   (`lib/orchestrator/actions.ts`): коммиты целы (backup-ref +
+   `-failed-<ts>`), но `--force` удалял каталог с незакоммиченными файлами
+   (проба: backup-ref содержал коммит, WIP-файл — нет). Теперь
+   `lib/orchestrator/wip.ts` пишет патч (tracked + untracked через
+   временный `GIT_INDEX_FILE`) и `.status` в
+   `$XDG_STATE_HOME/omp-agent-workflow/wip/<repo>-<branch>-<ts>`, путь
+   возвращается в `wip` результата `start` и попадает в error/stop detail;
+   сбой снимка отменяет удаление. Тесты: `test/worktree-remove.test.mjs`
+   (снимок, восстановление `git apply --3way`, отказ, чистый force),
+   `test/orchestrator.test.mjs` (retry грязной задачи). Ignored-файлы в
+   патч не входят — это осознанное ограничение, см. `docs/recovery.md`.
+2. **Session JSONL удаляется OMP при `newSession` — открыто.** `economics`
+   штатно пишет «родительская сессия отсутствует», `null` в summary;
+   «до»-окно задним числом не восстановить. Решение владельца:
+   best-effort копия session-файла при записи marker (переписка — только
+   локально) или принять ограничение.
 
-Гигиена: backup-ref'ы хранятся в base-репо и никем не чистятся — нужен
-срок хранения/prune-подсказка. Sandbox для этого класса риска отвергнут:
-рецепт меняет место запуска агента, а `orca worktree rm` по хостовым
-деревьям страхует только guard.
+Гигиена: backup-ref'ы хранятся в base-репо и никем не чистятся автоматически;
+список — `omp-orchestrate refs`, срок хранения/prune-подсказка —
+`docs/recovery.md`. Sandbox для этого класса риска отвергнут: рецепт меняет
+место запуска агента, а `orca worktree rm` по хостовым деревьям страхует
+только guard.
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
@@ -462,6 +475,7 @@ Lifecycle-логи supervisor — stderr; `--dry-run` JSON остаётся чи
 | Каталог маркетплейса | `.omp-plugin/marketplace.json` |
 | Страница сравнения | `docs/comparison.md` (+ `.ru.md`, `.zh-CN.md`) |
 | Леджер субагентов | `lib/orchestrator/ledger.ts` |
+| WIP-снимок и backup refs | `lib/orchestrator/wip.ts`, `lib/orchestrator/refs.ts` |
 | Тесты леджера | `test/ledger.test.mjs` |
 | Тесты guard/preflight | `test/context-guard.test.mjs` |
 | Тесты разделов state | `test/state-sections.test.mjs` |
@@ -472,6 +486,7 @@ Lifecycle-логи supervisor — stderr; `--dry-run` JSON остаётся чи
 | Тесты safe remove | `test/worktree-remove.test.mjs` |
 | Решения | `docs/decisions.md` (D11–D14) |
 | Карта защит | `docs/guards.md` |
+| Восстановление ветки/WIP | `docs/recovery.md` |
 | Runbook | `docs/operations.md` |
 
 ## Explainer site 2026-11-24
@@ -514,6 +529,7 @@ node --experimental-strip-types bin/omp-orchestrate status --json | jq .schemaVe
 node --experimental-strip-types --test test/handoff-economics.test.mjs   # 37
 node --experimental-strip-types --test test/marketplace.test.mjs        # 5
 node --experimental-strip-types --test test/ledger.test.mjs           # 5
+node --experimental-strip-types --test test/refs.test.mjs            # 3
 omp plugin marketplace add "$PWD" --json && \
   omp plugin marketplace remove metapeka-omp --json   # каталог парсится, конфиг возвращён
 curl -sS -o /dev/null -w '%{http_code}\n' \
@@ -545,14 +561,12 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 
 ## Следующие шаги
 
-1. 1.0.0 выпущен: запушен, тег/release `v1.0.0`, CI зелёный, Pages
-   задеплоен. Открытым остаётся npm/marketplace — отдельное решение
-   владельца (D10). Не парсить внутренности cache-monitor.
-2. Страховка без sandbox (см. раздел выше), по решению владельца:
-   WIP-patch перед `force`-удалением упавшей задачи, `omp-orchestrate refs`
-   (read-only список backup-ref) + `docs/recovery.md`, копия session JSONL
-   до handoff. Начинать с WIP-patch — это единственная потеря данных,
-   воспроизведённая пробой.
+1. 1.0.1 в `main` (`0582edf`), не запушен: push и тег `v1.0.1` — по
+   решению владельца; npm/marketplace — отдельное решение (D10). Не
+   парсить внутренности cache-monitor.
+2. Страховка без sandbox: WIP-patch перед `force`-удалением,
+   `omp-orchestrate refs` и `docs/recovery.md` — сделаны в 1.0.1; осталось
+   решение владельца по копии session JSONL до handoff (раздел выше).
 3. TUI и automatic handoff проверены живьём 2026-11-27 (см. «Живая
    проверка 1.0.0»): preflight-таблица и меню, `/wrap`, `YODA-SUP`,
    `⚠ HANDOFF`, marker → `/handoff-new` → continuation. Повторять только
@@ -668,8 +682,11 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 - Supervisor advisory lock: PID reuse и узкая тройная гонка reclaim.
 - Cleanup отказывает при dirty/current/live — это защита: `finish` вернёт
   warning, worktree останется; повтор после выхода из сессии/закрытия PTY.
-- `refs/omp-worktree-backup/*` накапливаются; удалять вручную, когда tip
-  больше не нужен.
+- `refs/omp-worktree-backup/*` накапливаются; список — `omp-orchestrate
+  refs`, удалять вручную (`git update-ref -d`), когда tip больше не нужен.
+  WIP-снимки в `~/.local/state/omp-agent-workflow/wip/` тоже не чистятся
+  автоматически и не покрывают ignored-файлы; восстановление —
+  `docs/recovery.md`.
 - git-fallback при недоступном Orca оставляет stale-запись в Orca; убрать —
   `orca worktree rm --worktree path:<path> --json`.
 - Репозиторий публичный: не коммитить секреты, session/runtime-файлы и

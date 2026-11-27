@@ -3,10 +3,22 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-27. Версия: `1.0.0`.
+Дата: 2026-11-27. Версия: `1.0.1`.
 
 ## Сейчас
 
+- [x] 1.0.1 — страховка без sandbox, начата с единственной
+      воспроизведённой потери данных: WIP-патч (tracked + untracked через
+      временный `GIT_INDEX_FILE`) и `.status` перед `force`-удалением
+      worktree упавшей задачи, сбой снимка отменяет удаление, путь — в
+      `start`/error detail; `omp-orchestrate refs [--json]` (read-only
+      backup-refs); `docs/recovery.md`; проверено `npm run verify` —
+      396 тестов, typecheck, `check:names`; commit `0582edf`.
+- [ ] 1.0.1 — push и тег `v1.0.1` (по решению владельца; локально `main`
+      впереди `origin/main`).
+- [ ] Решение владельца: копия session JSONL перед handoff (best-effort при
+      записи marker) или принять, что «до»-окно economics после
+      `/handoff-new` не восстанавливается.
 - [x] 1.0.0 — релиз: английский README (+RU/ZH), установка из tarball
       (`npm pack` → распаковка → `omp plugin link`), релизные заметки
       `docs/release-notes-1.0.0.md`, запись `[1.0.0]` в `CHANGELOG.md`;
