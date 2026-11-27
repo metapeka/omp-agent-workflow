@@ -212,19 +212,19 @@ bin/omp-yoda                  # supervisor + OMP，yoda-supervised
 OMP_WORKFLOW_MODE=yoda omp
 ```
 
-也支持 tarball？1.0.0 发行版把自包含包作为 asset 提供——无需注册表、无需构建、
+也支持 tarball？1.0.1 发行版把自包含包作为 asset 提供——无需注册表、无需构建、
 无需 `node_modules`：
 
 ```bash
-curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.0/omp-agent-workflow-1.0.0.tgz
+curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.1/omp-agent-workflow-1.0.1.tgz
 mkdir -p ~/opt/omp-agent-workflow
-tar xzf omp-agent-workflow-1.0.0.tgz -C ~/opt/omp-agent-workflow
+tar xzf omp-agent-workflow-1.0.1.tgz -C ~/opt/omp-agent-workflow
 omp plugin link ~/opt/omp-agent-workflow/package
 omp plugin list
 ```
 
 从克隆中运行 `npm pack` 也能生成同一个包
-（`omp-agent-workflow-1.0.0.tgz`），后续 `tar xzf …` 与 `omp plugin link`
+（`omp-agent-workflow-1.0.1.tgz`），后续 `tar xzf …` 与 `omp plugin link`
 步骤相同。
 
 请保留解压目录：launcher 与 CLI 都从那里运行

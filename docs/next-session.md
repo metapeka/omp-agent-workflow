@@ -6,10 +6,9 @@
 ## Состояние
 
 - Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `1.0.1`
-  (`1d5891b` + копия session JSONL); публикация 1.0.1 (push, тег
-  `v1.0.1`, release с tarball) выполняется с разрешения владельца.
-  1.0.0 запушен, тег и release `v1.0.0` есть; npm/marketplace — по
-  решению владельца (D10).
+  (`1b4874f`, `main` = `origin/main`): тег и release `v1.0.1` опубликованы,
+  tarball asset (sha256 `7365f73a…7c4ad`), CI зелёный. 1.0.0 запушен, тег
+  и release `v1.0.0` есть; npm/marketplace — по решению владельца (D10).
 - `npm run verify` — 403 теста, typecheck, `check:names` зелёные.
 - Готово: 0.3 guard/handoff/Yoda, 0.5 orchestrator (A–D), 0.5.1 `/wrap`,
   0.5.2 supervisor singleton, 0.5.3 additive Orca, 0.5.4–0.5.5 Settings,
@@ -31,13 +30,12 @@
 
 ## Следующий этап
 
-1. Публикация `1.0.1`: push `main`, тег/release `v1.0.1`, tarball asset
-   тем же способом, что `v1.0.0` (разрешение владельца получено).
-2. Orca/Ensemble-приёмка: на репозитории с `execution: external` проверить
+1. Orca/Ensemble-приёмка: на репозитории с `execution: external` проверить
    `doctor` (`two owners`), отказы OAW и живой прогон Ensemble.
-3. F4 `--plan-yolo` — только после замера; не начинать без данных.
-4. Hub старта сессии и `brief` — личный runbook вне продукта (joint plan
+2. F4 `--plan-yolo` — только после замера; не начинать без данных.
+3. Hub старта сессии и `brief` — личный runbook вне продукта (joint plan
    Ф3); `doctor --json` уже готов как источник проверок.
+4. npm/marketplace-публикация — только по отдельному решению (D10).
 
 ## Границы
 

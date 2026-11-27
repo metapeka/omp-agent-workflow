@@ -20,8 +20,12 @@
 - [x] 1.0.1 — `docs/next-session.md` переписан под 1.0.1: состояние,
       очередь (push/tag, session JSONL, внешняя приёмка Ensemble),
       проверки, стартовый prompt.
-- [ ] 1.0.1 — push и тег `v1.0.1` (по решению владельца; локально `main`
-      впереди `origin/main`).
+- [x] 1.0.1 — опубликован 2026-11-27: push `main` (`1b4874f`), тег и
+      release `v1.0.1`, tarball asset (87 файлов,
+      sha256 `7365f73a…7c4ad`), CI зелёный, Pages задеплоен; проверено
+      `npm pack` → распаковка → `omp plugin link` (1.0.1, Settings 15,
+      `doctor --json` ok, extension load exit 0), asset скачан — sha
+      совпал, боевая ссылка возвращена.
 - [x] 1.0.1 — копия session JSONL перед handoff (решение владельца получено):
       `lib/session-archive.ts` + `archiveSessionOnce`; копия в
       `$XDG_STATE_HOME/omp-agent-workflow/sessions/` (600, только локально)

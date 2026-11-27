@@ -15,24 +15,25 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Сейчас (кратко для новой сессии)
 
-- Версия `1.0.1` в `main` (`1d5891b` + копия session JSONL): WIP-патч перед
-  `force`-удалением упавшей задачи, `omp-orchestrate refs`, best-effort
-  копия session JSONL до handoff, `docs/recovery.md`; 403 теста, typecheck
-  и `check:names` зелёные. Не запушено и не тегировано.
+- Версия `1.0.1` выпущена 2026-11-27: `main` = `origin/main`, тег и GitHub
+  release `v1.0.1` опубликованы, tarball приложен asset'ом (87 файлов,
+  sha256 `7365f73a…7c4ad`), CI на `1b4874f` зелёный, Pages задеплоен.
+  В релизе: WIP-патч перед `force`-удалением упавшей задачи,
+  `omp-orchestrate refs`, best-effort копия session JSONL до handoff,
+  `docs/recovery.md`; 403 теста.
 - 1.0.0 выпущен 2026-11-27: тег и GitHub release `v1.0.0`, tarball
   asset'ом, CI на `npm run verify`, Pages задеплоен.
 - Живьём проверены (2026-11-27): preflight-таблица и меню, `/wrap`,
   `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
-- Открыто: push 1.0.1 + тег `v1.0.1` (разрешение владельца получено —
-  выполняется); npm/marketplace — отдельным решением (D10). Страховка без
-  sandbox закрыта целиком.
+- Открыто: только npm/marketplace — отдельным решением владельца (D10).
+  Страховка без sandbox закрыта целиком (1.0.1).
 - Этот файл больше 32k символов: `/handoff-new` встроит первые 32 000 и
   оставит маркер обрезки — хвостовые разделы дочитывать из файла.
 
 ## Состояние
 
-Версия `1.0.1`; `main` = `1d5891b` + копия session JSONL (push 1.0.1
-выполняется с разрешения владельца). 1.0.1 — страховка без sandbox:
+Версия `1.0.1`; релиз `1b4874f` запушен (`main` = `origin/main`), тег и
+release `v1.0.1` с tarball asset'ом. 1.0.1 — страховка без sandbox:
 WIP-патч перед `force`-удалением упавшей задачи, read-only
 `omp-orchestrate refs`, best-effort копия session JSONL до handoff и
 `docs/recovery.md`; `npm run verify` — 403 теста, typecheck, `check:names`
@@ -578,9 +579,10 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 
 ## Следующие шаги
 
-1. 1.0.1 в `main` — публикация по разрешению владельца (выполняется):
-   push `main`, тег и release `v1.0.1` с tarball asset'ом; npm/marketplace —
-   отдельное решение (D10). Не парсить внутренности cache-monitor.
+1. 1.0.1 опубликован (2026-11-27): push `main`, тег/release `v1.0.1`,
+   tarball asset (`sha256 7365f73a…7c4ad`), CI зелёный, Pages задеплоен.
+   Отдельным решением остаётся только npm/marketplace (D10). Не парсить
+   внутренности cache-monitor.
 2. Страховка без sandbox закрыта целиком в 1.0.1: WIP-патч перед
    `force`-удалением, `omp-orchestrate refs`, копия session JSONL до
    handoff и `docs/recovery.md`.
