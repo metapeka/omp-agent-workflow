@@ -25,7 +25,7 @@
 | OAW | `omp-agent-workflow` | context guard, handoff, supervisor, оркестратор задач, CLI JSON | 0.7.1 | `origin` GitHub |
 | cache-monitor | `omp-cache-monitor` | hit rate кэша, `/cache-monitor`, `costs --json` | 0.11.0 | `origin` GitHub |
 | usage | `omp-usage` | CLI `usage-metrics`, Orca-панель `local.usage-panel` | 0.2.0 | локальный, origin нет |
-| skill-library | `omp-skill-library` | CLI v1 `status/doctor/link/scan/adopt`, симлинк-проекция | 0.1.2 | локальный, origin нет |
+| skill-library | `omp-skill-library` | CLI v1 (`status/doctor/link/scan/adopt/relink`) + opt-in `session_start` hook | 0.3.0 | локальный, origin нет |
 
 Сессии: `usage-*` — usage, `skill-*` — skill-library; у OAW и cache-monitor
 отдельного префикса нет, worktree по задаче.
