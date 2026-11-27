@@ -6,8 +6,8 @@
 ## Состояние
 
 - Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `1.0.0`
-  (0.7.0–0.7.4 влиты и запушены; 1.0.0 слит локально в `main`, push — по
-  разрешению владельца, D10).
+  (0.7.0–0.7.4 влиты; 1.0.0 запушен, тег и release `v1.0.0`, CI зелёный;
+  npm/marketplace — по разрешению владельца, D10).
 - Ветки 0.5.1–0.7.4 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
   `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`,
@@ -72,7 +72,7 @@
 1. **1.0.0 сделан** (2026-11-27): установка из tarball (`npm pack` →
    распаковка → `omp plugin link <dir>/package`) проверена, релизные
    заметки `docs/release-notes-1.0.0.md` написаны. Осталось решение
-   владельца: push 1.0.0, GitHub release/tag `v1.0.0`, npm/marketplace.
+   владельца: npm/marketplace (push, тег и release `v1.0.0` сделаны).
    CLI работают и из `node_modules`: шимы `bin/` + `lib/ts-loader.mjs`,
    регрессия — `test/package-run.test.mjs`. Не парсить внутренности
    cache-monitor.
@@ -122,5 +122,5 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 > внутренности cache-monitor.
 > Spend-триггер `handoffAtSpendUsd` — измеренные деньги, offsets без
 > полного перечитывания JSONL.
-> Публикация — по разрешению владельца (D10); 1.0.0 слит в `main` локально,
-> push ждёт решения.
+> Публикация — по разрешению владельца (D10); 1.0.0 запушен, тег и
+> release `v1.0.0` опубликованы, CI зелёный; npm/marketplace — не делали.

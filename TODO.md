@@ -19,7 +19,8 @@
 - [x] Английский README — часть 1.0; добавлены китайский и русский.
 - [x] npm/marketplace — не публикуем, только `omp plugin link` (D10,
       2026-11-26). Изменение — отдельным разрешением владельца.
-- [ ] GitHub release/tag `v1.0.0` и push 1.0.0 — по разрешению владельца.
+- [x] GitHub release/tag `v1.0.0` и push 1.0.0 — 2026-11-27, CI зелёный,
+      Pages задеплоен.
 - [ ] Опционально: полный TUI E2E `/wrap` на Orca-managed worktree
       (confirm/cancel и branch retained); core Orca и TUI confirm/cancel
       уже проверены.
