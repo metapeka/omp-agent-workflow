@@ -15,13 +15,15 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Сейчас (кратко для новой сессии)
 
-- 1.0.2 (не выпущен, локально в `main`): preflight не предлагает
-  «проверки» без `scripts.test`/`typecheck` (в docs/audit-репозитории это
-  был гарантированный `⦸`), а пустое меню сразу печатает итог; синонимы
+- Версия `1.0.2` выпущена 2026-11-27: `main` = `origin/main`
+  (`4bc1d7c`), тег и GitHub release `v1.0.2` опубликованы, tarball
+  asset'ом (89 файлов, sha256 `525e2f…17a8`), CI на `4bc1d7c` зелёный,
+  Pages задеплоен. В релизе: preflight не предлагает «проверки» без
+  `scripts.test`/`typecheck` (в docs/audit-репозитории это был
+  гарантированный `⦸`), пустое меню сразу печатает итог; синонимы
   разделов state покрывают чужие шаблоны (`Проверено как`, `Открыто`,
   `Главные выводы`), «нестандартный формат» говорит «нет разделов шаблона
-  OAW (вне OAW допустимо)». Версии в `package.json` и
-  `.omp-plugin/marketplace.json` — 1.0.2; тег и push — по решению владельца.
+  OAW (вне OAW допустимо)». Заметки — `docs/release-notes-1.0.2.md`.
 - Версия `1.0.1` выпущена 2026-11-27: `main` = `origin/main`, тег и GitHub
   release `v1.0.1` опубликованы, tarball приложен asset'ом (87 файлов,
   sha256 `7365f73a…7c4ad`), CI на `1b4874f` зелёный, Pages задеплоен.
@@ -57,15 +59,15 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Состояние
 
-Версия `1.0.2` (не выпущена), последний релиз — `1.0.1`; `1b4874f` запушен
-(`main` = `origin/main`), тег и
-release `v1.0.1` с tarball asset'ом; после него — только документы до
-`d4dfa35` (изоляция `XDG_STATE_HOME` в тестах, случай промаха провайдера в
-explainer EN/RU/ZH). 1.0.1 — страховка без sandbox:
-WIP-патч перед `force`-удалением упавшей задачи, read-only
+Версия `1.0.2`; релиз `4bc1d7c` запушен (`main` = `origin/main`), тег и
+release `v1.0.2` с tarball asset'ом; заметки —
+`docs/release-notes-1.0.2.md`. Предыдущий релиз — `1.0.1` (`1b4874f`).
+1.0.2 — preflight в чужом репозитории: меню без no-op проверок, пустое
+меню печатает итог сразу, синонимы чужих разделов state; `npm run verify`
+— 409 тестов, typecheck, `check:names` зелёные. 1.0.1 — страховка без
+sandbox: WIP-патч перед `force`-удалением упавшей задачи, read-only
 `omp-orchestrate refs`, best-effort копия session JSONL до handoff и
-`docs/recovery.md`; `npm run verify` — 403 теста, typecheck, `check:names`
-зелёные. В `main`:
+`docs/recovery.md`. В `main`:
 
 - 1.0.2 preflight: `readCheckScripts` (общий с `performChecks`),
   `actionsForPreflight(report, cwd)` — `checks` только при запускаемых

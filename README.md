@@ -211,19 +211,19 @@ bin/omp-yoda                  # supervisor + OMP in yoda-supervised
 OMP_WORKFLOW_MODE=yoda omp
 ```
 
-Prefer a tarball? The 1.0.1 release ships the self-contained package as an
+Prefer a tarball? The 1.0.2 release ships the self-contained package as an
 asset — no registry, no build step, no `node_modules` required:
 
 ```bash
-curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.1/omp-agent-workflow-1.0.1.tgz
+curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.2/omp-agent-workflow-1.0.2.tgz
 mkdir -p ~/opt/omp-agent-workflow
-tar xzf omp-agent-workflow-1.0.1.tgz -C ~/opt/omp-agent-workflow
+tar xzf omp-agent-workflow-1.0.2.tgz -C ~/opt/omp-agent-workflow
 omp plugin link ~/opt/omp-agent-workflow/package
 omp plugin list
 ```
 
 From a clone, `npm pack` builds the same package
-(`omp-agent-workflow-1.0.1.tgz`); run the same `tar xzf …` and
+(`omp-agent-workflow-1.0.2.tgz`); run the same `tar xzf …` and
 `omp plugin link` steps with it.
 
 Keep the unpacked directory: the launcher and the CLIs run from there

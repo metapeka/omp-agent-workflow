@@ -212,19 +212,19 @@ bin/omp-yoda                  # supervisor + OMP, yoda-supervised
 OMP_WORKFLOW_MODE=yoda omp
 ```
 
-Нужен tarball? Релиз 1.0.1 содержит самодостаточный пакет как asset — без
+Нужен tarball? Релиз 1.0.2 содержит самодостаточный пакет как asset — без
 реестра, без сборки и без `node_modules`:
 
 ```bash
-curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.1/omp-agent-workflow-1.0.1.tgz
+curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.2/omp-agent-workflow-1.0.2.tgz
 mkdir -p ~/opt/omp-agent-workflow
-tar xzf omp-agent-workflow-1.0.1.tgz -C ~/opt/omp-agent-workflow
+tar xzf omp-agent-workflow-1.0.2.tgz -C ~/opt/omp-agent-workflow
 omp plugin link ~/opt/omp-agent-workflow/package
 omp plugin list
 ```
 
 Из клона тот же пакет собирает `npm pack`
-(`omp-agent-workflow-1.0.1.tgz`); дальше те же шаги `tar xzf …` и
+(`omp-agent-workflow-1.0.2.tgz`); дальше те же шаги `tar xzf …` и
 `omp plugin link`.
 
 Распакованный каталог нужно сохранить: launcher и CLI запускаются оттуда
