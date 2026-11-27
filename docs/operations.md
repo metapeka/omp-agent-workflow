@@ -23,10 +23,12 @@ omp plugin list                            # omp-agent-workflow@1.0.0
 ```
 
 Каталог сохранить: `bin/omp-yoda` и остальные CLI запускаются из него.
-Ставить под `node_modules` (`npm install`) нельзя для CLI: Node 22 не
-снимает типы с файлов под `node_modules`
-(`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`); расширение при этом
-загружается. Подробности — [release-notes-1.0.0.md](release-notes-1.0.0.md).
+CLI работают и из копии под `node_modules` (`npm install`, установка из
+маркетплейса): шимы `bin/` регистрируют `lib/ts-loader.mjs` и снимают типы
+сами, потому что Node не снимает их для файлов под `node_modules`
+(`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`). Нужен Node ≥ 22.13
+(`node:module.stripTypeScriptTypes`). Подробности —
+[release-notes-1.0.0.md](release-notes-1.0.0.md).
 
 После установки перезапустить OMP. Ставить одним способом: link **или**
 копия в `~/.omp/agent/extensions/`, не оба.

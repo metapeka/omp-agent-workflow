@@ -1,0 +1,340 @@
+/**
+ * CLI orchestrator 0.5.
+ *
+ *   bin/omp-orchestrate status --json
+ *   bin/omp-orchestrate next
+ *   bin/omp-orchestrate start T1
+ *   bin/omp-orchestrate verify T1
+ *   bin/omp-orchestrate finish T1 --commit SHA --review ok
+ *   bin/omp-orchestrate rebase T1
+ *   bin/omp-orchestrate stop --reason gate
+ *   bin/omp-orchestrate resume
+ *   bin/omp-orchestrate doctor [--json] [--strict]
+ *   bin/omp-orchestrate economics [--session FILE] [--turns N] [--summary] [--json]
+ */
+import { resolve } from "node:path";
+import { parseArgs } from "node:util";
+
+import {
+	ActionError,
+	finish,
+	next,
+	rebase,
+	resume,
+	start,
+	status,
+	stop,
+	verify,
+} from "../orchestrator/actions.ts";
+import type {
+	ActionContext,
+	FinishOutcome,
+	NextResult,
+	RebaseOutcome,
+	StartResult,
+	StatusResult,
+	StopResult,
+	VerifyOutcome,
+} from "../orchestrator/actions.ts";
+import {
+	EconomicsSessionError,
+	buildEconomicsReport,
+	renderEconomics,
+	resolveLatestSession,
+} from "../handoff-economics.ts";
+import { doctor, renderDoctor } from "../orchestrator/doctor.ts";
+import { PlanError } from "../orchestrator/plan.ts";
+import { LockError, StateError } from "../orchestrator/state.ts";
+import { CommandError } from "../orchestrator/worktrees.ts";
+
+type CliResult =
+	| StartResult
+	| VerifyOutcome
+	| FinishOutcome
+	| RebaseOutcome
+	| StopResult
+	| StatusResult
+	| NextResult
+	| { kind: "resumed" };
+
+const USAGE = `Использование:
+  omp-orchestrate status [--json]
+  omp-orchestrate next [--json]
+  omp-orchestrate start [TASK] [--json]
+  omp-orchestrate verify [TASK] [--json]
+  omp-orchestrate finish TASK --commit SHA --review ok [--json]
+  omp-orchestrate rebase [TASK] [--json]
+  omp-orchestrate stop --reason REASON [--detail TEXT] [--json]
+  omp-orchestrate resume [--json]
+  omp-orchestrate doctor [--json] [--strict]
+  omp-orchestrate economics [--session FILE] [--turns N] [--summary] [--json] [--dir PATH]
+    (--session-file — то же, что --session; без --session берётся свежая живая запись .omp-handoff-session.json)
+
+Общие флаги:
+  --dir PATH            control worktree (default: cwd)
+  --plan PATH           AUTOPLAN.md (default: AUTOPLAN.md)
+  --mode MODE           manual|assisted|yoda|yoda-supervised
+  --session-file PATH   session JSONL для spend
+  --handoff-at N        порог контекста для boundary handoff
+  --context N           текущий context percent
+  --backend orca|git    worktree backend (default: из плана)
+  --verify-timeout SEC  timeout одной verify-команды (default: 900)
+  --strict              doctor: повысить warn до fail
+`;
+
+const { values, positionals } = parseArgs({
+	allowPositionals: true,
+	options: {
+		dir: { type: "string", default: process.cwd() },
+		plan: { type: "string" },
+		mode: { type: "string" },
+		"session-file": { type: "string" },
+		"handoff-at": { type: "string" },
+		context: { type: "string" },
+		backend: { type: "string" },
+		"verify-timeout": { type: "string" },
+		commit: { type: "string" },
+		review: { type: "string" },
+		reason: { type: "string" },
+		detail: { type: "string" },
+		strict: { type: "boolean", default: false },
+		session: { type: "string" },
+		turns: { type: "string" },
+		summary: { type: "boolean", default: false },
+		json: { type: "boolean", default: false },
+		help: { type: "boolean", short: "h", default: false },
+	},
+});
+
+function numberFlag(
+	name: string,
+	value: string | undefined,
+	integer = false,
+): number | undefined {
+	if (value === undefined) return undefined;
+	const number = Number(value);
+	if (!Number.isFinite(number) || (integer && !Number.isInteger(number))) {
+		throw new ActionError(`--${name}: expected number, got "${value}"`);
+	}
+	return number;
+}
+
+function buildContext(): ActionContext {
+	const mode = values.mode;
+	if (
+		mode !== undefined &&
+		mode !== "manual" &&
+		mode !== "assisted" &&
+		mode !== "yoda" &&
+		mode !== "yoda-supervised"
+	) {
+		throw new ActionError(`--mode: invalid "${mode}"`);
+	}
+	const backend = values.backend;
+	if (backend !== undefined && backend !== "orca" && backend !== "git") {
+		throw new ActionError(`--backend: expected orca|git, got "${backend}"`);
+	}
+	const verifyTimeout = numberFlag("verify-timeout", values["verify-timeout"]);
+	return {
+		dir: resolve(values.dir),
+		planPath: values.plan,
+		mode,
+		sessionFile: values["session-file"],
+		handoffAt: numberFlag("handoff-at", values["handoff-at"]),
+		contextPercent: numberFlag("context", values.context),
+		backend,
+		verifyTimeoutMs:
+			verifyTimeout === undefined ? undefined : verifyTimeout * 1000,
+	};
+}
+
+function renderStatus(result: StatusResult) {
+	const lines = [
+		`plan: ${result.plan.goal}`,
+		`path: ${result.plan.path}`,
+		`hash: ${result.plan.hash}`,
+		`tasks: ${result.plan.completed}/${result.plan.tasks}`,
+	];
+	if (result.next) lines.push(`next: ${result.next.id} — ${result.next.title}`);
+	else lines.push("next: none");
+	if (result.spend) {
+		const spend = result.spend;
+		const limit = spend.limitUsd > 0 ? ` / $${spend.limitUsd.toFixed(2)}` : "";
+		const measured = spend.measured ? "" : ", не измерен";
+		lines.push(
+			`spend: $${spend.spentUsd.toFixed(4)}${limit}, остаток $${spend.remainingUsd.toFixed(4)}, файлов ${spend.files.length}${measured}`,
+		);
+	}
+	if (result.stop) lines.push(`stop: ${result.stop.reason} — ${result.stop.detail}`);
+	if (result.state?.current) {
+		const current = result.state.current;
+		lines.push(
+			`current: ${current.id} [${current.status}] ${current.worktree}`,
+		);
+	}
+	return lines.join("\n");
+}
+
+function render(result: CliResult) {
+	if (typeof result !== "object" || result === null) return String(result);
+	if ("plan" in result) return renderStatus(result);
+	switch (result.kind) {
+		case "task":
+			return `next: ${result.task.id} — ${result.task.title} (${result.task.branch})`;
+		case "started":
+			return `${result.task.id} started\n${result.prompt}`;
+		case "verified":
+		case "verify-failed":
+		case "rebased": {
+			const checks = result.checks
+				.map((check) => `${check.code === 0 ? "ok" : "FAIL"} ${check.cmd}`)
+				.join("\n");
+			const head = result.commit ? `commit: ${result.commit}` : "commit: none";
+			return `${result.kind}\n${head}\n${checks}`;
+		}
+		case "merged": {
+			const lines = [`merged ${result.commit}`];
+			if (result.nextTask) {
+				lines.push(`next: ${result.nextTask.id} — ${result.nextTask.title}`);
+			}
+			lines.push(`decision: ${result.decision.kind}`);
+			if (result.warning) lines.push(`warning: ${result.warning}`);
+			return lines.join("\n");
+		}
+		case "rebase-required":
+			return `rebase-required: ${result.detail}`;
+		case "stop":
+		case "stopped":
+			return `stop: ${result.reason} — ${result.detail}`;
+		case "handoff":
+			return `handoff: ${result.detail}`;
+		case "resumed":
+			return "resumed";
+		default:
+			return JSON.stringify(result, null, 2);
+	}
+}
+
+function runEconomics() {
+	// Аргументы проверяются до поиска сессии: `--turns abc` без сессии — exit 2.
+	let turns;
+	if (values.turns !== undefined) {
+		const raw = values.turns.trim();
+		turns = raw === "" ? Number.NaN : Number(raw);
+		if (!Number.isInteger(turns)) {
+			console.error(
+				`omp-orchestrate: --turns: expected integer 1..100, got "${values.turns}"`,
+			);
+			process.exitCode = 2;
+			return;
+		}
+	}
+	// `--session-file` — историческое имя того же флага (spend у orchestrator).
+	const requested = values.session ?? values["session-file"];
+	const explicit =
+		typeof requested === "string" && requested.trim() !== ""
+			? requested
+			: undefined;
+	const file = explicit ?? resolveLatestSession(resolve(values.dir));
+	if (!file) {
+		console.error(
+			"omp-orchestrate: economics: сессия не найдена; передайте --session FILE",
+		);
+		process.exitCode = 1;
+		return;
+	}
+	try {
+		const report = buildEconomicsReport({
+			sessionFile: file,
+			turns,
+			summary: values.summary,
+		});
+		console.log(
+			values.json ? JSON.stringify(report, null, 2) : renderEconomics(report),
+		);
+	} catch (error) {
+		if (!(error instanceof EconomicsSessionError)) throw error;
+		console.error(`omp-orchestrate: economics: ${error.message}`);
+		process.exitCode = 1;
+	}
+}
+
+async function main() {
+	if (values.help) {
+		console.log(USAGE);
+		return;
+	}
+	const command = positionals[0];
+	if (!command) {
+		console.error(USAGE);
+		process.exitCode = 2;
+		return;
+	}
+	if (command === "economics") {
+		runEconomics();
+		return;
+	}
+	const task = positionals[1];
+	const ctx = buildContext();
+	let result: CliResult;
+	switch (command) {
+		case "status":
+			result = status(ctx);
+			break;
+		case "next":
+			result = next(ctx);
+			break;
+		case "start":
+			result = await start(ctx, task);
+			break;
+		case "verify":
+			result = await verify(ctx, task);
+			break;
+		case "finish": {
+			if (!task) throw new ActionError("finish: TASK is required");
+			if (!values.commit) throw new ActionError("finish: --commit is required");
+			result = await finish(ctx, task, values.commit, values.review ?? "");
+			break;
+		}
+		case "rebase":
+			result = await rebase(ctx, task);
+			break;
+		case "stop":
+			if (!values.reason) throw new ActionError("stop: --reason is required");
+			result = stop(ctx, values.reason, values.detail);
+			break;
+		case "resume":
+			result = resume(ctx);
+			break;
+		case "doctor": {
+			const report = doctor({
+				dir: ctx.dir,
+				planPath: ctx.planPath,
+				strict: values.strict,
+			});
+			console.log(
+				values.json ? JSON.stringify(report, null, 2) : renderDoctor(report),
+			);
+			process.exitCode = report.ok ? 0 : 1;
+			return;
+		}
+		default:
+			throw new ActionError(`unknown command: ${command}`);
+	}
+	if (values.json) console.log(JSON.stringify(result, null, 2));
+	else console.log(render(result));
+}
+
+try {
+	await main();
+} catch (error) {
+	const known =
+		error instanceof ActionError ||
+		error instanceof PlanError ||
+		error instanceof StateError ||
+		error instanceof LockError ||
+		error instanceof CommandError;
+	if (!known) throw error;
+	console.error(`omp-orchestrate: ${error.message}`);
+	process.exitCode = 1;
+}

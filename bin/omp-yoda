@@ -108,7 +108,7 @@ fi
 preset_args=()
 preset_prompt=""
 if [ -n "$preset_value" ] && [ -f "$here/omp-preset" ]; then
-  preset_out="$(node --experimental-strip-types --disable-warning=ExperimentalWarning \
+  preset_out="$(node \
     "$here/omp-preset" --preset "$preset_value" --omp "$omp_bin" --flags -- "${omp_args[@]}" 2>/dev/null)" || preset_out=""
   if [ -n "$preset_out" ]; then
     set -f
@@ -117,7 +117,7 @@ if [ -n "$preset_value" ] && [ -f "$here/omp-preset" ]; then
     set +f
     echo "Yoda: preset $preset_value → ${preset_args[*]}" >&2
   fi
-  preset_prompt="$(node --experimental-strip-types --disable-warning=ExperimentalWarning \
+  preset_prompt="$(node \
     "$here/omp-preset" --preset "$preset_value" --prompt 2>/dev/null)" || preset_prompt=""
 fi
 
@@ -134,7 +134,7 @@ fi
 # Невалидная или устаревшая строка ничего не меняет.
 advisory_args=()
 if [ -z "$preset_value" ] && [ -f "$dir/HANDOFF.md" ] && [ -f "$here/omp-next-session" ]; then
-  advisory_out="$(node --experimental-strip-types --disable-warning=ExperimentalWarning \
+  advisory_out="$(node \
     "$here/omp-next-session" --dir "$dir" --omp "$omp_bin" -- "${omp_args[@]}" 2>/dev/null)" || advisory_out=""
   if [ -n "$advisory_out" ]; then
     set -f

@@ -53,6 +53,7 @@ flowchart TD
 | **Subagent-сессии не видны в бюджете: прогон тратит в разы больше видимой суммы** | ledger: root + вложенные subagent-файлы, `spendUsd` = Σ вкладов, stop `budget-spend` на старте и после merge | `applyCost`, `start`, `finish`, `status` | **0.7.4** |
 | **Компакция переписала JSONL: spend прыгает и даёт ложный stop** | `restarted` заменяет вклад файла (пересчёт с нуля), а не прибавляет полную сумму | `projectBudgets` | **0.7.4** |
 | **Хвост прошлой сессии теряется на handoff** | перед сменой `run.sessionFile` старый root дочитывается тем же offset-чтением | `syncSession` | **0.7.4** |
+| **CLI-скрипты не запускаются в установленной копии: Node не снимает типы под `node_modules`** | шимы `bin/` регистрируют `lib/ts-loader.mjs` (`node:module.stripTypeScriptTypes`); один код-путь для клона, tarball и `node_modules`; регрессия держится `test/package-run.test.mjs` | `bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset`, `bin/omp-yoda` | **1.0.0** |
 
 ## 0.5.24: flight recorder
 
@@ -157,6 +158,27 @@ OMP переписывает JSONL на месте, и наивное `spend += 
 status), `index.ts` (preflight run row); тесты — `test/ledger.test.mjs`,
 `test/orchestrator.test.mjs` (rewrite, tail, gates, status),
 `test/contracts.test.mjs` (форма `spend`).
+
+## 1.0.0: CLI-скрипты и `node_modules`
+
+**Почему.** `npm install` и копия из маркетплейса кладут плагин под
+`node_modules`, а Node отказывается снимать типы с файлов там
+(`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`). Раньше CLI запускались
+через `node --experimental-strip-types` и в такой копии падали
+(`omp-orchestrate` — с ошибкой, preset/advisory launcher'а — молча).
+
+**Что добавлено.** Тело CLI живёт в `lib/cli/{orchestrate,next-session,preset}.ts`,
+а `bin/` — тонкие шимы: регистрируют `lib/ts-loader.mjs` и импортируют тело.
+Лоадер читает `.ts` через `fs` и снимает типы `node:module.stripTypeScriptTypes`,
+поэтому обходит ограничение Node; для всех остальных URL он делегирует
+штатному загрузчику. Требование — Node ≥ 22.13.
+
+**Что это не даёт.** Не компиляцию и не кэш: типы снимаются на каждом
+запуске (~10–20 мс на процесс), сборки в пакете нет. Frontmatter/JSX и
+другие трансформации не поддерживаются — только strip, как и раньше.
+
+Код: `lib/cli/*.ts`, `lib/ts-loader.mjs`, `bin/*`;
+тест — `test/package-run.test.mjs`.
 
 ## Чем защита не является
 

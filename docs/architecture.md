@@ -27,6 +27,7 @@ flowchart LR
 | Supervisor | `bin/omp-handoff-supervisor.mjs` | Внешний watcher: marker + session info → `/handoff-new`; singleton lock на `--dir` |
 | Supervisor lock | `lib/supervisor-lock.mjs` | acquire/reclaim/release; identity guard после rename |
 | Launcher | `bin/omp-yoda` | Supervisor + OMP в `yoda-supervised` |
+| CLI `[готово]` | `bin/omp-{orchestrate,next-session,preset}` + `lib/cli/*.ts` + `lib/ts-loader.mjs` | Шимы `bin/` регистрируют лоадер и снимают типы через `node:module.stripTypeScriptTypes`; CLI работают из клона, tarball и `node_modules` (Node ≥ 22.13) |
 | Orchestrator `[готово]` | `orchestrator.ts` + `lib/orchestrator/*` | A–D: state, cost, worktree, actions, CLI, extension, E2E |
 | Wrap `[готово]` | `lib/orchestrator/wrap.ts` + `/wrap` в `orchestrator.ts` | 0.5.1: facts, cards, safe cleanup, next worktree |
 | Тесты 0.3 | `test/context-guard.test.mjs` | guard/handoff/preflight/supervisor/lock/session info/status |

@@ -24,28 +24,37 @@ First stable release: the plugin surface built in 0.5–0.7 is frozen as the
 
 ### Fixed
 
-- README EN/RU/ZH: 15 Settings keys (was 14 in the header line) and the
-  test badge no longer claims 192/192.
+- **CLI under `node_modules`.** Node refuses to strip types there
+  (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), which broke
+  `bin/omp-orchestrate` and silently disabled the launcher's preset/advisory
+  calls in an `npm install` or marketplace copy. The CLI bodies moved to
+  `lib/cli/{orchestrate,next-session,preset}.ts`; the `bin/` entrypoints are
+  thin shims that register `lib/ts-loader.mjs`, which strips types through
+  `node:module.stripTypeScriptTypes`. One code path, works from a clone, an
+  unpacked tarball and `node_modules`.
+- CLI bodies are typechecked now that they live under `lib/` (`ActionContext`,
+  result unions, `numberFlag` signatures); behaviour is unchanged.
+- README EN/RU/ZH: 15 Settings keys (was 14 in the header line), Node
+  requirement 22.13+ (the strip API), test badge no longer claims 192/192.
 - `docs/README.md`: the wiki version line no longer says 0.6.0.
 
 ### Tests
 
-- `npm run verify` — 386 tests, typecheck, `check:names` (105 OMP builtins,
+- `npm run verify` — 389 tests, typecheck, `check:names` (105 OMP builtins,
   5 plugin commands, 0 collisions).
+- `test/package-run.test.mjs` (3): the runtime copied into a temp
+  `node_modules/omp-agent-workflow` runs `--help`, reaches the plan loader
+  and runs `next-session`/`preset` without the Node refusal.
 - Tarball round trip on this machine: pack → extract → `omp plugin link`
   → `omp plugin list` 1.0.0, Settings schema 15 keys, `omp plugin doctor`
   ok, extension load exit 0, packaged `bin/omp-orchestrate doctor --json`
   exit 0, `bin/omp-yoda --version` exit 0.
 
-### Known limitations
+### Packaging
 
-- Node refuses type stripping for files under `node_modules`
-  (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so the CLI scripts
-  (`bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset`, and the
-  launcher calls that use them) must run from an unpacked directory —
-  `omp plugin link` of a clone or of a freshly extracted tarball. The
-  extension itself loads from `node_modules` through OMP's own loader and is
-  unaffected.
+- No build step and no runtime dependencies: the package ships the same `.ts`
+  sources; the loader strips them at run time. `bin/omp-yoda` calls the CLI
+  shims without a `--experimental-strip-types` flag.
 
 ## [0.7.4] — 2026-11-27
 

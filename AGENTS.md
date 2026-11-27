@@ -97,8 +97,9 @@ hit rate, этот проект управляет контекстом и см�
 - 1.0.0 — релиз: установка из tarball проверена (распаковка +
   `omp plugin link`, Settings 15 ключей, extension load, `plugin doctor`,
   `doctor --json`, launcher), релизные заметки —
-  `docs/release-notes-1.0.0.md`; CLI-скрипты не запускаются из дерева
-  `node_modules` (Node не снимает типы) — ставить распаковкой или клоном.
+  `docs/release-notes-1.0.0.md`; CLI работают и из `node_modules`: шимы
+  `bin/` + `lib/ts-loader.mjs` (`node:module.stripTypeScriptTypes`,
+  Node ≥ 22.13), регрессия — `test/package-run.test.mjs`.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.

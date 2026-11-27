@@ -20,7 +20,7 @@ OAW — короткое имя продукта; `workflow` — только е
 после него, Pages задеплоен. Открытых работ по коду нет. В `main`:
 
 - 1.0.0 релиз: версия `1.0.0` в `package.json` и
-  `.omp-plugin/marketplace.json`; пакет — 79 файлов, в него входят
+  `.omp-plugin/marketplace.json`; пакет — 83 файла, в него входят
   `.omp-plugin/marketplace.json` и `CONTRIBUTING.md`; установка из tarball
   проверена (`npm pack` → распаковка → `omp plugin link <dir>/package`:
   `omp plugin list` 1.0.0, Settings 15 ключей, `omp plugin doctor` ok,
@@ -29,7 +29,14 @@ OAW — короткое имя продукта; `workflow` — только е
   и thinking, `next-session`/supervisor — exit 0); релизные заметки
   `docs/release-notes-1.0.0.md`, запись `[1.0.0]` в `CHANGELOG.md`, раздел
   tarball и ссылка на заметки в README EN/RU/ZH; README-факты исправлены
-  (15 настроек, badge 386/386), вики-версия 1.0.0; runtime не менялся;
+  (15 настроек, badge 389/389), вики-версия 1.0.0;
+- CLI-скрипты под `node_modules`: тела переехали в
+  `lib/cli/{orchestrate,next-session,preset}.ts`, `bin/` — шимы, которые
+  регистрируют `lib/ts-loader.mjs` (`node:module.stripTypeScriptTypes`) и
+  обходят отказ Node снимать типы под `node_modules`; один код-путь для
+  клона, tarball и `node_modules`, Node ≥ 22.13; тела CLI теперь
+  typechecked (`ActionContext`, union результатов); регрессия —
+  `test/package-run.test.mjs` (3), всего 389 тестов;
 - 0.7.4 леджер субагентов: `STATE.budgets.costTotals` — вклад каждого
   session-файла (root, вложенные subagent-сессии, сессии после handoff),
   `spendUsd` = Σ вкладов; перезапись на месте (компакция) заменяет вклад
@@ -105,7 +112,7 @@ GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
 | Economics summary 0.7.2 | `economics --summary`: `summarizeEconomics()` в `lib/handoff-economics.ts` — `sessions`/`handoffs`/`measuredSessions`/`boundaries`/`turns` (`null`, если не измерено ничего), измеренный `spendUsd` (сумма цен ходов прочитанных сессий), `medianTurnUsd`, `avgBoundaryUsd` и `hitTrend` (`up\|down\|flat` при пороге 0.5 pp включительно); аддитивное `summary` в JSON, блок `Сводка:` с отношением `BORDER` к обычному ходу; без флага отчёт прежний, частичное покрытие — note `N из M` |
 | Discovery 0.7.3 | `.omp-plugin/marketplace.json`: каталог `metapeka-omp`, один плагин `source: "./"`, версия/имя/домашняя страница; `omp plugin marketplace add` парсит каталог, dry-run install резолвит `omp-agent-workflow@metapeka-omp` (упирается только в уже linked имя); `test/marketplace.test.mjs` (5) держит версию равной `package.json`. `docs/comparison.md` + RU/ZH: встроенные средства OMP, ближайшие плагины, «что выбрать», самопроверка, установка |
 | Ledger 0.7.4 | `lib/orchestrator/ledger.ts`: `projectBudgets` (дельта прибавляется, `restarted` заменяет вклад файла) и `ledgerSnapshot`; `cost.ts` отдаёт `entries[]{kind,readable,fullTotalUsd}`; `state.budgets.costTotals` — вклад по файлам, старый state читается как пустая карта; `syncSession` дочитывает хвост прошлой сессии; `status --json` → аддитивный `spend`, preflight `run:` — та же проекция; `start`/`finish` → stop `budget-spend`; тесты `test/ledger.test.mjs` (5) + `orchestrator` (+5) + контракт |
-| Release 1.0.0 | Пакет без сборки и runtime-зависимостей (79 файлов: extension, `lib/`, `bin/`, docs, `.omp-plugin/`, `CONTRIBUTING.md`); установка из tarball проверена — `omp plugin link` распакованного каталога, Settings 15 ключей, `omp plugin doctor` ok, extension load exit 0, packaged `doctor --json` exit 0, launcher и preset — exit 0; релизные заметки `docs/release-notes-1.0.0.md`; CLI-скрипты не запускаются из дерева `node_modules` (Node не снимает типы) — documented |
+| Release 1.0.0 | Пакет без сборки и runtime-зависимостей (83 файла: extension, `lib/`, `bin/`, docs, `.omp-plugin/`, `CONTRIBUTING.md`); установка из tarball проверена — `omp plugin link` распакованного каталога, Settings 15 ключей, `omp plugin doctor` ok, extension load exit 0, packaged `doctor --json` exit 0, launcher и preset — exit 0; релизные заметки `docs/release-notes-1.0.0.md`; CLI под `node_modules` работают через `lib/ts-loader.mjs` (шимы `bin/`), регрессия — `test/package-run.test.mjs` |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -426,7 +433,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   https://metapeka.github.io/omp-agent-workflow/       # 200
 
 # tarball 1.0.0 (проверено 2026-11-27)
-npm pack --pack-destination /tmp/oaw-rel1               # 79 файлов
+npm pack --pack-destination /tmp/oaw-rel1               # 83 файла
 mkdir -p /tmp/oaw-accept && tar xzf /tmp/oaw-rel1/omp-agent-workflow-1.0.0.tgz -C /tmp/oaw-accept
 omp plugin link /tmp/oaw-accept/package --json
 omp plugin list --json | jq '.npm[]|select(.name=="omp-agent-workflow")|.version'   # 1.0.0
@@ -435,11 +442,18 @@ omp plugin doctor --json | jq '.[]|select(.name=="plugin:omp-agent-workflow")'
 omp --no-extensions -e /tmp/oaw-accept/package/index.ts \
   -e /tmp/oaw-accept/package/orchestrator.ts --no-session --mode json \
   -p 'Reply with exactly: OK'                          # exit 0
-node --experimental-strip-types --disable-warning=ExperimentalWarning \
-  /tmp/oaw-accept/package/bin/omp-orchestrate doctor --json | jq .ok   # true
+node /tmp/oaw-accept/package/bin/omp-orchestrate doctor --json | jq .ok   # true
 /tmp/oaw-accept/package/bin/omp-yoda --version          # exit 0
 /tmp/oaw-accept/package/bin/omp-preset --preset plan --flags
 omp plugin link /home/db1/projects/omp-agent-workflow --json  # вернуть боевую ссылку
+
+# CLI под node_modules (проверено 2026-11-27)
+# копия рантайма в /tmp/.../node_modules/omp-agent-workflow:
+node .../bin/omp-orchestrate --help                 # exit 0, stderr пуст
+node .../bin/omp-orchestrate status --json --dir .  # exit 1, cannot read plan
+node .../bin/omp-next-session --dir .               # exit 0
+node .../bin/omp-preset --preset plan --prompt      # exit 0
+node --experimental-strip-types --test test/package-run.test.mjs   # 3
 ```
 
 ## Следующие шаги
@@ -474,13 +488,13 @@ omp plugin link /home/db1/projects/omp-agent-workflow --json  # вернуть �
 
 ## Риски
 
-- Tarball/marketplace-копия под `node_modules`: Node 22 не снимает типы с
-  файлов там (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), поэтому
-  `bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset` и вызовы
-  launcher'а к ним работают только из распакованного каталога/клона
-  (`omp plugin link`); расширение из `node_modules` грузится (проверено).
-  Исправление — только сборка JS для bin (prepack) — отдельное решение, в
-  1.0 не делалось; ограничение записано в release notes и runbook.
+- CLI под `node_modules` (tarball/marketplace-копия): шимы `bin/` регистрируют
+  `lib/ts-loader.mjs`, который читает `.ts` через `fs` и снимает типы
+  `node:module.stripTypeScriptTypes`; для остальных URL делегирует штатному
+  загрузчику. Работает один код-путь — клон, tarball и `node_modules`;
+  Node ≥ 22.13. Ограничения лоадера: только strip (без JSX/декораторов),
+  типы снимаются на каждом запуске (~10–20 мс), стек-трейсы без source map;
+  регрессия держится `test/package-run.test.mjs`.
 - Установленный пакет без резолвимого OMP loader → Settings игнорируются,
   работает env fallback.
 - `costs --json` — отдельный CLI соседнего продукта: `omp plugin link` bin в

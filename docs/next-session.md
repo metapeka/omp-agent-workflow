@@ -47,8 +47,8 @@
   файлам, перезапись заменяет вклад, хвост прошлой сессии, `spend` в
   `status --json`, stop `budget-spend` по всему кусту), 1.0.0 (релиз:
   tarball-установка проверена, релизные заметки
-  `docs/release-notes-1.0.0.md`, пакет без сборки, ограничение CLI под
-  `node_modules`).
+  `docs/release-notes-1.0.0.md`, пакет без сборки; CLI работают и из
+  `node_modules` через свой TS-лоадер).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
@@ -73,9 +73,9 @@
    распаковка → `omp plugin link <dir>/package`) проверена, релизные
    заметки `docs/release-notes-1.0.0.md` написаны. Осталось решение
    владельца: push 1.0.0, GitHub release/tag `v1.0.0`, npm/marketplace.
-   Известное ограничение: CLI-скрипты не запускаются из дерева
-   `node_modules` (Node не снимает типы); расширение грузится. Не парсить
-   внутренности cache-monitor.
+   CLI работают и из `node_modules`: шимы `bin/` + `lib/ts-loader.mjs`,
+   регрессия — `test/package-run.test.mjs`. Не парсить внутренности
+   cache-monitor.
 2. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
 3. Публикация остаётся локальной (`omp plugin link`; D10).
 4. Hub старта сессии и `brief` — личный runbook, вне продукта (joint plan

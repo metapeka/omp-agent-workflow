@@ -1,45 +1,10 @@
-#!/usr/bin/env -S node --experimental-strip-types --disable-warning=ExperimentalWarning
+#!/usr/bin/env node
 /**
- * Advisory-флаги `next-session:` для `bin/omp-yoda`.
- *
- *   node --experimental-strip-types bin/omp-next-session --dir DIR -- omp-args...
- *
- * Печатает по одному флагу на строку: `--model`, selector, `--thinking`,
- * level. Явные флаги пользователя (всё после `--`) выигрывают. Пустой вывод —
- * рекомендации нет, она невалидна или устарела; launcher тогда ничего не
- * добавляет. `--omp` — путь к бинарю для `models --json`.
+ * Entrypoint shim: the CLI body lives in `lib/cli/next-session.ts` and is loaded
+ * through `lib/ts-loader.mjs`, so the script runs from a clone, an unpacked
+ * tarball and a `node_modules` install alike.
  */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { parseArgs } from "node:util";
+import { register } from "node:module";
 
-import {
-	loadModelCatalog,
-	nextSessionArgs,
-	parseNextSession,
-} from "../lib/next-session.ts";
-
-const { values, positionals } = parseArgs({
-	allowPositionals: true,
-	options: {
-		dir: { type: "string", default: process.cwd() },
-		state: { type: "string", default: "HANDOFF.md" },
-		omp: { type: "string", default: "omp" },
-	},
-});
-
-let text;
-try {
-	text = readFileSync(resolve(values.dir, values.state), "utf8");
-} catch {
-	process.exit(0);
-}
-
-let parsed = parseNextSession(text);
-if (parsed.advice?.model !== undefined) {
-	parsed = parseNextSession(text, { catalog: loadModelCatalog(values.omp) });
-}
-
-for (const arg of nextSessionArgs(parsed, positionals)) {
-	console.log(arg);
-}
+register(new URL("../lib/ts-loader.mjs", import.meta.url));
+await import("../lib/cli/next-session.ts");

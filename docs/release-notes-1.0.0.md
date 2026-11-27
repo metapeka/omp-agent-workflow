@@ -57,15 +57,16 @@ tarball. Публикация в npm/маркетплейс не выполня�
 - Контракт marker/session 0.3 и `.omp-handoff-request.json` не менялись.
 - Settings — 15 ключей, схема прежняя; приоритет Settings > env >
   пресет > режим/дефолт.
-- В пакете 79 файлов: `index.ts`, `orchestrator.ts`, `lib/`, `bin/`,
+- В пакете 83 файла: `index.ts`, `orchestrator.ts`, `lib/`, `bin/`,
   `docs/`, три README, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE`,
   `.omp-plugin/marketplace.json`, `package.json`.
-- CLI-скрипты требуют Node ≥ 22 (`--experimental-strip-types`); сборки и
-  runtime-зависимостей нет.
+- CLI-скрипты требуют Node ≥ 22.13 (`node:module.stripTypeScriptTypes`);
+  сборки и runtime-зависимостей нет. Шимы `bin/` сами снимают типы, поэтому
+  CLI работают из клона, распакованного tarball и `node_modules`.
 
 ## Проверки (2026-11-27)
 
-- `npm run verify`: 386 тестов, `tsc --noEmit`, `check:names` — 105
+- `npm run verify`: 389 тестов, `tsc --noEmit`, `check:names` — 105
   builtin-команд OMP, 5 команд плагина, 0 коллизий.
 - Tarball: `npm pack` → распаковка → `omp plugin link` →
   `omp plugin list` показывает 1.0.0; `omp plugin config list
@@ -76,21 +77,25 @@ tarball. Публикация в npm/маркетплейс не выполня�
 - `bin/omp-orchestrate status --json` без `AUTOPLAN.md` — exit 1 с
   `cannot read plan`: план обязателен для `status`, поэтому установку
   проверяет `doctor`.
+- `node_modules`: копия рантайма в `<tmp>/node_modules/omp-agent-workflow`
+  → `bin/omp-orchestrate --help` exit 0 с чистым stderr,
+  `status --json` доходит до плана (`cannot read plan`, без
+  `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), `bin/omp-next-session` и
+  `bin/omp-preset` exit 0 — `test/package-run.test.mjs` (3).
 
-## Ограничение: `node_modules`
+## CLI и `node_modules`
 
-Node 22 не снимает типы с файлов под `node_modules`:
+Node не снимает типы с файлов под `node_modules`
+(`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), а `npm install` и копия из
+маркетплейса кладут плагин именно туда. Поэтому шимы `bin/omp-orchestrate`,
+`bin/omp-next-session` и `bin/omp-preset` регистрируют собственный лоадер
+`lib/ts-loader.mjs`: он читает `.ts` через `fs` и снимает типы
+`node:module.stripTypeScriptTypes`, обходя ограничение. Те же шимы работают
+и из клона/распакованного tarball — второй путь кода не появляется.
 
-```text
-Error [ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING]: Stripping types is
-currently unsupported for files under node_modules
-```
-
-Поэтому `npm install` пакета в проект или копия под `node_modules` дают
-работающее расширение (OMP грузит TS своим загрузчиком — проверено), но не
-CLI: `bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset` и
-вызовы launcher'а к ним. Ставьте распаковкой + `omp plugin link` (как выше)
-или клоном — тогда `realpath` лежит вне `node_modules` и всё работает.
+Проверено: расширение из `node_modules` грузится (OMP-загрузчик), CLI из
+той же копии запускаются (см. «Проверки»); Node ≥ 22.13 (API
+`stripTypeScriptTypes`).
 
 ## История изменений
 

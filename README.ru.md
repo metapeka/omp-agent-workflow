@@ -25,11 +25,11 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-386%2F386-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-389%2F389-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
-  <a href="#install"><img alt="Node.js 22+" src="https://img.shields.io/badge/node-%E2%89%A522-339933"></a>
+  <a href="#install"><img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-%E2%89%A522.13-339933"></a>
   <a href="#install"><img alt="OMP plugin" src="https://img.shields.io/badge/OMP-plugin-8a2be2"></a>
 </p>
 
@@ -191,7 +191,7 @@ bin/omp-orchestrate doctor --json
 <a id="install"></a>
 ## 🚀 Быстрый старт
 
-**Требования:** Node.js 22+, OMP 19+, git. Orca опциональна.
+**Требования:** Node.js 22.13+, OMP 19+, git. Orca опциональна.
 
 ```bash
 # 1. код
@@ -226,8 +226,8 @@ omp plugin list
 
 Распакованный каталог нужно сохранить: launcher и CLI запускаются оттуда
 (`~/opt/omp-agent-workflow/package/bin/omp-yoda`). В
-[релизных заметках](docs/release-notes-1.0.0.md) — проверенные шаги и одно
-ограничение Node (CLI-скрипты не работают из дерева `node_modules`).
+[релизных заметках](docs/release-notes-1.0.0.md) — проверенные шаги; CLI работают и из
+`node_modules` (копия из маркетплейса) — у них свой TS-лоадер.
 
 Предпочитаете маркетплейс? Репозиторий поставляет собственный каталог
 ([`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)):

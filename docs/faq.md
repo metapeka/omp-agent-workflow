@@ -58,7 +58,7 @@ runbook — [operations.md](operations.md).
 `.omp-handoff-supervisor.lock/owner.json` с живым pid; записан ли
 `terminal` в `.omp-handoff-session.json`; есть ли marker.
 
-- Так: `node --experimental-strip-types bin/omp-orchestrate doctor --json`.
+- Так: `node bin/omp-orchestrate doctor --json`.
 - Не так: запускать второй supervisor вручную «на всякий случай» — второй
   экземпляр выйдет сам, lock один на каталог.
 

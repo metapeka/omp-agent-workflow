@@ -12,7 +12,8 @@
       `docs/release-notes-1.0.0.md`, запись `[1.0.0]` в `CHANGELOG.md`;
       проверено: 386 тестов, Settings 15 ключей, `omp plugin doctor` ok,
       extension load exit 0, `doctor --json` exit 0, `omp-yoda --version`
-      exit 0. Ограничение: CLI из `node_modules` не работает (Node).
+      exit 0. CLI работают и из `node_modules` (`lib/ts-loader.mjs`,
+      шимы `bin/`; регрессия — `test/package-run.test.mjs`).
 - [x] Remote/GitHub и CI на remote: публичный `metapeka/omp-agent-workflow`,
       release `v0.5.14`, CI green (2026-11-23).
 - [x] Английский README — часть 1.0; добавлены китайский и русский.

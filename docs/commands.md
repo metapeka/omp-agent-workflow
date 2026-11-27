@@ -205,7 +205,7 @@ subagent-дети границу не создают. Ходы и деньги �
 начинающимся с `compaction`), стоимость — `usage.cost.total`.
 
 ```bash
-node --experimental-strip-types bin/omp-orchestrate economics \
+node bin/omp-orchestrate economics \
   [--session FILE] [--turns N] [--summary] [--json] [--dir PATH]
 ```
 
@@ -242,7 +242,8 @@ note `сводка: цены ходов прочитаны у N из M сесс�
 обязательна), OAW оставляет контекст и handoff. `status`, `next` и `doctor`
 работают.
 
-Требует `node --experimental-strip-types` (шим в `bin/` уже содержит shebang).
+Шимы `bin/` регистрируют `lib/ts-loader.mjs`, поэтому CLI работают из
+клона, распакованного tarball и `node_modules`; нужен Node ≥ 22.13.
 
 
 ### `bin/omp-yoda` — launcher

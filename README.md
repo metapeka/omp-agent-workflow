@@ -25,11 +25,11 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-386%2F386-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-389%2F389-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
-  <a href="#install"><img alt="Node.js 22+" src="https://img.shields.io/badge/node-%E2%89%A522-339933"></a>
+  <a href="#install"><img alt="Node.js 22.13+" src="https://img.shields.io/badge/node-%E2%89%A522.13-339933"></a>
   <a href="#install"><img alt="OMP plugin" src="https://img.shields.io/badge/OMP-plugin-8a2be2"></a>
 </p>
 
@@ -190,7 +190,7 @@ The wizard shows the facts first, then offers only actions that make sense. Clea
 <a id="install"></a>
 ## 🚀 Quick start
 
-**Requirements:** Node.js 22+, OMP 19+, git. Orca is optional.
+**Requirements:** Node.js 22.13+, OMP 19+, git. Orca is optional.
 
 ```bash
 # 1. get the code
@@ -225,7 +225,8 @@ omp plugin list
 Keep the unpacked directory: the launcher and the CLIs run from there
 (`~/opt/omp-agent-workflow/package/bin/omp-yoda`). The
 [release notes](docs/release-notes-1.0.0.md) list the verified steps and the
-one Node limitation (CLI scripts do not run from a `node_modules` tree).
+verified steps; the CLIs also run from a `node_modules` install
+(marketplace copy) thanks to their own TS loader.
 
 Prefer marketplace sources? The repository ships its own catalog
 ([`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)):

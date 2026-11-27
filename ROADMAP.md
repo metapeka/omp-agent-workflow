@@ -451,11 +451,13 @@ cross-harness handoff; PR-автоматизацию; уведомления.
       extension load — exit 0, `bin/omp-orchestrate doctor --json` —
       exit 0, `bin/omp-yoda --version` — exit 0, `bin/omp-preset
       --preset plan --flags` печатает модель и thinking. В пакет входят
-      `.omp-plugin/marketplace.json` и `CONTRIBUTING.md` (79 файлов).
-- [x] Ограничение зафиксировано: Node 22 не снимает типы с файлов под
-      `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`) —
-      CLI-скрипты запускаются из распакованного каталога/клона, расширение
-      грузится и из `node_modules`.
+      `.omp-plugin/marketplace.json` и `CONTRIBUTING.md` (83 файла).
+- [x] CLI под `node_modules` (Node не снимает типы с файлов там —
+      `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`): тела CLI — в
+      `lib/cli/*.ts`, шимы `bin/` регистрируют `lib/ts-loader.mjs`
+      (`node:module.stripTypeScriptTypes`); один код-путь для клона,
+      tarball и `node_modules`, Node ≥ 22.13; тест
+      `test/package-run.test.mjs` (3).
 - [x] Релизные заметки — `docs/release-notes-1.0.0.md` + запись
       `[1.0.0]` в `CHANGELOG.md`; README EN/RU/ZH получили раздел tarball
       и ссылку на заметки.

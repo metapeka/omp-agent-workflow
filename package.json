@@ -23,7 +23,7 @@
     "url": "https://github.com/metapeka/omp-agent-workflow/issues"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "license": "MIT",
   "scripts": {
@@ -32,7 +32,7 @@
     "check:names": "node scripts/check-command-names.mjs",
     "verify": "npm run check:names && npm test && npm run typecheck",
     "supervisor": "node bin/omp-handoff-supervisor.mjs",
-    "orchestrate": "node --experimental-strip-types bin/omp-orchestrate"
+    "orchestrate": "node bin/omp-orchestrate"
   },
   "bin": {
     "omp-handoff-supervisor": "./bin/omp-handoff-supervisor.mjs",
