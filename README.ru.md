@@ -200,8 +200,7 @@ cd omp-agent-workflow
 
 # 2. зависимости и проверки
 npm ci
-npm test
-npm run typecheck
+npm run verify
 
 # 3. подключить как OMP-плагин
 omp plugin link "$PWD"

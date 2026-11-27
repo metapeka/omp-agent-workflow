@@ -200,8 +200,7 @@ cd omp-agent-workflow
 
 # 2. 安装依赖并验证
 npm ci
-npm test
-npm run typecheck
+npm run verify
 
 # 3. 链接为 OMP 插件
 omp plugin link "$PWD"
