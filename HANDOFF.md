@@ -25,6 +25,16 @@ npm/marketplace — отдельным решением владельца (D10)
   asset'ом, CI на `npm run verify`, Pages задеплоен.
 - Живьём проверены (2026-11-27): preflight-таблица и меню, `/wrap`,
   `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
+- Репозиторий на `d4dfa35` (`main` = `origin/main`), дерево чистое; CI и
+  Pages зелёные. После релиза `v1.0.1` (`1b4874f`) — только документы:
+  изоляция `XDG_STATE_HOME` в тестах (`01bfc85`) и случай промаха
+  провайдера в explainer (`d4dfa35`).
+- Промах провайдера 2026-11-27 задокументирован в Pages EN/RU/ZH
+  (`#provider-miss`) и в вики: сессия `dc_aievent`, шлюз `cline-pass`,
+  модель `deepseek-v4.1-flash-1017`, префикс 252k; ходовые числа
+  05:18:06 / 05:22:06 (после 4-мин `wait`) / 05:22:16 (`cacheRead 0`,
+  $0.0756) / 05:26:19 (снова 99,9%). Виновник — кэш-слой провайдера;
+  правила отличия от смены префикса и от TTL — в разделе.
 - Открыто: только npm/marketplace — отдельным решением владельца (D10).
   Страховка без sandbox закрыта целиком (1.0.1).
 - Тесты не пишут в реальный state: `context-guard` даёт каждому тесту свой
@@ -36,7 +46,9 @@ npm/marketplace — отдельным решением владельца (D10)
 ## Состояние
 
 Версия `1.0.1`; релиз `1b4874f` запушен (`main` = `origin/main`), тег и
-release `v1.0.1` с tarball asset'ом. 1.0.1 — страховка без sandbox:
+release `v1.0.1` с tarball asset'ом; после него — только документы до
+`d4dfa35` (изоляция `XDG_STATE_HOME` в тестах, случай промаха провайдера в
+explainer EN/RU/ZH). 1.0.1 — страховка без sandbox:
 WIP-патч перед `force`-удалением упавшей задачи, read-only
 `omp-orchestrate refs`, best-effort копия session JSONL до handoff и
 `docs/recovery.md`; `npm run verify` — 403 теста, typecheck, `check:names`
@@ -177,6 +189,7 @@ Push 1.0.0 выполнен с разрешения владельца; npm/mark
 | Doctor (согласовано) | ТЗ для `bin/omp-orchestrate doctor` с соседним проектом: 16 проверок, `--json`/`--strict`, план опционален; Ф1 реализован в 0.5.20 |
 | Joint plan 2026-11-26 | Три продукта; Ф0 контракт (`status`/`doctor`, `schemaVersion:1`), Ф1 doctor, Ф2 `execution: external` и Ф4 контрактные тесты (`test/contracts.test.mjs`) — сделаны (0.5.20–0.5.21, D15); Ф3 hub и `brief` — личные вне репозитория; границы и матрица конфликтов согласованы |
 | Explainer 2026-11-24 | `docs/index.html` + `ru/` + `zh/`: кэш, сессии, handoff, инцидент и пороги на реальной 400-ходовой сессии; Pages `main /docs` |
+| Кейс промаха провайдера 2026-11-27 | `#provider-miss` в `docs/index.html` + `ru/` + `zh/` и строка Pages в вики: `dc_aievent`, шлюз `cline-pass`, модель `deepseek-v4.1-flash-1017`, 252k префикс, четыре хода (`cacheRead 0`, $0.0756 против $0.0016–0.0041), вина провайдера и три признака отличия от смены префикса/TTL; commit `d4dfa35` |
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
 | Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test`, `npm run typecheck`, extension load exit 0, launcher `--preset`/`--preset=`, HTML tag/link check + browser screenshots |
 

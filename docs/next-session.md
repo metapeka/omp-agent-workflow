@@ -6,9 +6,14 @@
 ## Состояние
 
 - Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `1.0.1`
-  (`1b4874f`, `main` = `origin/main`): тег и release `v1.0.1` опубликованы,
-  tarball asset (sha256 `7365f73a…7c4ad`), CI зелёный. 1.0.0 запушен, тег
-  и release `v1.0.0` есть; npm/marketplace — по решению владельца (D10).
+  (`d4dfa35`, `main` = `origin/main`, дерево чистое): тег и release
+  `v1.0.1` опубликованы, tarball asset (sha256 `7365f73a…7c4ad`), CI
+  зелёный. 1.0.0 запушен, тег и release `v1.0.0` есть; после релиза —
+  только документы (`01bfc85` изоляция тестов, `d4dfa35` кейс промаха
+  провайдера). npm/marketplace — по решению владельца (D10).
+- Задокументирован промах провайдера 2026-11-27: Pages `#provider-miss`
+  (EN/RU/ZH) — `dc_aievent`, `cline-pass`, `deepseek-v4.1-flash-1017`,
+  252k префикс, `cacheRead 0` на одном ходе ($0.0756), вина провайдера.
 - `npm run verify` — 403 теста, typecheck, `check:names` зелёные.
 - Готово: 0.3 guard/handoff/Yoda, 0.5 orchestrator (A–D), 0.5.1 `/wrap`,
   0.5.2 supervisor singleton, 0.5.3 additive Orca, 0.5.4–0.5.5 Settings,

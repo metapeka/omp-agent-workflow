@@ -20,6 +20,10 @@
 - [x] 1.0.1 — `docs/next-session.md` переписан под 1.0.1: состояние,
       очередь (push/tag, session JSONL, внешняя приёмка Ensemble),
       проверки, стартовый prompt.
+- [x] Кейс промаха провайдера 2026-11-27 — раздел `#provider-miss` в
+      Pages EN/RU/ZH и строка в вики: `dc_aievent`, `cline-pass`,
+      `deepseek-v4.1-flash-1017`, 252k префикс, 4-минутные `wait`, промах
+      05:22:16 (`cacheRead 0`, $0.0756), вина провайдера; commit `d4dfa35`.
 - [x] 1.0.1 — опубликован 2026-11-27: push `main` (`1b4874f`), тег и
       release `v1.0.1`, tarball asset (87 файлов,
       sha256 `7365f73a…7c4ad`), CI зелёный, Pages задеплоен; проверено
