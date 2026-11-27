@@ -6,10 +6,11 @@
 ## Состояние
 
 - Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `1.0.1`
-  (`1d5891b`); локально впереди `origin/main` — push и тег `v1.0.1` не
-  делались (нужно разрешение владельца). 1.0.0 запушен, тег и release
-  `v1.0.0` есть; npm/marketplace — по решению владельца (D10).
-- `npm run verify` — 396 тестов, typecheck, `check:names` зелёные.
+  (`1d5891b` + копия session JSONL); публикация 1.0.1 (push, тег
+  `v1.0.1`, release с tarball) выполняется с разрешения владельца.
+  1.0.0 запушен, тег и release `v1.0.0` есть; npm/marketplace — по
+  решению владельца (D10).
+- `npm run verify` — 403 теста, typecheck, `check:names` зелёные.
 - Готово: 0.3 guard/handoff/Yoda, 0.5 orchestrator (A–D), 0.5.1 `/wrap`,
   0.5.2 supervisor singleton, 0.5.3 additive Orca, 0.5.4–0.5.5 Settings,
   0.5.6–0.5.13 preflight/state/actions/flow/статус-ключ, 0.5.14 safe
@@ -21,7 +22,8 @@
   quality gate, 0.7.2 `--summary`, 0.7.3 discovery, 0.7.4 леджер,
   1.0.0 релиз (tarball, CLI под `node_modules`), 1.0.1 страховка:
   WIP-снимок перед `force`-удалением, `omp-orchestrate refs`
-  (+ подсказка самого старого ref), `docs/recovery.md`.
+  (+ подсказка самого старого ref), копия session JSONL перед handoff,
+  `docs/recovery.md`.
 - Проверки живостью 2026-11-27: preflight-таблица и меню, `/wrap`,
   `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
 - Не забыть: WIP-снимок не покрывает ignored-файлы; backup-ref пишет
@@ -29,15 +31,12 @@
 
 ## Следующий этап
 
-1. Push `main` и тег/release `v1.0.1` — по разрешению владельца; tarball
-   1.0.1 приложить тем же способом, что `v1.0.0`.
-2. Решение владельца: best-effort копия session JSONL при записи marker
-   (иначе «до»-окно `economics` после `/handoff-new` не восстановить) или
-   принять ограничение.
-3. Orca/Ensemble-приёмка: на репозитории с `execution: external` проверить
+1. Публикация `1.0.1`: push `main`, тег/release `v1.0.1`, tarball asset
+   тем же способом, что `v1.0.0` (разрешение владельца получено).
+2. Orca/Ensemble-приёмка: на репозитории с `execution: external` проверить
    `doctor` (`two owners`), отказы OAW и живой прогон Ensemble.
-4. F4 `--plan-yolo` — только после замера; не начинать без данных.
-5. Hub старта сессии и `brief` — личный runbook вне продукта (joint plan
+3. F4 `--plan-yolo` — только после замера; не начинать без данных.
+4. Hub старта сессии и `brief` — личный runbook вне продукта (joint plan
    Ф3); `doctor --json` уже готов как источник проверок.
 
 ## Границы

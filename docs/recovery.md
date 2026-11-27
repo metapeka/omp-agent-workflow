@@ -19,7 +19,7 @@ OAW ничего не удаляет без следа: cleanup worktree ост�
 | Незакоммиченные файлы упавшей задачи | патч в `~/.local/state/omp-agent-workflow/wip/` | `git apply --3way <patch>` |
 | List/типы путей, HEAD и ветка WIP | `<snapshot>.status` рядом с патчем | прочитать |
 | Игнорируемые файлы (`node_modules`, `.env` и т.п.) | нигде: в патч не входят осознанно | переустановить/пересоздать |
-| JSONL родительской сессии после `/handoff-new` | нигде: OMP удаляет файл при `newSession` | «до»-окно economics не восстановить |
+| JSONL родительской сессии после `/handoff-new` | копия `~/.local/state/omp-agent-workflow/sessions/<stem>.handoff-<ts>.jsonl` (если handoff шёл через OAW) | `node bin/omp-orchestrate economics --session <copy>` |
 
 ## Цикл: где стоит снимок
 
@@ -102,12 +102,33 @@ application» для новых файлов — это ожидаемо.
   размеру изменений;
 - режимы прав и submodule-указатели восстанавливаются как обычный `git apply`.
 
+## Использовать копию session JSONL
+
+Перед handoff расширение копирует JSONL текущей сессии в
+`~/.local/state/omp-agent-workflow/sessions/<stem>.handoff-<ts>.jsonl`
+(права `600`, только локально): в момент запроса handoff и ещё раз — перед
+`/handoff-new` (последний шанс перед тем, как OMP удалит файл при
+`newSession`). Одна копия на файл за процесс.
+
+```bash
+ls ~/.local/state/omp-agent-workflow/sessions/
+node bin/omp-orchestrate economics --session <copy> --summary
+```
+
+Копия — обычный session-файл для `economics`: цепочка `parentSession`
+внутри неё обрывается на отсутствующем родителе, но «до»-окно (ходы, кэш,
+`usage.cost.total`) читается. Ходы после запроса в копию не попадают — это
+снимок, а не журнал. Если копии нет (старая версия, выключенный плагин,
+сбой записи), отчёт пишет «родительская сессия отсутствует» — это
+ограничение, а не ошибка.
+
 ## Гигиена
 
-- `~/.local/state/omp-agent-workflow/wip/` и `refs/omp-worktree-backup/*`
-  не чистятся автоматически. Срок хранения выбирает владелец; удалять,
-  когда tip/патч больше не нужны:
-  `git -C <base> update-ref -d <backupRef>` и `rm <snapshot>.patch <snapshot>.status`.
+- `~/.local/state/omp-agent-workflow/wip/`, `…/sessions/` и
+  `refs/omp-worktree-backup/*` не чистятся автоматически. Срок хранения
+  выбирает владелец; удалять, когда tip/патч/копия больше не нужны:
+  `git -C <base> update-ref -d <backupRef>`, `rm <snapshot>.patch <snapshot>.status`,
+  `rm ~/.local/state/omp-agent-workflow/sessions/<copy>.jsonl`.
   `omp-orchestrate refs` без `--json` печатает самый старый ref, его возраст
   и готовую команду удаления — это подсказка, а не автоматическая чистка.
 - `XDG_STATE_HOME` уважается; `--wip-dir PATH` (CLI) или `wipDir` в

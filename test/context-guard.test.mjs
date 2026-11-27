@@ -9,6 +9,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	utimesSync,
 	writeFileSync,
@@ -50,6 +51,7 @@ const ENV_KEYS = [
 	"OMP_SUPERVISOR_RETRIES",
 	"OMP_SUPERVISOR_LOG_LEVEL",
 	"ORCA_TERMINAL_HANDLE",
+	"XDG_STATE_HOME",
 ];
 
 // Supervisor gates читают ambient env; тесты стартуют от чистого состояния.
@@ -417,6 +419,61 @@ describe("automatic handoff request", () => {
 			assert.doesNotMatch(sent[0], /\.omp-handoff-session\.json/, "runtime files stay out");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("copies the session JSONL before asking for the handoff", async () => {
+		const stateDir = mkdtempSync(join(tmpdir(), "cg-state-"));
+		const sessionDir = mkdtempSync(join(tmpdir(), "cg-session-"));
+		try {
+			const sessionFile = join(sessionDir, "parent.jsonl");
+			writeFileSync(sessionFile, costLine(0.1));
+			const { handlers, sent } = install({
+				OMP_HANDOFF_AT: "55",
+				XDG_STATE_HOME: stateDir,
+			});
+			const v = view(56, { sessionFile });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1);
+			const archiveDir = join(stateDir, "omp-agent-workflow", "sessions");
+			const copies = readdirSync(archiveDir);
+			assert.equal(copies.length, 1);
+			assert.match(copies[0], /^parent\.handoff-.*\.jsonl$/);
+			assert.equal(
+				readFileSync(join(archiveDir, copies[0]), "utf8"),
+				costLine(0.1),
+			);
+
+			// Один файл — одна копия: повтор запроса не плодит архивы.
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(readdirSync(archiveDir).length, 1);
+		} finally {
+			rmSync(stateDir, { recursive: true, force: true });
+			rmSync(sessionDir, { recursive: true, force: true });
+		}
+	});
+
+	it("warns when the session copy cannot be written", async () => {
+		const blocked = join(mkdtempSync(join(tmpdir(), "cg-state-")), "occupied");
+		const sessionDir = mkdtempSync(join(tmpdir(), "cg-session-"));
+		try {
+			writeFileSync(blocked, "not a directory\n");
+			const sessionFile = join(sessionDir, "parent.jsonl");
+			writeFileSync(sessionFile, costLine(0.1));
+			const { handlers, sent } = install({
+				OMP_HANDOFF_AT: "55",
+				XDG_STATE_HOME: blocked,
+			});
+			const v = view(56, { sessionFile });
+
+			await fire(handlers, "turn_end", {}, v.ctx);
+			assert.equal(sent.length, 1, "handoff still happens");
+			assert.ok(
+				v.notes.some((note) => /Копия session JSONL не создана/.test(note.text)),
+			);
+		} finally {
+			rmSync(sessionDir, { recursive: true, force: true });
 		}
 	});
 
@@ -1032,6 +1089,35 @@ describe("/handoff-new", () => {
 			assert.match(v.notes[0].text, /HANDOFF не найден/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("copies the session JSONL before opening the new session", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "cg-handoff-"));
+		const stateDir = mkdtempSync(join(tmpdir(), "cg-state-"));
+		const sessionDir = mkdtempSync(join(tmpdir(), "cg-session-"));
+		try {
+			writeFileSync(join(dir, "HANDOFF.md"), "# state\n");
+			const sessionFile = join(sessionDir, "parent.jsonl");
+			writeFileSync(sessionFile, costLine(0.2));
+			const { commands } = install({ XDG_STATE_HOME: stateDir });
+			const v = view(40, { cwd: dir, sessionFile });
+
+			await command(commands, "handoff-new", v.ctx);
+
+			assert.equal(v.newSessions.length, 1);
+			const archiveDir = join(stateDir, "omp-agent-workflow", "sessions");
+			const copies = readdirSync(archiveDir);
+			assert.equal(copies.length, 1);
+			assert.match(copies[0], /^parent\.handoff-.*\.jsonl$/);
+			assert.equal(
+				readFileSync(join(archiveDir, copies[0]), "utf8"),
+				costLine(0.2),
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+			rmSync(stateDir, { recursive: true, force: true });
+			rmSync(sessionDir, { recursive: true, force: true });
 		}
 	});
 

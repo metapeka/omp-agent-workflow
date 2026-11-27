@@ -15,26 +15,34 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Сейчас (кратко для новой сессии)
 
-- Версия `1.0.1` в `main` (`1d5891b`): WIP-патч перед `force`-удалением
-  упавшей задачи, `omp-orchestrate refs`, `docs/recovery.md`; 396 тестов,
-  typecheck и `check:names` зелёные. Не запушено и не тегировано.
+- Версия `1.0.1` в `main` (`1d5891b` + копия session JSONL): WIP-патч перед
+  `force`-удалением упавшей задачи, `omp-orchestrate refs`, best-effort
+  копия session JSONL до handoff, `docs/recovery.md`; 403 теста, typecheck
+  и `check:names` зелёные. Не запушено и не тегировано.
 - 1.0.0 выпущен 2026-11-27: тег и GitHub release `v1.0.0`, tarball
   asset'ом, CI на `npm run verify`, Pages задеплоен.
 - Живьём проверены (2026-11-27): preflight-таблица и меню, `/wrap`,
   `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
-- Открыто: push 1.0.1; решение по npm/marketplace (D10); решение по копии
-  session JSONL до handoff — последний пункт страховки без sandbox.
+- Открыто: push 1.0.1 + тег `v1.0.1` (разрешение владельца получено —
+  выполняется); npm/marketplace — отдельным решением (D10). Страховка без
+  sandbox закрыта целиком.
 - Этот файл больше 32k символов: `/handoff-new` встроит первые 32 000 и
   оставит маркер обрезки — хвостовые разделы дочитывать из файла.
 
 ## Состояние
 
-Версия `1.0.1`; `main` = `1d5891b` и локально опережает `origin/main`
-(push 1.0.1 не выполнялся). 1.0.1 — страховка без sandbox:
+Версия `1.0.1`; `main` = `1d5891b` + копия session JSONL (push 1.0.1
+выполняется с разрешения владельца). 1.0.1 — страховка без sandbox:
 WIP-патч перед `force`-удалением упавшей задачи, read-only
-`omp-orchestrate refs` и `docs/recovery.md`; `npm run verify` — 396 тестов,
-typecheck, `check:names` зелёные. В `main`:
+`omp-orchestrate refs`, best-effort копия session JSONL до handoff и
+`docs/recovery.md`; `npm run verify` — 403 теста, typecheck, `check:names`
+зелёные. В `main`:
 
+- 1.0.1 копия session JSONL: `lib/session-archive.ts` +
+  `archiveSessionOnce` в `index.ts` — файл копируется в
+  `$XDG_STATE_HOME/omp-agent-workflow/sessions/<stem>.handoff-<ts>.jsonl`
+  (права 600) при запросе handoff и перед `/handoff-new`; сбой — warning,
+  handoff не блокируется; копия читается `economics --session <copy>`.
 - 1.0.1 страховка: `lib/orchestrator/wip.ts` снимает патч (tracked +
   untracked через временный `GIT_INDEX_FILE`) и `.status` в
   `$XDG_STATE_HOME/omp-agent-workflow/wip/` (`--wip-dir`), сбой снимка
@@ -140,6 +148,7 @@ Push 1.0.0 выполнен с разрешения владельца; npm/mark
 | Ledger 0.7.4 | `lib/orchestrator/ledger.ts`: `projectBudgets` (дельта прибавляется, `restarted` заменяет вклад файла) и `ledgerSnapshot`; `cost.ts` отдаёт `entries[]{kind,readable,fullTotalUsd}`; `state.budgets.costTotals` — вклад по файлам, старый state читается как пустая карта; `syncSession` дочитывает хвост прошлой сессии; `status --json` → аддитивный `spend`, preflight `run:` — та же проекция; `start`/`finish` → stop `budget-spend`; тесты `test/ledger.test.mjs` (5) + `orchestrator` (+5) + контракт |
 | Release 1.0.0 | Пакет без сборки и runtime-зависимостей (83 файла: extension, `lib/`, `bin/`, docs, `.omp-plugin/`, `CONTRIBUTING.md`); установка из tarball проверена — `omp plugin link` распакованного каталога, Settings 15 ключей, `omp plugin doctor` ok, extension load exit 0, packaged `doctor --json` exit 0, launcher и preset — exit 0; релизные заметки `docs/release-notes-1.0.0.md`; CLI под `node_modules` работают через `lib/ts-loader.mjs` (шимы `bin/`), регрессия — `test/package-run.test.mjs` |
 | WIP-снимок 1.0.1 | `lib/orchestrator/wip.ts`: перед `force`-удалением грязного worktree — патч (tracked + untracked через временный `GIT_INDEX_FILE`, рабочее дерево и настоящий индекс не меняются) и `.status` (ветка, HEAD, `git status`, команда восстановления) в `$XDG_STATE_HOME/omp-agent-workflow/wip/`; сбой снимка отменяет удаление; `start` на `failed` отдаёт `wip`, печатает `wip:`/`wip-status:` и добавляет путь в stop/handoff detail; восстановление — `docs/recovery.md`; тесты — `test/worktree-remove.test.mjs` (3), `test/orchestrator.test.mjs` (1) |
+| Session copy 1.0.1 | `lib/session-archive.ts` + `archiveSessionOnce` в `index.ts`: перед handoff (запрос и `/handoff-new`) JSONL копируется в `$XDG_STATE_HOME/omp-agent-workflow/sessions/<stem>.handoff-<ts>.jsonl` (права 600, только локально), одна копия на файл за процесс; сбой — warning, не блокер; `economics --session <copy>` читает копию; тесты — `test/session-archive.test.mjs` (4) + `test/context-guard.test.mjs` (+3) |
 | Backup refs 1.0.1 | `omp-orchestrate refs [--json]` — read-only `refs/omp-worktree-backup/*` через `for-each-ref --sort=-committerdate`: `ref`, `branch`, `sha`, `short`, `subject`, `committedAt`, `schemaVersion: 1`; текст заканчивается самым старым ref, его возрастом и командой `git update-ref -d` (порогов и авточистки нет); план опционален (base repo из git); ничего не пишет; тест — `test/refs.test.mjs` (3) |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
@@ -227,11 +236,18 @@ detached / нет коммитов / не влито; `/handoff-new` не тро
    (снимок, восстановление `git apply --3way`, отказ, чистый force),
    `test/orchestrator.test.mjs` (retry грязной задачи). Ignored-файлы в
    патч не входят — это осознанное ограничение, см. `docs/recovery.md`.
-2. **Session JSONL удаляется OMP при `newSession` — открыто.** `economics`
-   штатно пишет «родительская сессия отсутствует», `null` в summary;
-   «до»-окно задним числом не восстановить. Решение владельца:
-   best-effort копия session-файла при записи marker (переписка — только
-   локально) или принять ограничение.
+2. **Session JSONL удаляется OMP при `newSession` — закрыто в 1.0.1.**
+   `economics` после handoff писал «родительская сессия отсутствует» и
+   `null` в summary, «до»-окно восстановить было нечем. Теперь
+   `lib/session-archive.ts` копирует файл в
+   `$XDG_STATE_HOME/omp-agent-workflow/sessions/<stem>.handoff-<ts>.jsonl`
+   (права 600, только локально) при запросе handoff и перед
+   `/handoff-new`; одна копия на файл за процесс, сбой — `warning`, не
+   блокер. Копия читается как обычный session-файл:
+   `omp-orchestrate economics --session <copy> --summary`. Ограничение:
+   ходы после запроса в копию не попадают; автоочистки нет. Тесты —
+   `test/session-archive.test.mjs` (4), `test/context-guard.test.mjs`
+   (запрос, `/handoff-new`, сбой).
 
 Гигиена: backup-ref'ы хранятся в base-репо и никем не чистятся автоматически;
 список — `omp-orchestrate refs`, срок хранения/prune-подсказка —
@@ -530,6 +546,7 @@ node --experimental-strip-types --test test/handoff-economics.test.mjs   # 37
 node --experimental-strip-types --test test/marketplace.test.mjs        # 5
 node --experimental-strip-types --test test/ledger.test.mjs           # 5
 node --experimental-strip-types --test test/refs.test.mjs            # 3
+node --experimental-strip-types --test test/session-archive.test.mjs # 4
 omp plugin marketplace add "$PWD" --json && \
   omp plugin marketplace remove metapeka-omp --json   # каталог парсится, конфиг возвращён
 curl -sS -o /dev/null -w '%{http_code}\n' \
@@ -561,12 +578,12 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 
 ## Следующие шаги
 
-1. 1.0.1 в `main` (`1d5891b`), не запушен: push и тег `v1.0.1` — по
-   решению владельца; npm/marketplace — отдельное решение (D10). Не
-   парсить внутренности cache-monitor.
-2. Страховка без sandbox: WIP-patch перед `force`-удалением,
-   `omp-orchestrate refs` и `docs/recovery.md` — сделаны в 1.0.1; осталось
-   решение владельца по копии session JSONL до handoff (раздел выше).
+1. 1.0.1 в `main` — публикация по разрешению владельца (выполняется):
+   push `main`, тег и release `v1.0.1` с tarball asset'ом; npm/marketplace —
+   отдельное решение (D10). Не парсить внутренности cache-monitor.
+2. Страховка без sandbox закрыта целиком в 1.0.1: WIP-патч перед
+   `force`-удалением, `omp-orchestrate refs`, копия session JSONL до
+   handoff и `docs/recovery.md`.
 3. TUI и automatic handoff проверены живьём 2026-11-27 (см. «Живая
    проверка 1.0.0»): preflight-таблица и меню, `/wrap`, `YODA-SUP`,
    `⚠ HANDOFF`, marker → `/handoff-new` → continuation. Повторять только
@@ -585,10 +602,15 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 ## Риски
 
 - OMP при `newSession` (в том числе `/handoff-new`) удаляет JSONL
-  родительской сессии. `economics` не падает — пишет
-  `родительская сессия отсутствует` и `null` в summary, но «до»-окно
-  измеримо только пока файл жив; ledger-хвост прошлой сессии после handoff
-  читать нечего. Данные не восстанавливаются задним числом.
+  родительской сессии. С 1.0.1 extension копирует файл локально
+  (`…/sessions/<stem>.handoff-<ts>.jsonl`, права 600) при запросе handoff и
+  перед `/handoff-new`; сбой копии — warning, а не блокер. Копия — снимок
+  на момент запроса: ходы после запроса и сессии, где handoff запускали не
+  через OAW, в неё не попадают; без копии `economics` по-прежнему пишет
+  `родительская сессия отсутствует`, ledger-хвост читать нечего.
+- Копии в `…/sessions/` не чистятся автоматически и содержат полную
+  переписку сессии: каталог локальный (600), но перед передачей машины или
+  архивацией его нужно удалять вручную.
 - `AUTOPLAN.md` не в `RUNTIME_PATHS`: untracked/modified план — грязное
   дерево и блокер preflight с предложением коммита. Это осознанно (план —
   вход оркестратора); локальный план — через `.gitignore` проекта.

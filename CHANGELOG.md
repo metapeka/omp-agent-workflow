@@ -11,6 +11,14 @@ a failed task) is closed, and backup refs get a read-only listing.
 
 ### Added
 
+- **Session JSONL copy before handoff.** OMP deletes the parent session's
+  JSONL on `newSession`, so the "before" window of `omp-orchestrate
+  economics` was unmeasurable after `/handoff-new`. The extension now copies
+  the file to `$XDG_STATE_HOME/omp-agent-workflow/sessions/` (mode `600`,
+  local only) right after session info is written at the handoff request and
+  again immediately before `newSession` (which also covers the supervisor
+  path). One copy per session file per process; a failed copy only warns and
+  never blocks the handoff. `docs/recovery.md` shows how to read a copy.
 - **WIP snapshot before a forced removal.** `start` on a `failed` task
   removes its worktree with `force`; the backup ref keeps commits but the
   directory (and every uncommitted file in it) went with the removal. Now

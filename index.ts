@@ -66,6 +66,7 @@ import {
 	STATE_SECTION_ORDER,
 } from "./lib/state-sections.ts";
 import { readCostsSummary } from "./lib/costs-client.ts";
+import { archiveSessionFile } from "./lib/session-archive.ts";
 import { readSessionCost } from "./lib/orchestrator/cost.ts";
 import { ledgerSnapshot, projectBudgets } from "./lib/orchestrator/ledger.ts";
 
@@ -1721,6 +1722,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	let spendSessionFile: string | null = null;
 	let supervisorWarned = false;
 	let terminalWarned = false;
+	/** Session JSONL уже скопирован перед handoff: одна копия на файл. */
+	const archivedSessions = new Set<string>();
 
 	/** После падения ниже warning пороги снова активны. */
 	const resetIfBelow = (percent: number): void => {
@@ -1891,6 +1894,28 @@ export default function contextGuard(pi: ExtensionAPI): void {
 	};
 
 	/**
+	 * OMP удаляет JSONL родительской сессии при `newSession`: копируем файл
+	 * локально до этого момента, один раз на файл. Best-effort — сбой только
+	 * предупреждает, handoff идёт дальше.
+	 */
+	const archiveSessionOnce = (
+		ctx: ExtensionContext,
+		sessionFile: string | null,
+	): void => {
+		if (sessionFile === null || archivedSessions.has(sessionFile)) return;
+		archivedSessions.add(sessionFile);
+		const archived = archiveSessionFile(sessionFile);
+		if (archived.skipped === "error") {
+			notify(
+				ctx,
+				`Копия session JSONL не создана (${archived.error}); ` +
+					"«до»-окно economics после handoff останется неизмеримым.",
+				"warning",
+			);
+		}
+	};
+
+	/**
 	 * На пороге handoff просим агента завершить задачу, обновить state и
 	 * поставить marker. Новую сессию отсюда начать нельзя — это делает
 	 * supervisor через /handoff-new. Если marker не появился за
@@ -1938,6 +1963,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 
 		// Запись должна существовать до того, как агент поставит marker.
 		writeSessionInfo(ctx, settings);
+		// Копия до marker: OMP удалит JSONL при `newSession`.
+		archiveSessionOnce(ctx, sessionFile);
 		handoffRequested = true;
 		handoffTurnsSinceRequest = 0;
 		handoffCooldownUntil = Date.now() + settings.handoffCooldownSeconds * 1000;
@@ -2173,6 +2200,8 @@ export default function contextGuard(pi: ExtensionAPI): void {
 			);
 			await ctx.waitForIdle();
 			const parentSession = ctx.sessionManager.getSessionFile();
+			// Последний шанс: сразу после newSession OMP удалит этот файл.
+			archiveSessionOnce(ctx, parentSession ?? null);
 			try {
 				const result = await ctx.newSession({
 					...(parentSession ? { parentSession } : {}),

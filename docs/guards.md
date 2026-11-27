@@ -56,6 +56,7 @@ flowchart TD
 | **CLI-скрипты не запускаются в установленной копии: Node не снимает типы под `node_modules`** | шимы `bin/` регистрируют `lib/ts-loader.mjs` (`node:module.stripTypeScriptTypes`); один код-путь для клона, tarball и `node_modules`; регрессия держится `test/package-run.test.mjs` | `bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset`, `bin/omp-yoda` | **1.0.0** |
 | **`force`-удаление worktree упавшей задачи уносит незакоммиченные файлы: backup-ref хранит только коммиты** | WIP-снимок до удаления: патч (tracked + untracked через временный индекс) и `.status` в `~/.local/state/omp-agent-workflow/wip/`; путь — в выводе `start` или в тексте ошибки; сбой снимка — отказ от удаления | `removeWorktree` при `force: true` | **1.0.1** |
 | **Tip удалённой ветки не найти после cleanup** | read-only `omp-orchestrate refs` по `refs/omp-worktree-backup/*`; восстановление — `docs/recovery.md` | `refs`, `removeWorktree` (backup-ref) | **1.0.1** |
+| **Экономика после handoff слепа: OMP удаляет JSONL родительской сессии при `newSession`** | best-effort копия файла (права 600, только локально) в `$XDG_STATE_HOME/omp-agent-workflow/sessions/` перед marker и перед `/handoff-new`; сбой копии — warning, handoff идёт дальше | `checkHandoff`, `/handoff-new` | **1.0.1** |
 
 ## 0.5.24: flight recorder
 
@@ -231,6 +232,37 @@ WIP-файл исчез. Flight recorder handoff такой файл описы�
 Код: `lib/orchestrator/refs.ts`, `lib/cli/orchestrate.ts`;
 тест — `test/refs.test.mjs`.
 
+## 1.0.1: копия session JSONL перед handoff
+
+**Почему.** OMP удаляет JSONL родительской сессии при `newSession`, поэтому
+«до»-окно `omp-orchestrate economics` после `/handoff-new` было неизмеримо
+задним числом: отчёт штатно писал «родительская сессия отсутствует» и
+`null` в `--summary`. Терялось не поведение, а единственное доказательство,
+что handoff стоил дорого.
+
+**Что добавлено.** Best-effort копия файла в момент, когда handoff реально
+начинается:
+
+- `checkHandoff` — сразу после записи session info, до того как агент
+  поставит marker;
+- команда `/handoff-new` — после `waitForIdle()`, непосредственно перед
+  `newSession` (последний шанс; сюда же приходит supervisor).
+
+Файл: `$XDG_STATE_HOME/omp-agent-workflow/sessions/<session-stem>.handoff-<ts>.jsonl`,
+права `600`, только локально, ничего не отправляется. Одна копия на
+session-файл за процесс (повторные запросы не плодят архивы). `--wip-dir`
+не влияет: это отдельный каталог. Сбой копии не блокирует handoff —
+`warning` в TUI и обычный ход дальше.
+
+**Что это не даёт.** Копия — снимок на момент запроса: ходы родителя после
+запроса в неё не попадают. Автоочистки нет (срок хранения решает владелец),
+и копия не заменяет счёт провайдера: `economics --session <копия>` читает
+её как обычный session-файл, включая `usage.cost.total`.
+
+Код: `lib/session-archive.ts`, вызовы в `index.ts`
+(`archiveSessionOnce`); тесты — `test/session-archive.test.mjs`,
+`test/context-guard.test.mjs` (запрос handoff, `/handoff-new`, сбой копии).
+
 ## Чем защита не является
 
 - Не блокер: `/handoff-preflight` по-прежнему advisory, `/handoff-new`
@@ -238,8 +270,9 @@ WIP-файл исчез. Flight recorder handoff такой файл описы�
 - Не сохранение diff в handoff: в запросе handoff — пути и статусы, не
   содержимое; WIP-снимок 1.0.1 — отдельная точка, только при
   `force`-удалении worktree.
-- WIP-снимок не покрывает ignored-файлы и не возвращает JSONL родительской
-  сессии, удалённый OMP при `newSession` (см. [recovery.md](recovery.md)).
+- Копия session JSONL — снимок на момент запроса handoff: ходы родителя
+  после запроса в неё не попадают, ignored-файлы WIP-снимок не покрывает
+  (см. [recovery.md](recovery.md)).
 - Не замена `HANDOFF.md`: строка в запросе — напоминание записать WIP в
   документ, иначе новая сессия его не увидит.
 - Не защита от смены модели внутри сессии: модель задаётся при запуске

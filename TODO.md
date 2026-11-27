@@ -22,9 +22,12 @@
       проверки, стартовый prompt.
 - [ ] 1.0.1 — push и тег `v1.0.1` (по решению владельца; локально `main`
       впереди `origin/main`).
-- [ ] Решение владельца: копия session JSONL перед handoff (best-effort при
-      записи marker) или принять, что «до»-окно economics после
-      `/handoff-new` не восстанавливается.
+- [x] 1.0.1 — копия session JSONL перед handoff (решение владельца получено):
+      `lib/session-archive.ts` + `archiveSessionOnce`; копия в
+      `$XDG_STATE_HOME/omp-agent-workflow/sessions/` (600, только локально)
+      при запросе handoff и перед `/handoff-new`; сбой — warning, не
+      блокер; `economics --session <copy>` читает её; тесты
+      `test/session-archive.test.mjs` (4) + `context-guard` (+3).
 - [x] 1.0.0 — релиз: английский README (+RU/ZH), установка из tarball
       (`npm pack` → распаковка → `omp plugin link`), релизные заметки
       `docs/release-notes-1.0.0.md`, запись `[1.0.0]` в `CHANGELOG.md`;
