@@ -27,6 +27,9 @@ npm/marketplace — отдельным решением владельца (D10)
   `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
 - Открыто: только npm/marketplace — отдельным решением владельца (D10).
   Страховка без sandbox закрыта целиком (1.0.1).
+- Тесты не пишут в реальный state: `context-guard` даёт каждому тесту свой
+  `XDG_STATE_HOME` (`01bfc85`), иначе копия session JSONL из handoff-тестов
+  складывалась в `~/.local/state/omp-agent-workflow/sessions/`.
 - Этот файл больше 32k символов: `/handoff-new` встроит первые 32 000 и
   оставит маркер обрезки — хвостовые разделы дочитывать из файла.
 
