@@ -15,12 +15,12 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Состояние
 
-Версия `1.0.0`; `main` = `origin/main` (`e600ab2`): запушены коммиты
-релиза (`0d54090` упаковка, `1be278c` CLI под `node_modules`, `e25a61c`
+Версия `1.0.0`; `main` = `origin/main`, все коммиты 1.0.0 запушены:
+релиз (`0d54090` упаковка, `1be278c` CLI под `node_modules`, `e25a61c`
 пин и режимы), CI + release asset (`de0556d`), RU/ZH quick start
-(`c0fa6ea`), FAQ launcher (`fdedbe4`) и регистрация живой проверки
+(`c0fa6ea`), FAQ launcher (`fdedbe4`), регистрация живой проверки
 (`e600ab2`). Тег и GitHub release `v1.0.0` опубликованы, tarball приложен
-asset'ом (sha256 `aaed0a86…b495691`); CI на `e600ab2` зелёный уже гейтом
+asset'ом (sha256 `aaed0a86…b495691`); CI зелёный уже гейтом
 `npm run verify` (389 тестов, Node 22), Pages задеплоен. Открытых работ по
 коду нет. В `main`:
 
