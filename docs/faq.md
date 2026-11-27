@@ -54,7 +54,9 @@ runbook — [operations.md](operations.md).
 
 ### Supervisor не сработал, в статусе `SUP OFF`
 
-Проверить по порядку: запущен ли `bin/omp-yoda --dir <cwd>`; есть ли
+Проверить по порядку: запущен ли `bin/omp-yoda` в каталоге проекта
+(`cd <cwd> && bin/omp-yoda` или `OMP_YODA_DIR=<cwd> bin/omp-yoda`);
+`--dir` launcher'у не принадлежит и `omp` его отвергает; есть ли
 `.omp-handoff-supervisor.lock/owner.json` с живым pid; записан ли
 `terminal` в `.omp-handoff-session.json`; есть ли marker.
 
