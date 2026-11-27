@@ -228,3 +228,5 @@ Settings и отменяет advisory `next-session:` на этот запуск
 - `docs/yoda-workflow.md` — режимы и оркестрация.
 - `docs/handoff-auto-plan.md` — протокол handoff.
 - `../omp-cache-monitor` — экономика кэша; только read-only интеграция.
+- `docs/products.md` — карта четырёх продуктов OMP: границы, общие точки
+  записи, JSON-контракты, правила кросс-продуктовых правок.
