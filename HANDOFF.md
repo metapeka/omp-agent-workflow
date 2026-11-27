@@ -31,6 +31,23 @@ GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
 сохранены. Публикация по умолчанию локальная (D10); push — только с явного
 разрешения владельца.
 
+## Продукты OMP (сессия 2026-11-27)
+
+Сессия вела соседние продукты, не OAW. Источники истины по ним —
+`~/projects/omp-usage/HANDOFF.md` и `~/projects/omp-skill-library/HANDOFF.md`.
+
+- skill-library 0.3.0: `relink` (перепривязка ссылок после переезда
+  библиотеки) и opt-in hook `session_start` (`autoLink: off|report|apply`);
+  миграция 28 навыков выполнена, `~/.agents/skills` — управляемые симлинки;
+  плагин подключён, `autoLink=report`.
+- usage 0.3.0: вкладка `Library` (status + findings `doctor`), колонка `Link`
+  в Project skills; живой `library.get` — 28 ссылок, drift 0.
+- `docs/products.md` обновлён во всех четырёх репозиториях (обе версии 0.3.0).
+- Проверки: skill-library 58 тестов; usage 22 + 16; `orca plugin check panel`
+  exit 0; OMP видит 35 навыков, Orca — 28.
+- Не делали: публикацию/push (origin для usage и skill-library — позже по
+  решению владельца), новые панели, Windows/contracts (P3).
+
 ## Что готово
 
 | Что | Состояние |
