@@ -52,6 +52,17 @@ Read-only: команда не двигает refs и не пишет state. П�
 ветки заменены дефисами, а метка времени отрезается по `-\d{10,}`; полное
 имя — в `ref`.
 
+Backup-ref пишет только OAW: `removeWorktree` (`/wrap`, `finish`, retry
+упавшей задачи). Прямой `orca worktree rm` (runbook для своей рабочей
+копии) ref не создаёт — ветка при этом остаётся, но после `git branch -d`
+refs восстанавливать будет нечего. При ручном cleanup либо оставьте ветку,
+либо снимите ref заранее:
+
+```bash
+tip=$(git -C <base-repo> rev-parse <branch>)
+git -C <base-repo> update-ref "refs/omp-worktree-backup/<branch-slug>-$(date +%s%3N)" "$tip"
+```
+
 ## Вернуть ветку из backup-ref
 
 ```bash

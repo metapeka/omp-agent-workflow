@@ -141,6 +141,8 @@ git -C /home/db1/projects/omp-agent-workflow branch -d feat/<slug>
   `removeWorktree` сохраняет tip в `refs/omp-worktree-backup/*`, список —
   `node bin/omp-orchestrate refs`; `force`-удаление грязного worktree
   сначала пишет WIP-патч в `~/.local/state/omp-agent-workflow/wip/`.
+  Прямой `orca worktree rm` backup-ref не пишет — ветка остаётся, но ref
+  для восстановления нужно снять самому (или удалять через `/wrap`).
   Восстановление ветки и WIP — [recovery.md](recovery.md).
 
 ## Статус-строка
