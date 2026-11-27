@@ -126,7 +126,7 @@ costs --json` v1: медиана холодных ходов против тёп
 | [release-notes-1.0.0.md](release-notes-1.0.0.md) | Релизные заметки 1.0: что зафиксировано, три пути установки, проверенные шаги и ограничение `node_modules` |
 | [research/model-modes.md](research/model-modes.md) | `[design]` Цены cline-pass, стоимость хода на 100k, замер handoff-payload (20 сессий), цена границы handoff, режим v1 и синтаксис `next-session:`; не контракт |
 | [research/workflow-presets.md](research/workflow-presets.md) | `[готово F1/F2]` Пресеты `routine/plan/review/budget`, `--preset` и `workflowPreset`, `next-session:` в launcher, метрики выбора, `--plan-yolo`; F3–F4 `[design]` |
-| [Pages](https://metapeka.github.io/omp-agent-workflow/) | HTML-разбор: prompt cache, сессии, где помогает плагин, инцидент 2026-11-24, пороги; EN + [RU](https://metapeka.github.io/omp-agent-workflow/ru/) + [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |
+| [Pages](https://metapeka.github.io/omp-agent-workflow/) | HTML-разбор: prompt cache, сессии, где помогает плагин, инцидент 2026-11-24, промах провайдера 2026-11-27 (`cline-pass` / `deepseek-v4.1-flash-1017`: 252k префикс, `cacheRead 0`, $0.0756), пороги; EN + [RU](https://metapeka.github.io/omp-agent-workflow/ru/) + [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |
 
 ## Правила этой вики
 

@@ -103,6 +103,7 @@
         <li><strong>交接。</strong> 新会话文件、新对话。静态 system/tools 前缀可能命中，对话不会。</li>
         <li><strong>会话中途修改 tools 或 system prompt。</strong></li>
         <li><strong>空闲超过提供方 TTL。</strong> 缓存过期，下一轮为冷。</li>
+        <li><strong>提供方一侧的淘汰或路由。</strong> 客户端发送同一前缀，一个请求返回 <code>cacheRead 0</code>，几秒或几分钟后同一前缀又命中。先看下一轮，再怪提示词 —— 见 <a href="#provider-miss">2026-11-27 的案例</a>。</li>
       </ul>
     </section>
 
@@ -334,6 +335,55 @@
         </table>
       </div>
       <p>修复后正常路径不变：30% 交接、新会话、缓存重新变热。区别在失败路径：现在会给出警告和回退，而不是静默停住。</p>
+    </section>
+
+    <section id="provider-miss">
+      <h2>案例：提供方丢掉了 25.2 万 token 的前缀</h2>
+      <div class="incident-banner" role="note">
+        <span class="tag">2026-11-27</span>
+        <p><strong>一轮返回 <code>cacheRead 0</code>，前缀 252k token。</strong> 十秒前同一前缀命中 99%，四分钟后再次命中 99.9%。客户端没有改模型、thinking、tools 或 system prompt。</p>
+      </div>
+
+      <h3>当时的环境</h3>
+      <ul>
+        <li>会话 <code>dc_aievent</code> — 一次编排运行：用 <code>task</code> 派生子代理，然后在 <code>wait</code> 里等它们干活。</li>
+        <li>提供方网关 <code>cline-pass</code>，模型 <code>deepseek-v4.1-flash-1017</code>，窗口 1M。</li>
+        <li>该网关从不上报缓存写入：这个会话每一轮的 <code>cacheWrite</code> 都是 <code>0</code>，所以这里唯一的证据是 <code>cacheRead</code>。</li>
+      </ul>
+
+      <h3>失手前后的四轮</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>轮次 (UTC)</th><th class="num">input</th><th class="num">cacheRead</th><th class="num">hit</th><th class="num">费用</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>05:18:06</td><td class="num">134</td><td class="num">247,552</td><td class="num">99.9%</td><td class="num">$0.0016</td></tr>
+            <tr><td>05:22:06 — 4 分钟 <code>wait</code> 之后</td><td class="num">2,583</td><td class="num">247,680</td><td class="num">99.0%</td><td class="num">$0.0041</td></tr>
+            <tr><td>05:22:16 — 十秒后</td><td class="num">251,793</td><td class="num">0</td><td class="num">0%</td><td class="num">$0.0756</td></tr>
+            <tr><td>05:26:19 — 又过了 4 分钟 <code>wait</code></td><td class="num">157</td><td class="num">251,776</td><td class="num">99.9%</td><td class="num">$0.0016</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>冷轮次是唯一把整个 ~252k 前缀当作新输入的一轮：输入 251,793、输出 41，<strong>$0.0756</strong>，而热轮次只要 $0.0016–0.0041 —— 多付约 <strong>$0.072，是普通轮次的 18–47 倍</strong>。<code>omp-cache-monitor</code> 原样报告了它：<code>hit 0% (input 251793, cacheRead 0, cacheWrite 0, prompt 251793)</code>。这是算术，不是诊断。</p>
+
+      <h3>责任在谁</h3>
+      <p>在提供方一侧——<code>deepseek-v4.1-flash-1017</code> 前面的 <code>cline-pass</code> 网关，而不是 OMP，也不是插件。三个事实把客户端的原因逐一排除：</p>
+      <ol>
+        <li><strong>不是前缀被重写。</strong> 失手四分钟后，同一前缀又以原来的大小从缓存读出（251,776 ≈ 251,793）。真正变过的前缀（模型、thinking、tools/MCP、压缩）下一轮仍然是冷的，不会自己恢复。</li>
+        <li><strong>不是空闲 TTL。</strong> 第一次 4 分钟暂停之后的那一轮还有 99% 命中；失手落在十秒后的下一次请求上。</li>
+        <li><strong>不是子代理造成的。</strong> 子会话是热启动：首轮就从缓存读了 7,040–8,704 token 的公共 system/tools 头部。父会话在同样的等待前后的轮次都保持 99%。</li>
+      </ol>
+      <p>剩下的只能是网关的缓存层：要么这次请求被路由到没有该前缀的后端，要么在多个会话和子代理同时运行时前缀被淘汰。从客户端看，这两种情况一模一样。缓存键、TTL 和淘汰都属于提供方，客户端修不了，只能发现。</p>
+
+      <h3>如何区分提供方失手和前缀真的变了</h3>
+      <ol>
+        <li><strong>看同一会话的下一轮。</strong> 前缀大小相近又命中 → 提供方失手。仍是 0% → 前缀确实变了。</li>
+        <li><strong>量一下离上一个热轮次多远。</strong> 在 99% 命中的轮次之后几秒就失手，不是空闲 TTL。</li>
+        <li><strong>确认网关是否上报 <code>cacheWrite</code>。</strong> 每轮恒为 <code>0</code> 说明根本不上报写入；只看 <code>cacheRead</code> 判断。</li>
+      </ol>
+      <p><code>omp-cache-monitor</code> 的警告结尾是“检查模型、thinking、模式和 MCP”。这里四项都没变——把这句话当成“先看数字”的提示，而不是结论。</p>
+      <p class="muted">客户端还能做的：把前缀保持得更短（252k 上失手一次 7.5 美分，60k 上约 1.8 美分），并把同一网关上反复出现的失手当作提供方问题，而不是自己配置错了。</p>
     </section>
 
     <section id="thresholds">

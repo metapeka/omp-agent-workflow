@@ -103,6 +103,7 @@
         <li><strong>Handoff.</strong> A new session file and a new conversation. The static system/tools prefix may hit, but the conversation does not.</li>
         <li><strong>Editing tools or the system prompt</strong> in the middle of a session.</li>
         <li><strong>Idle time beyond the provider TTL.</strong> The cache expires; the next turn is cold.</li>
+        <li><strong>Provider-side eviction or routing.</strong> The client sends the same prefix, one request comes back with <code>cacheRead 0</code>, and the same prefix hits again seconds or minutes later. Read the next turn before blaming the prompt — see <a href="#provider-miss">the 2026-11-27 case</a>.</li>
       </ul>
     </section>
 
@@ -334,6 +335,55 @@
         </table>
       </div>
       <p>After the fixes the happy path is unchanged: handoff at 30%, new session, cache warms again. The difference is the failure path: it now produces a warning and a fallback instead of a silent stop.</p>
+    </section>
+
+    <section id="provider-miss">
+      <h2>Case: the provider dropped a 252k prefix</h2>
+      <div class="incident-banner" role="note">
+        <span class="tag">2026-11-27</span>
+        <p><strong>One turn came back with <code>cacheRead 0</code> on a 252k-token prefix.</strong> Ten seconds earlier the same prefix was 99% cached; four minutes later it was 99.9% cached again. The client never changed the model, the thinking level, the tools or the system prompt.</p>
+      </div>
+
+      <h3>Setup</h3>
+      <ul>
+        <li>Session <code>dc_aievent</code> — an orchestrator run: it spawned subagents with <code>task</code> and sat in <code>wait</code> while they worked.</li>
+        <li>Provider gateway <code>cline-pass</code>, model <code>deepseek-v4.1-flash-1017</code>, 1M window.</li>
+        <li>The gateway never reports cache writes: <code>cacheWrite</code> is <code>0</code> on every turn of that session, so only <code>cacheRead</code> is evidence here.</li>
+      </ul>
+
+      <h3>Four turns around the miss</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Turn (UTC)</th><th class="num">input</th><th class="num">cacheRead</th><th class="num">hit</th><th class="num">cost</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>05:18:06</td><td class="num">134</td><td class="num">247 552</td><td class="num">99.9%</td><td class="num">$0.0016</td></tr>
+            <tr><td>05:22:06 — right after a 4-minute <code>wait</code></td><td class="num">2 583</td><td class="num">247 680</td><td class="num">99.0%</td><td class="num">$0.0041</td></tr>
+            <tr><td>05:22:16 — ten seconds later</td><td class="num">251 793</td><td class="num">0</td><td class="num">0%</td><td class="num">$0.0756</td></tr>
+            <tr><td>05:26:19 — after another 4-minute <code>wait</code></td><td class="num">157</td><td class="num">251 776</td><td class="num">99.9%</td><td class="num">$0.0016</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The cold turn is the only one that carried the whole ~252k prefix as fresh input: 251 793 tokens in, 41 out, <strong>$0.0756</strong> instead of the $0.0016–0.0041 of a warm turn — about <strong>$0.072 of overpay, 18–47× a normal turn</strong>. <code>omp-cache-monitor</code> reported it exactly as it is: <code>hit 0% (input 251793, cacheRead 0, cacheWrite 0, prompt 251793)</code>. That warning is arithmetic, not a diagnosis.</p>
+
+      <h3>Who is to blame</h3>
+      <p>The provider side — the <code>cline-pass</code> gateway in front of <code>deepseek-v4.1-flash-1017</code> — not OMP and not the plugin. Three facts point there, and each rules out a client cause:</p>
+      <ol>
+        <li><strong>Not a rewritten prefix.</strong> Four minutes after the miss the same prefix was read from cache at its old size (251 776 ≈ 251 793). A prefix that really changed — model, thinking, tools/MCP, compaction — stays cold on the next turn instead of recovering.</li>
+        <li><strong>Not an idle TTL.</strong> The turn immediately after the first 4-minute pause was still 99% cached; the miss hit the next request ten seconds later.</li>
+        <li><strong>Not the subagents.</strong> Child sessions started warm: their first turns read 7 040–8 704 tokens of the shared system/tools head from cache. The parent's own turns around those same waits stayed at 99%.</li>
+      </ol>
+      <p>What is left is the cache layer of the gateway: one request was routed to a backend that did not hold the prefix, or the prefix was evicted while several sessions and subagents were in flight. From the client those two look identical. The cache key, TTL and eviction belong to the provider, so a client cannot fix this — it can only notice it.</p>
+
+      <h3>How to tell a provider miss from a real prefix change</h3>
+      <ol>
+        <li><strong>Look at the next turn of the same session.</strong> Hit again at a similar prefix size → provider miss. Still 0% → the prefix really changed.</li>
+        <li><strong>Measure the distance to the previous warm turn.</strong> A miss seconds after a 99% turn is not an idle TTL.</li>
+        <li><strong>Check whether <code>cacheWrite</code> is reported at all.</strong> A constant <code>0</code> on every turn means the gateway does not report writes; judge by <code>cacheRead</code> alone.</li>
+      </ol>
+      <p>The <code>omp-cache-monitor</code> warning ends with “check the model, thinking, mode and MCP”. Here all four were unchanged — read that sentence as a prompt to look at the numbers, not as a verdict.</p>
+      <p class="muted">What a client can still do: keep the prefix shorter (a miss at 252k costs 7.5 ¢; at 60k, about 1.8 ¢) and treat repeated misses on one gateway as a provider issue rather than a configuration mistake.</p>
     </section>
 
     <section id="thresholds">
