@@ -59,6 +59,29 @@ export interface EconomicsCompaction {
 	costUsd: number | null;
 }
 
+/** Сдвиг hit rate ниже этого порога считается плоским трендом. */
+export const HIT_TREND_FLAT_PP = 0.5;
+
+/** Тренд hit rate по границам: среднее «до» и «после» плюс направление. */
+export interface EconomicsHitTrend {
+	beforePercent: number | null;
+	afterPercent: number | null;
+	deltaPp: number | null;
+	direction: "up" | "down" | "flat" | null;
+}
+
+/** Агрегат по всей цепочке (`--summary`); нет данных — `null`, не ноль. */
+export interface EconomicsSummary {
+	sessions: number;
+	handoffs: number;
+	boundaries: number;
+	turns: number;
+	spendUsd: number | null;
+	medianTurnUsd: number | null;
+	avgBoundaryUsd: number | null;
+	hitTrend: EconomicsHitTrend;
+}
+
 export interface EconomicsReport {
 	schemaVersion: 1;
 	generatedAt: string;
@@ -67,6 +90,8 @@ export interface EconomicsReport {
 	chain: EconomicsChainNode[];
 	boundaries: EconomicsBoundary[];
 	compactions: EconomicsCompaction[];
+	/** Только при `summary: true` во входе: аддитивное поле 0.7.2. */
+	summary?: EconomicsSummary;
 	notes: string[];
 }
 
@@ -81,6 +106,8 @@ export class EconomicsSessionError extends Error {
 export interface EconomicsInput {
 	sessionFile: string;
 	turns?: number;
+	/** Добавить агрегат по цепочке (`--summary`); без флага отчёт прежний. */
+	summary?: boolean;
 	env?: NodeJS.ProcessEnv;
 	now?: () => Date;
 }
@@ -206,6 +233,67 @@ export function recoveryTurns(turns: readonly CostsTurn[]): number {
 		count += 1;
 	}
 	return count;
+}
+
+function nonNull(values: readonly (number | null)[]): number[] {
+	return values.filter((value): value is number => value !== null);
+}
+
+function mean(values: readonly number[]): number | null {
+	if (values.length === 0) return null;
+	return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+/**
+ * Агрегат по цепочке: `spendUsd` — сумма измеренных цен ходов всех сессий,
+ * `medianTurnUsd` — медиана цены хода по цепочке, `avgBoundaryUsd` — средняя
+ * цена первого хода на границах, `hitTrend` — среднее hit rate окон «до/после».
+ * Всё, что не измерено, остаётся `null`: нули не подставляются.
+ */
+export function summarizeEconomics(
+	chain: readonly EconomicsChainNode[],
+	boundaries: readonly EconomicsBoundary[],
+	sessionTurns: readonly (readonly CostsTurn[])[],
+): EconomicsSummary {
+	const allTurns = sessionTurns.flat();
+	const priced = nonNull(allTurns.map((turn) => turn.costUsd));
+	const medianTurn = median(priced);
+	const avgBoundary = mean(
+		nonNull(boundaries.map((boundary) => boundary.boundary.firstTurnUsd)),
+	);
+	const before = mean(
+		nonNull(boundaries.map((boundary) => boundary.before.hitPercent)),
+	);
+	const after = mean(
+		nonNull(boundaries.map((boundary) => boundary.after.hitPercent)),
+	);
+	const delta = before === null || after === null ? null : roundHit(after - before);
+	return {
+		sessions: chain.length,
+		handoffs: chain.filter((node) => node.handoff).length,
+		boundaries: boundaries.length,
+		turns: allTurns.length,
+		spendUsd:
+			priced.length === 0
+				? null
+				: roundMoney(priced.reduce((total, value) => total + value, 0)),
+		medianTurnUsd: medianTurn === null ? null : roundMoney(medianTurn),
+		avgBoundaryUsd:
+			avgBoundary === null ? null : roundMoney(avgBoundary),
+		hitTrend: {
+			beforePercent: before === null ? null : roundHit(before),
+			afterPercent: after === null ? null : roundHit(after),
+			deltaPp: delta,
+			direction:
+				delta === null
+					? null
+					: delta > HIT_TREND_FLAT_PP
+						? "up"
+						: delta < -HIT_TREND_FLAT_PP
+							? "down"
+							: "flat",
+		},
+	};
 }
 
 function clampTurns(value: number | undefined): number {
@@ -423,6 +511,21 @@ export function buildEconomicsReport(input: EconomicsInput): EconomicsReport {
 	}
 	if (compactions.length === 0) notes.push("компакций не найдено");
 
+	// Агрегат читает ходы всех узлов тем же кэшем: без `--summary` лишних
+	// вызовов cache-monitor нет, без CLI — те же nulls, что у границ.
+	let summary: EconomicsSummary | undefined;
+	if (input.summary === true) {
+		const sessionTurns: CostsTurn[][] = [];
+		for (const node of chain) {
+			const turns = readTurns(node.session);
+			if (turns) sessionTurns.push(turns);
+		}
+		summary = summarizeEconomics(chain, boundaries, sessionTurns);
+		if (summary.spendUsd === null) {
+			pushNote(notes, "сводка: измеренных цен ходов нет");
+		}
+	}
+
 	return {
 		schemaVersion: 1,
 		generatedAt: now().toISOString(),
@@ -431,6 +534,7 @@ export function buildEconomicsReport(input: EconomicsInput): EconomicsReport {
 		chain,
 		boundaries,
 		compactions,
+		summary,
 		notes,
 	};
 }
@@ -492,6 +596,54 @@ function formatTableRow(
 		.trimEnd();
 }
 
+/** Сводка одной таблицей: счётчики цепочки, деньги, тренд hit rate. */
+function renderSummary(summary: EconomicsSummary): string[] {
+	const headerRow = [
+		"SESSIONS",
+		"HANDOFFS",
+		"BOUNDARIES",
+		"TURNS",
+		"SPEND",
+		"TURN",
+		"BORDER",
+	];
+	const border =
+		summary.avgBoundaryUsd === null
+			? "—"
+			: `${formatMoney(summary.avgBoundaryUsd)}${
+					summary.medianTurnUsd !== null && summary.medianTurnUsd > 0
+						? ` (×${(
+								summary.avgBoundaryUsd / summary.medianTurnUsd
+							).toFixed(1)})`
+						: ""
+				}`;
+	const row = [
+		String(summary.sessions),
+		String(summary.handoffs),
+		String(summary.boundaries),
+		String(summary.turns),
+		formatMoney(summary.spendUsd),
+		formatMoney(summary.medianTurnUsd),
+		border,
+	];
+	const widths = columnWidths([headerRow, row]);
+	const trend = summary.hitTrend;
+	const trendWord =
+		trend.direction === "up"
+			? "рост"
+			: trend.direction === "down"
+				? "падение"
+				: trend.direction === "flat"
+					? "без изменений"
+					: "нет данных";
+	return [
+		"Сводка:",
+		formatTableRow(headerRow, widths),
+		formatTableRow(row, widths),
+		`hit: ${formatHit(trend.beforePercent)} → ${formatHit(trend.afterPercent)} (${signedPoints(trend.deltaPp)}), ${trendWord}`,
+	];
+}
+
 /** Человекочитаемый отчёт: один блок на границу, компакции — строкой. */
 export function renderEconomics(report: EconomicsReport): string {
 	const lines: string[] = [];
@@ -503,6 +655,11 @@ export function renderEconomics(report: EconomicsReport): string {
 			? `HANDOFF ECONOMICS · границ нет · окно ${report.turnsWindow} ${turnsWord}`
 			: `HANDOFF ECONOMICS · ${boundaryCount} ${borderWord} · окно ${report.turnsWindow} ${turnsWord}`;
 	lines.push(header);
+
+	if (report.summary) {
+		lines.push("");
+		lines.push(...renderSummary(report.summary));
+	}
 
 	if (boundaryCount > 0) {
 		const headerRow = ["FROM", "TO", "BEFORE", "AFTER", "DELTA"];

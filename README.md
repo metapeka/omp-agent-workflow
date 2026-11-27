@@ -341,8 +341,11 @@ Read-only report over the session chain (`parentSession` upward); a border is on
 
 ```bash
 bin/omp-orchestrate economics --session "$SESSION" --turns 10
+bin/omp-orchestrate economics --summary --session "$SESSION"  # chain aggregate
 bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
 ```
+
+`--summary` adds one aggregate block above the per-border detail: sessions, handoffs and measured borders in the chain, the measured spend and median turn price, the average first-turn price at a border (with its ratio to a normal turn), and the hit-rate trend from the before/after windows. JSON gains a `summary` object; without the flag the report and its JSON stay exactly as before. Missing measurements stay `null` — zeros are never invented.
 
 Without `--session` it takes the freshest live entry of `.omp-handoff-session.json` in `--dir`. No cache-monitor CLI (or a broken report) leaves `boundaries` empty with a note and exit 0; a missing session is exit 1, invalid arguments exit 2. Nothing is written and no network is used.
 

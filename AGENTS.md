@@ -35,7 +35,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.7.0`, локальный git-репозиторий, основная ветка `main`.
+- Версия `0.7.2`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -87,7 +87,10 @@ hit rate, этот проект управляет контекстом и см�
   0.7.0 — spend-aware handoff: `handoffAtSpendUsd` (15-й ключ) и
   `OMP_HANDOFF_AT_USD`, триггер по измеренному `usage.cost.total` с
   инкрементальными offsets (перезапись/компакция пересчитывает total),
-  marker `reason: "spend"`.
+  marker `reason: "spend"`; 0.7.1 — quality gate разделов `HANDOFF.md` и
+  компакции после state в preflight; 0.7.2 — `economics --summary`:
+  агрегат цепочки, средняя цена границы и тренд hit rate (аддитивное поле
+  `summary`).
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.

@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-27. Версия: `0.7.1`.
+Дата: 2026-11-27. Версия: `0.7.2`.
 
 ## Сейчас
 
@@ -26,8 +26,9 @@
       `⚠ HANDOFF`, marker `reason: spend`; тесты, docs.
 - [x] 0.7.1 quality gate: ключевые секции `HANDOFF.md` и компакция после
       обновления state — advisory-warning в preflight.
-- [ ] 0.7.2 `economics --summary`: агрегат цепочки, средняя цена границы,
-      тренд hit.
+- [x] 0.7.2 `economics --summary`: агрегат цепочки (сессии, handoff'ы,
+      границы, spend, медиана хода, средняя цена границы с отношением,
+      тренд hit), `summary` в JSON, блок `Сводка:` в тексте; тесты, docs.
 - [ ] 0.7.3 discovery: `.omp-plugin/marketplace.json` + страница сравнения;
       npm/marketplace — только по разрешению владельца.
 - [ ] 0.7.4 ledger субагентов: проверить `maxSpendUsd` по дочерним сессиям,

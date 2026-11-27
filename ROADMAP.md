@@ -1,12 +1,13 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-27. Версия: `0.6.1`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-27. Версия: `0.7.2`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
 preflight, flight recorder в запросе HANDOFF, табличный вывод preflight,
-действие `push` в меню, цена границы из `costs --json` и отчёт
-`omp-orchestrate economics` «до/после handoff» готовы; публичный
+действие `push` в меню, цена границы из `costs --json`, отчёт
+`omp-orchestrate economics` «до/после handoff» и его `--summary`
+(0.7.2) готовы; публичный
 GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
 владельца.
 Оперативный список — `TODO.md`.
@@ -415,8 +416,11 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
       `HANDOFF.md` нет ключевых секций (цель/состояние/решения/файлы/
       проверки/дальше) или после обновления state была компакция. Ничего
       не блокирует, кастомные форматы не ломаются.
-- [ ] **0.7.2 `economics --summary`.** Агрегат по всей цепочке: сессии,
-      границы, средняя цена границы, тренд hit rate; поверх готового
+- [x] **0.7.2 `economics --summary`.** Агрегат по всей цепочке: сессии,
+      handoff'ы, границы, измеренный spend, медиана цены хода, средняя цена
+      первого хода на границе (с отношением к обычному ходу) и тренд hit
+      rate по окнам «до/после»; аддитивное поле `summary` в JSON, блок
+      `Сводка:` в тексте, без флага отчёт прежний; поверх готового
       `omp-orchestrate economics`.
 - [ ] **0.7.3 Discovery.** `.omp-plugin/marketplace.json` и страница
       сравнения; npm/marketplace — только с явного разрешения владельца.

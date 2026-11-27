@@ -4,6 +4,35 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.7.2] — 2026-11-27
+
+### Added
+
+- `omp-orchestrate economics --summary`: an aggregate over the whole chain on
+  top of the per-border report — `sessions`, `handoffs`, `boundaries`,
+  `turns`, measured `spendUsd` (sum of turn prices across chain sessions),
+  `medianTurnUsd`, `avgBoundaryUsd` (mean first-turn price at a border) and
+  `hitTrend` (mean before/after hit rate, `deltaPp`, `direction`
+  `up|down|flat` at a 0.5 pp threshold). JSON gains an additive `summary`
+  object; without the flag the report and its JSON are byte-identical.
+- Human output prints the aggregate as a borderless
+  `SESSIONS … BORDER` table above the boundary detail, with the `BORDER`
+  ratio to a normal turn and a `hit: before → after` line.
+- Missing measurements stay `null` with the note
+  `сводка: измеренных цен ходов нет`; no zeros are invented and the optional
+  cache-monitor CLI stays optional.
+
+### Tests
+
+- `test/handoff-economics.test.mjs` (36): aggregate values on the two-session
+  fixture, unchanged report without the flag, data-gated nulls without the
+  CLI, `up|down|flat` threshold, rendered block plus retained detail, CLI
+  `--summary` in both JSON and text.
+
+### Docs
+
+- README EN/RU/ZH, `docs/commands.md` (flag, text block, JSON contract).
+
 ## [0.7.1] — 2026-11-27
 
 ### Added

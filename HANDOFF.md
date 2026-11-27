@@ -12,10 +12,14 @@ OAW — короткое имя продукта; `workflow` — только е
 
 ## Состояние
 
-`main`, версия `0.7.1`, влито локально; `origin/main` на `3ba713d`
+`main`, версия `0.7.2`, влито локально; `origin/main` на `3ba713d`
 (0.7.0), локальная ветка впереди — push ждёт разрешения владельца (D10).
 CI на последнем запушенном коммите зелёный. В `main`:
 
+- 0.7.2 `economics --summary`: агрегат по цепочке (`sessions`, `handoffs`,
+  `boundaries`, `turns`, `spendUsd`, `medianTurnUsd`, `avgBoundaryUsd`,
+  `hitTrend`) аддитивным полем `summary` в JSON и блоком `Сводка:` в
+  тексте; без флага отчёт и JSON прежние, без цен — `null` и note;
 - 0.7.1 quality gate в `/handoff-preflight`: шесть ключевых разделов
   `HANDOFF.md` (цель/состояние/решения/файлы/проверки/дальше) и компакция
   после state — advisory-warning, фикс строкой в блоке «вручную»
@@ -27,7 +31,7 @@ CI на последнем запушенном коммите зелёный. �
   read-only `omp-orchestrate economics` (`CHANGELOG.md`).
 
 GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
-Ветки 0.5.1–0.7.1 слиты ff-only, worktrees удалены, ветки `feat/*`
+Ветки 0.5.1–0.7.2 слиты ff-only, worktrees удалены, ветки `feat/*`
 сохранены. Публикация по умолчанию локальная (D10); push — только с явного
 разрешения владельца.
 
@@ -71,6 +75,7 @@ GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
 | Economics 0.6.1 | `omp-orchestrate economics`: цепочка `parentSession`, граница только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1; ветка `feat/handoff-economics` |
 | Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `restarted`/`session_compact` пересчитывают total, не сбрасывая spend; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); влито `3ba713d` |
 | Quality gate 0.7.1 | `lib/state-sections.ts`: шесть ключевых разделов `HANDOFF.md` по заголовкам и синонимам (EN/RU), код-блоки не в счёт; отсутствующий раздел — отдельный warn, нестандартный формат — одна строка; `lastCompactionAt` из того же JSONL-прохода, warn если компакция позже mtime state; фикс — строкой в «вручную»; `ready` не меняется |
+| Economics summary 0.7.2 | `economics --summary`: `summarizeEconomics()` в `lib/handoff-economics.ts` — `sessions`/`handoffs`/`boundaries`/`turns`, измеренный `spendUsd` (сумма цен ходов цепочки), `medianTurnUsd`, `avgBoundaryUsd` и `hitTrend` (`up|down|flat` при пороге 0.5 pp); аддитивное `summary` в JSON, блок `Сводка:` с отношением `BORDER` к обычному ходу; без флага отчёт прежний, без CLI — `null` + note |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -378,16 +383,17 @@ omp plugin config list omp-agent-workflow --json | jq '.schema | keys'
 node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 node --experimental-strip-types bin/omp-orchestrate doctor --json | jq .ok
 node --experimental-strip-types bin/omp-orchestrate status --json | jq .schemaVersion
+node --experimental-strip-types --test test/handoff-economics.test.mjs   # 36
 curl -sS -o /dev/null -w '%{http_code}\n' \
   https://metapeka.github.io/omp-agent-workflow/       # 200
 ```
 
 ## Следующие шаги
 
-1. 0.7.2 `economics --summary` — следующая задача по плану 0.7: агрегат по
-   цепочке (сессии, границы, средняя цена границы, тренд hit rate) поверх
-   готового `omp-orchestrate economics`. Затем 0.7.3 discovery и 0.7.4
-   ledger субагентов.
+1. 0.7.3 discovery — следующая задача по плану 0.7: `.omp-plugin/marketplace.json`
+   и страница сравнения (npm/marketplace — только с явного разрешения
+   владельца), затем 0.7.4 ledger субагентов. 0.7.2 `economics --summary`
+   закрыт: агрегат цепочки, средняя цена границы, тренд hit rate.
 2. Проверить 0.7.1 в TUI: `omp plugin list`, `/handoff-preflight` на этом
    файле (строки `HANDOFF.md: разделы 6/6`, отсутствие ложных warn по
    синонимам), state без раздела — warn по строке и фикс в «вручную»,
@@ -440,6 +446,12 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   коммитом: `touch` без правки скрывает предупреждение, правка без `touch`
   в пределах той же секунды — нет. Детектор компакции читает только
   текущую сессию; компакция в дочерней сессии не учитывается.
+- `economics --summary` агрегирует только измеренное: цена — фактический
+  `usage.cost.total` из отчёта cache-monitor, `avgBoundaryUsd` — среднее по
+  границам с ценой первого хода, `hitTrend` — по границам с окнами; без
+  данных поле `null` и note. Сводка не заменяет счёт провайдера и не
+  экстраполирует: цепочка ограничена 20 узлами, а дочерние subagent-сессии
+  в агрегат не входят.
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.

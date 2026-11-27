@@ -343,8 +343,11 @@ Read-only отчёт по цепочке сессий (вверх по `parentSe
 
 ```bash
 bin/omp-orchestrate economics --session "$SESSION" --turns 10
+bin/omp-orchestrate economics --summary --session "$SESSION"  # агрегат цепочки
 bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
 ```
+
+`--summary` добавляет над деталями одну строку агрегата: сессии, handoff'ы и измеренные границы цепочки, измеренный spend и медиану цены хода, среднюю цену первого хода на границе (и её отношение к обычному ходу), тренд hit rate по окнам «до/после». В JSON появляется объект `summary`; без флага отчёт и его JSON не меняются. Неизмеренное остаётся `null` — нули не подставляются.
 
 Без `--session` берётся самая свежая живая запись `.omp-handoff-session.json` в `--dir`. Нет CLI cache-monitor (или отчёт битый) — `boundaries` пустые с note и exit 0; нет сессии — exit 1, плохие аргументы — exit 2. Ничего не пишется, сеть не используется.
 

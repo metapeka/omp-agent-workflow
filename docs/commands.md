@@ -173,6 +173,7 @@ bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit 
 | `--strict` | `doctor`: повысить `warn` до `fail` |
 | `--session FILE` | `economics`: стартовый session JSONL (алиас `--session-file`) |
 | `--turns N` | `economics`: окно ходов, 1..100 (по умолчанию 10) |
+| `--summary` | `economics`: агрегат по цепочке (`summary` в JSON, блок в тексте) |
 | `--json` | машинный вывод |
 
 `doctor` — read-only диагностика среды: 16 проверок в фиксированном порядке,
@@ -199,7 +200,7 @@ subagent-дети границу не создают. Ходы и деньги �
 
 ```bash
 node --experimental-strip-types bin/omp-orchestrate economics \
-  [--session FILE] [--turns N] [--json] [--dir PATH]
+  [--session FILE] [--turns N] [--summary] [--json] [--dir PATH]
 ```
 
 `--session-file` — алиас `--session` (то же имя уже используется для spend).
@@ -213,6 +214,17 @@ node --experimental-strip-types bin/omp-orchestrate economics \
 `compactions[]` (`session`, `at`, `costUsd`), `notes[]`. `chain[].startedAt`
 и `boundaries[].at` — `null`, если в метаданных сессии нет `timestamp`.
 Ничего не пишется, сеть не используется.
+
+`--summary` добавляет аддитивное поле `summary` (без флага его нет, отчёт и
+JSON прежние): `sessions`, `handoffs`, `boundaries`, `turns`, `spendUsd`
+(сумма измеренных цен ходов всей цепочки), `medianTurnUsd` (медиана цены
+хода), `avgBoundaryUsd` (средняя цена первого хода на границах) и
+`hitTrend{beforePercent,afterPercent,deltaPp,direction}` — среднее hit rate
+окон «до» и «после» по границам, `direction` = `up|down|flat` (порог
+0.5 pp) или `null`. В тексте блок `Сводка:` стоит над деталями: счётчики,
+деньги, `BORDER` с отношением к обычному ходу и строка `hit: до → после`.
+Неизмеренное — `null` плюс note `сводка: измеренных цен ходов нет`; нули не
+подставляются.
 
 При `execution: external` в `AUTOPLAN.md` `start`, `verify`, `finish` и
 `rebase` возвращают `stop: external-run`: задачи ведёт Ensemble (Orca

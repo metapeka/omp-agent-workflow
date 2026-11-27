@@ -27,6 +27,7 @@ import {
 	recoveryTurns,
 	renderEconomics,
 	resolveLatestSession,
+	summarizeEconomics,
 	windowMetrics,
 } from "../lib/handoff-economics.ts";
 
@@ -801,5 +802,156 @@ describe("handoff economics: human output", () => {
 		assert.ok(text.includes("границ нет"));
 		assert.ok(text.includes("Компакции: нет записей."));
 		assert.ok(text.includes("omp-cache-monitor не найден"));
+	});
+});
+
+describe("handoff economics: chain summary", () => {
+	it("aggregates sessions, money and the hit trend across the chain", () => {
+		const { parent, child } = chainFixture();
+		const report = buildEconomicsReport({
+			sessionFile: child,
+			turns: 2,
+			summary: true,
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() },
+		});
+		assert.deepEqual(report.summary, {
+			sessions: 2,
+			handoffs: 1,
+			boundaries: 1,
+			turns: 9,
+			// 0.001+0.002+0.003+0.004+0.005 + 0.05+0.04+0.002+0.002
+			spendUsd: 0.109,
+			medianTurnUsd: 0.003,
+			avgBoundaryUsd: 0.05,
+			hitTrend: {
+				beforePercent: 100,
+				afterPercent: 0,
+				deltaPp: -100,
+				direction: "down",
+			},
+		});
+		assert.equal(report.chain[0].session, parent);
+	});
+
+	it("keeps the report unchanged without the flag", () => {
+		const { child } = chainFixture();
+		const report = buildEconomicsReport({
+			sessionFile: child,
+			turns: 2,
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() },
+		});
+		assert.equal(report.summary, undefined);
+		assert.ok(!("summary" in JSON.parse(JSON.stringify(report))));
+	});
+
+	it("stays data-gated without prices: nulls, no invented zeros", () => {
+		const { child } = chainFixture();
+		const report = buildEconomicsReport({
+			sessionFile: child,
+			summary: true,
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: MISSING_CLI },
+		});
+		assert.deepEqual(report.summary, {
+			sessions: 2,
+			handoffs: 1,
+			boundaries: 0,
+			turns: 0,
+			spendUsd: null,
+			medianTurnUsd: null,
+			avgBoundaryUsd: null,
+			hitTrend: {
+				beforePercent: null,
+				afterPercent: null,
+				deltaPp: null,
+				direction: null,
+			},
+		});
+		assert.ok(
+			report.notes.some((note) =>
+				note.includes("сводка: измеренных цен ходов нет"),
+			),
+		);
+	});
+
+	it("classifies the trend direction at the flat threshold", () => {
+		const chain = [
+			{ session: "/a", startedAt: null, handoff: false, parentSession: null },
+			{ session: "/b", startedAt: null, handoff: true, parentSession: "/a" },
+		];
+		const boundary = (beforePercent, afterPercent) => ({
+			from: "/a",
+			to: "/b",
+			at: null,
+			before: { turns: 1, costPerTurnUsd: null, hitPercent: beforePercent },
+			after: { turns: 1, costPerTurnUsd: null, hitPercent: afterPercent },
+			boundary: { firstTurnUsd: null, recoveryTurns: 0 },
+			delta: { costPerTurnUsd: null, hitPercent: null },
+		});
+		const direction = (before, after) =>
+			summarizeEconomics(chain, [boundary(before, after)], []).hitTrend;
+
+		assert.equal(direction(50, 70).direction, "up");
+		assert.equal(direction(70, 50).direction, "down");
+		assert.equal(direction(90, 90.2).direction, "flat");
+		assert.equal(direction(90.4, 90).direction, "flat");
+		assert.deepEqual(direction(90, 90.2).deltaPp, 0.2);
+
+		const empty = summarizeEconomics(chain.slice(0, 1), [], []);
+		assert.equal(empty.boundaries, 0);
+		assert.equal(empty.hitTrend.direction, null);
+		assert.equal(empty.spendUsd, null);
+	});
+});
+
+describe("handoff economics: summary output", () => {
+	it("renders the aggregate table and keeps the boundary detail", () => {
+		const { child } = chainFixture();
+		const report = buildEconomicsReport({
+			sessionFile: child,
+			turns: 2,
+			summary: true,
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() },
+		});
+		const text = renderEconomics(report);
+		assert.ok(text.startsWith("HANDOFF ECONOMICS · 1 граница · окно 2 хода"));
+		assert.ok(text.includes("Сводка:"));
+		assert.ok(text.includes("SESSIONS"));
+		assert.ok(text.includes("BOUNDARIES"));
+		assert.ok(text.includes("$0.1090"));
+		assert.ok(text.includes("$0.0500 (×16.7)"));
+		assert.ok(
+			text.includes("hit: 100.0% → 0.0% (-100.0 pp), падение"),
+		);
+		// Детали границы остаются: сводка добавляется, а не заменяет отчёт.
+		assert.ok(text.includes("граница: первый ход $0.0500 · холодных подряд 2"));
+	});
+
+	it("passes --summary through the CLI both as JSON and text", () => {
+		const { child } = chainFixture();
+		const env = { ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() };
+		const json = runCli(
+			["economics", "--json", "--summary", "--session", child, "--turns", "2"],
+			env,
+		);
+		assert.equal(json.status, 0, json.stderr);
+		const report = JSON.parse(json.stdout);
+		assert.equal(report.summary.sessions, 2);
+		assert.equal(report.summary.spendUsd, 0.109);
+		assert.equal(report.summary.hitTrend.direction, "down");
+
+		const plain = runCli(
+			["economics", "--summary", "--session", child, "--turns", "2"],
+			env,
+		);
+		assert.equal(plain.status, 0, plain.stderr);
+		assert.ok(plain.stdout.includes("Сводка:"));
+		assert.ok(!plain.stdout.includes("schemaVersion"));
+
+		const without = runCli(
+			["economics", "--json", "--session", child, "--turns", "2"],
+			env,
+		);
+		assert.equal(without.status, 0, without.stderr);
+		assert.equal(JSON.parse(without.stdout).summary, undefined);
 	});
 });

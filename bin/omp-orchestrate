@@ -11,7 +11,7 @@
  *   bin/omp-orchestrate stop --reason gate
  *   bin/omp-orchestrate resume
  *   bin/omp-orchestrate doctor [--json] [--strict]
- *   bin/omp-orchestrate economics [--session FILE] [--turns N] [--json]
+ *   bin/omp-orchestrate economics [--session FILE] [--turns N] [--summary] [--json]
  */
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -48,7 +48,7 @@ const USAGE = `Использование:
   omp-orchestrate stop --reason REASON [--detail TEXT] [--json]
   omp-orchestrate resume [--json]
   omp-orchestrate doctor [--json] [--strict]
-  omp-orchestrate economics [--session FILE] [--turns N] [--json] [--dir PATH]
+  omp-orchestrate economics [--session FILE] [--turns N] [--summary] [--json] [--dir PATH]
     (--session-file — то же, что --session; без --session берётся свежая живая запись .omp-handoff-session.json)
 
 Общие флаги:
@@ -81,6 +81,7 @@ const { values, positionals } = parseArgs({
 		strict: { type: "boolean", default: false },
 		session: { type: "string" },
 		turns: { type: "string" },
+		summary: { type: "boolean", default: false },
 		json: { type: "boolean", default: false },
 		help: { type: "boolean", short: "h", default: false },
 	},
@@ -212,7 +213,11 @@ function runEconomics() {
 		return;
 	}
 	try {
-		const report = buildEconomicsReport({ sessionFile: file, turns });
+		const report = buildEconomicsReport({
+			sessionFile: file,
+			turns,
+			summary: values.summary,
+		});
 		console.log(
 			values.json ? JSON.stringify(report, null, 2) : renderEconomics(report),
 		);
