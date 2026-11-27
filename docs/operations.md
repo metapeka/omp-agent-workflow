@@ -12,15 +12,18 @@ omp plugin link /home/db1/projects/omp-agent-workflow
 omp plugin list
 ```
 
-Из tarball (без реестра и сборки):
+Из tarball (без реестра и сборки) — asset релиза v1.0.0:
 
 ```bash
-npm pack                                   # omp-agent-workflow-1.0.0.tgz
+curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.0/omp-agent-workflow-1.0.0.tgz
 mkdir -p ~/opt/omp-agent-workflow
 tar xzf omp-agent-workflow-1.0.0.tgz -C ~/opt/omp-agent-workflow
 omp plugin link ~/opt/omp-agent-workflow/package
 omp plugin list                            # omp-agent-workflow@1.0.0
 ```
+
+Из клона тот же пакет собирает `npm pack`
+(`omp-agent-workflow-1.0.0.tgz`); шаги распаковки и `omp plugin link` те же.
 
 Каталог сохранить: `bin/omp-yoda` и остальные CLI запускаются из него.
 CLI работают и из копии под `node_modules` (`npm install`, установка из

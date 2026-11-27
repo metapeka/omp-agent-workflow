@@ -25,13 +25,19 @@
 
 ### Tarball (проверено на этом релизе)
 
+Пакет приложен к релизу как asset (83 файла,
+sha256 `aaed0a86d0b157b67ce5162c6273566dc8aaa999689dcff28b398ae72b495691`):
+
 ```bash
-npm pack                                  # omp-agent-workflow-1.0.0.tgz
+curl -LO https://github.com/metapeka/omp-agent-workflow/releases/download/v1.0.0/omp-agent-workflow-1.0.0.tgz
 mkdir -p ~/opt/omp-agent-workflow
 tar xzf omp-agent-workflow-1.0.0.tgz -C ~/opt/omp-agent-workflow
 omp plugin link ~/opt/omp-agent-workflow/package
 omp plugin list                            # omp-agent-workflow@1.0.0
 ```
+
+Из клона тот же пакет собирает `npm pack`
+(`omp-agent-workflow-1.0.0.tgz`).
 
 Перезапустить OMP после `link`. Распакованный каталог нужно сохранить:
 launcher и CLI запускаются оттуда —
