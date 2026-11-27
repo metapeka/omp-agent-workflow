@@ -15,11 +15,14 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Состояние
 
-Версия `1.0.0`; `main` = `origin/main` (`e25a61c`): коммиты релиза
-`0d54090` (упаковка), `1be278c` (CLI под `node_modules`) и `e25a61c`
-(пин коммитов, режимы) запушены. Тег и GitHub release `v1.0.0`
-опубликованы; CI на `e25a61c` зелёный (389 тестов, Node 22), Pages
-задеплоен. Открытых работ по коду нет. В `main`:
+Версия `1.0.0`; `main` = `origin/main` (`e600ab2`): запушены коммиты
+релиза (`0d54090` упаковка, `1be278c` CLI под `node_modules`, `e25a61c`
+пин и режимы), CI + release asset (`de0556d`), RU/ZH quick start
+(`c0fa6ea`), FAQ launcher (`fdedbe4`) и регистрация живой проверки
+(`e600ab2`). Тег и GitHub release `v1.0.0` опубликованы, tarball приложен
+asset'ом (sha256 `aaed0a86…b495691`); CI на `e600ab2` зелёный уже гейтом
+`npm run verify` (389 тестов, Node 22), Pages задеплоен. Открытых работ по
+коду нет. В `main`:
 
 - 1.0.0 релиз: версия `1.0.0` в `package.json` и
   `.omp-plugin/marketplace.json`; пакет — 83 файла, в него входят
