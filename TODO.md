@@ -3,15 +3,22 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-27. Версия: `0.7.4`.
+Дата: 2026-11-27. Версия: `1.0.0`.
 
 ## Сейчас
 
+- [x] 1.0.0 — релиз: английский README (+RU/ZH), установка из tarball
+      (`npm pack` → распаковка → `omp plugin link`), релизные заметки
+      `docs/release-notes-1.0.0.md`, запись `[1.0.0]` в `CHANGELOG.md`;
+      проверено: 386 тестов, Settings 15 ключей, `omp plugin doctor` ok,
+      extension load exit 0, `doctor --json` exit 0, `omp-yoda --version`
+      exit 0. Ограничение: CLI из `node_modules` не работает (Node).
 - [x] Remote/GitHub и CI на remote: публичный `metapeka/omp-agent-workflow`,
       release `v0.5.14`, CI green (2026-11-23).
 - [x] Английский README — часть 1.0; добавлены китайский и русский.
 - [x] npm/marketplace — не публикуем, только `omp plugin link` (D10,
       2026-11-26). Изменение — отдельным разрешением владельца.
+- [ ] GitHub release/tag `v1.0.0` и push 1.0.0 — по разрешению владельца.
 - [ ] Опционально: полный TUI E2E `/wrap` на Orca-managed worktree
       (confirm/cancel и branch retained); core Orca и TUI confirm/cancel
       уже проверены.

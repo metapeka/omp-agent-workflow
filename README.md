@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  200+ tests · 0 runtime deps · 4 modes · 14 settings · MIT
+  200+ tests · 0 runtime deps · 4 modes · 15 settings · MIT
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-192%2F192-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-386%2F386-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -211,6 +211,22 @@ bin/omp-yoda                  # supervisor + OMP in yoda-supervised
 OMP_WORKFLOW_MODE=yoda omp
 ```
 
+Prefer a tarball? `npm pack` builds a self-contained package — no registry,
+no build step, no `node_modules` required:
+
+```bash
+npm pack                                  # omp-agent-workflow-1.0.0.tgz
+mkdir -p ~/opt/omp-agent-workflow
+tar xzf omp-agent-workflow-1.0.0.tgz -C ~/opt/omp-agent-workflow
+omp plugin link ~/opt/omp-agent-workflow/package
+omp plugin list
+```
+
+Keep the unpacked directory: the launcher and the CLIs run from there
+(`~/opt/omp-agent-workflow/package/bin/omp-yoda`). The
+[release notes](docs/release-notes-1.0.0.md) list the verified steps and the
+one Node limitation (CLI scripts do not run from a `node_modules` tree).
+
 Prefer marketplace sources? The repository ships its own catalog
 ([`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)):
 
@@ -385,6 +401,7 @@ Without `--session` it takes the freshest live entry of `.omp-handoff-session.js
 | [`docs/decisions.md`](docs/decisions.md) | Accepted decisions and rejected alternatives |
 | [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | Copy-paste plan template |
 | [`CHANGELOG.md`](CHANGELOG.md) | Release history |
+| [`docs/release-notes-1.0.0.md`](docs/release-notes-1.0.0.md) | 1.0 release notes: install paths, compatibility, verified checks |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local checks and safety-sensitive areas |
 | [`HANDOFF.md`](HANDOFF.md) | Current project state and the SIGTERM incident analysis |
 | [`ROADMAP.md`](ROADMAP.md) / [`TODO.md`](TODO.md) | Direction and backlog |

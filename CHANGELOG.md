@@ -4,6 +4,49 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [1.0.0] — 2026-11-27
+
+First stable release: the plugin surface built in 0.5–0.7 is frozen as the
+1.0 contract. No runtime behaviour changes.
+
+### Added
+
+- **Tarball install.** `npm pack` produces a self-contained package
+  (extension entries, `lib/`, `bin/`, docs). Unpack it and run
+  `omp plugin link <dir>/package`; no registry and no build step
+  are involved. Release notes: [`docs/release-notes-1.0.0.md`](docs/release-notes-1.0.0.md).
+
+### Changed
+
+- The package now ships `.omp-plugin/marketplace.json` and
+  `CONTRIBUTING.md`: the catalog can be added from an unpacked tarball, and
+  the README links resolve inside the package.
+
+### Fixed
+
+- README EN/RU/ZH: 15 Settings keys (was 14 in the header line) and the
+  test badge no longer claims 192/192.
+- `docs/README.md`: the wiki version line no longer says 0.6.0.
+
+### Tests
+
+- `npm run verify` — 386 tests, typecheck, `check:names` (105 OMP builtins,
+  5 plugin commands, 0 collisions).
+- Tarball round trip on this machine: pack → extract → `omp plugin link`
+  → `omp plugin list` 1.0.0, Settings schema 15 keys, `omp plugin doctor`
+  ok, extension load exit 0, packaged `bin/omp-orchestrate doctor --json`
+  exit 0, `bin/omp-yoda --version` exit 0.
+
+### Known limitations
+
+- Node refuses type stripping for files under `node_modules`
+  (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so the CLI scripts
+  (`bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset`, and the
+  launcher calls that use them) must run from an unpacked directory —
+  `omp plugin link` of a clone or of a freshly extracted tarball. The
+  extension itself loads from `node_modules` through OMP's own loader and is
+  unaffected.
+
 ## [0.7.4] — 2026-11-27
 
 ### Added

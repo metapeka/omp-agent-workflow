@@ -35,7 +35,7 @@ hit rate, этот проект управляет контекстом и см�
 
 ## Текущее состояние
 
-- Версия `0.7.4`, локальный git-репозиторий, основная ветка `main`.
+- Версия `1.0.0`, локальный git-репозиторий, основная ветка `main`.
 - Вики проекта — `docs/README.md`; дизайн 0.5 утверждён 2026-11-22
   (`docs/orchestrator.md`), этапы A–D реализованы; 0.5.1 добавляет `/wrap`
   (`docs/wrap.md`); 0.5.2 — supervisor singleton; 0.5.3 — additive
@@ -94,6 +94,11 @@ hit rate, этот проект управляет контекстом и см�
   и страница сравнения `docs/comparison.md` (EN/RU/ZH); 0.7.4 — леджер
   субагентов: `costTotals` по файлам, `spend` в `status --json`, stop
   `budget-spend` по всему кусту.
+- 1.0.0 — релиз: установка из tarball проверена (распаковка +
+  `omp plugin link`, Settings 15 ключей, extension load, `plugin doctor`,
+  `doctor --json`, launcher), релизные заметки —
+  `docs/release-notes-1.0.0.md`; CLI-скрипты не запускаются из дерева
+  `node_modules` (Node не снимает типы) — ставить распаковкой или клоном.
 - Подключён как OMP-плагин: `omp plugin link /home/db1/projects/omp-agent-workflow`.
 - В Orca зарегистрирован как проект `omp-agent-workflow`; рабочие worktree —
   `~/orca/workspaces/omp-agent-workflow/<slug>`.

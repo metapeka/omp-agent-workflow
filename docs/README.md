@@ -4,11 +4,14 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `0.6.0` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `1.0.0` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
 `next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты + метрики
 preflight + flight recorder handoff + цена границы из `costs --json`).
+`1.0.0` — стабильный релиз: установка из tarball проверена (распаковка +
+`omp plugin link`, Settings и extension load), релизные заметки —
+[release-notes-1.0.0.md](release-notes-1.0.0.md); runtime не менялся.
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -115,6 +118,7 @@ costs --json` v1: медиана холодных ходов против тёп
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |
 | [research/market-landscape.md](research/market-landscape.md) | Рынок на 2026-11-23: PI, OMP и GitHub; ближайшие аналоги, чего нет ни у кого, выводы для позиционирования; переводы [RU](research/market-landscape.ru.md), [ZH](research/market-landscape.zh-CN.md) |
 | [comparison.md](comparison.md) | Страница сравнения для discovery: против встроенных средств OMP и ближайших плагинов, когда выбрать OAW и когда — соседа; переводы [RU](comparison.ru.md), [ZH](comparison.zh-CN.md) |
+| [release-notes-1.0.0.md](release-notes-1.0.0.md) | Релизные заметки 1.0: что зафиксировано, три пути установки, проверенные шаги и ограничение `node_modules` |
 | [research/model-modes.md](research/model-modes.md) | `[design]` Цены cline-pass, стоимость хода на 100k, замер handoff-payload (20 сессий), цена границы handoff, режим v1 и синтаксис `next-session:`; не контракт |
 | [research/workflow-presets.md](research/workflow-presets.md) | `[готово F1/F2]` Пресеты `routine/plan/review/budget`, `--preset` и `workflowPreset`, `next-session:` в launcher, метрики выбора, `--plan-yolo`; F3–F4 `[design]` |
 | [Pages](https://metapeka.github.io/omp-agent-workflow/) | HTML-разбор: prompt cache, сессии, где помогает плагин, инцидент 2026-11-24, пороги; EN + [RU](https://metapeka.github.io/omp-agent-workflow/ru/) + [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |

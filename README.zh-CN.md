@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  200+ 个测试 · 0 运行时依赖 · 4 种模式 · 14 项设置 · MIT
+  200+ 个测试 · 0 运行时依赖 · 4 种模式 · 15 项设置 · MIT
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-192%2F192-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-386%2F386-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -213,6 +213,22 @@ bin/omp-yoda                  # supervisor + OMP，yoda-supervised
 OMP_WORKFLOW_MODE=yoda omp
 ```
 
+也支持 tarball？`npm pack` 生成自包含包——无需注册表、无需构建、无需
+`node_modules`：
+
+```bash
+npm pack                                  # omp-agent-workflow-1.0.0.tgz
+mkdir -p ~/opt/omp-agent-workflow
+tar xzf omp-agent-workflow-1.0.0.tgz -C ~/opt/omp-agent-workflow
+omp plugin link ~/opt/omp-agent-workflow/package
+omp plugin list
+```
+
+请保留解压目录：launcher 与 CLI 都从那里运行
+（`~/opt/omp-agent-workflow/package/bin/omp-yoda`）。
+[发布说明](docs/release-notes-1.0.0.md) 列出了已验证步骤和唯一的 Node
+限制（CLI 脚本不能从 `node_modules` 目录运行）。
+
 更喜欢市场安装？仓库自带目录文件
 （[`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)）：
 
@@ -383,6 +399,7 @@ bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
 | [`docs/decisions.md`](docs/decisions.md) | 已接受决策与被拒方案 |
 | [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | 可复制的计划模板 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 发布历史 |
+| [`docs/release-notes-1.0.0.md`](docs/release-notes-1.0.0.md) | 1.0 发布说明：安装方式、兼容性、已验证的检查 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 本地检查与安全敏感区域 |
 | [`HANDOFF.md`](HANDOFF.md) | 当前项目状态与 SIGTERM 事故分析 |
 | [`ROADMAP.md`](ROADMAP.md) / [`TODO.md`](TODO.md) | 方向与待办 |

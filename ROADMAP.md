@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-27. Версия: `0.7.4`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-27. Версия: `1.0.0`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
@@ -8,9 +8,8 @@ preflight, flight recorder в запросе HANDOFF, табличный выв�
 действие `push` в меню, цена границы из `costs --json`, отчёт
 `omp-orchestrate economics` «до/после handoff» и его `--summary`
 (0.7.2), каталог маркетплейса OMP и страница сравнения (0.7.3) готовы;
-публичный
-GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace — по решению
-владельца.
+релиз 1.0.0 — установка из tarball проверена, релизные заметки написаны;
+публикация в npm/marketplace — по решению владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы
@@ -443,11 +442,25 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
 (не read-only, платно); `/compact` payback (ложная модель); TUI-дашборды;
 cross-harness handoff; PR-автоматизацию; уведомления.
 
-## Этап 1.0 — release
+## Этап 1.0 — release (готово, кроме публикации)
 
-- Английский README.
-- Установка из tarball.
-- npm/marketplace — только с явного разрешения владельца.
+- [x] Английский README; переведён также на русский и китайский.
+- [x] Установка из tarball: `npm pack` → распаковка →
+      `omp plugin link <dir>/package`. Проверено на 1.0.0: `omp plugin
+      list` — 1.0.0, Settings — 15 ключей, `omp plugin doctor --json` — ok,
+      extension load — exit 0, `bin/omp-orchestrate doctor --json` —
+      exit 0, `bin/omp-yoda --version` — exit 0, `bin/omp-preset
+      --preset plan --flags` печатает модель и thinking. В пакет входят
+      `.omp-plugin/marketplace.json` и `CONTRIBUTING.md` (79 файлов).
+- [x] Ограничение зафиксировано: Node 22 не снимает типы с файлов под
+      `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`) —
+      CLI-скрипты запускаются из распакованного каталога/клона, расширение
+      грузится и из `node_modules`.
+- [x] Релизные заметки — `docs/release-notes-1.0.0.md` + запись
+      `[1.0.0]` в `CHANGELOG.md`; README EN/RU/ZH получили раздел tarball
+      и ссылку на заметки.
+- [ ] npm/marketplace-публикация и GitHub release/tag `v1.0.0` — только с
+      явного разрешения владельца (D10).
 
 ## Назначение агентов
 

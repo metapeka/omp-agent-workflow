@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  200+ тестов · 0 runtime-зависимостей · 4 режима · 14 настроек · MIT
+  200+ тестов · 0 runtime-зависимостей · 4 режима · 15 настроек · MIT
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/metapeka/omp-agent-workflow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-192%2F192-brightgreen"></a>
+  <a href="test"><img alt="tests" src="https://img.shields.io/badge/tests-386%2F386-brightgreen"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/releases"><img alt="release" src="https://img.shields.io/github/v/release/metapeka/omp-agent-workflow?label=release&amp;color=blue"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
   <a href="https://github.com/metapeka/omp-agent-workflow/blob/main/package.json"><img alt="runtime dependencies" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen"></a>
@@ -213,6 +213,22 @@ bin/omp-yoda                  # supervisor + OMP, yoda-supervised
 OMP_WORKFLOW_MODE=yoda omp
 ```
 
+Нужен tarball? `npm pack` собирает самодостаточный пакет — без реестра,
+без сборки и без `node_modules`:
+
+```bash
+npm pack                                  # omp-agent-workflow-1.0.0.tgz
+mkdir -p ~/opt/omp-agent-workflow
+tar xzf omp-agent-workflow-1.0.0.tgz -C ~/opt/omp-agent-workflow
+omp plugin link ~/opt/omp-agent-workflow/package
+omp plugin list
+```
+
+Распакованный каталог нужно сохранить: launcher и CLI запускаются оттуда
+(`~/opt/omp-agent-workflow/package/bin/omp-yoda`). В
+[релизных заметках](docs/release-notes-1.0.0.md) — проверенные шаги и одно
+ограничение Node (CLI-скрипты не работают из дерева `node_modules`).
+
 Предпочитаете маркетплейс? Репозиторий поставляет собственный каталог
 ([`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)):
 
@@ -386,6 +402,7 @@ bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
 | [`docs/decisions.md`](docs/decisions.md) | Принятые решения и отклонённые альтернативы |
 | [`docs/AUTOPLAN.example.md`](docs/AUTOPLAN.example.md) | Шаблон плана для копирования |
 | [`CHANGELOG.md`](CHANGELOG.md) | История релизов |
+| [`docs/release-notes-1.0.0.md`](docs/release-notes-1.0.0.md) | Релизные заметки 1.0: пути установки, совместимость, проверенные шаги |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Локальные проверки и safety-зоны |
 | [`HANDOFF.md`](HANDOFF.md) | Текущее состояние и разбор SIGTERM-инцидента |
 | [`ROADMAP.md`](ROADMAP.md) / [`TODO.md`](TODO.md) | Направление и backlog |

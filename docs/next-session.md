@@ -1,13 +1,13 @@
-# Next session: OAW (`omp-agent-workflow`) 0.7.4
+# Next session: OAW (`omp-agent-workflow`) 1.0.0
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.7.4`
-  (0.7.0–0.7.4 влиты и запушены); `origin/main` — `cc0f522`, push выполнен
-  по разрешению владельца (D10).
+- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `1.0.0`
+  (0.7.0–0.7.4 влиты и запушены; 1.0.0 слит локально в `main`, push — по
+  разрешению владельца, D10).
 - Ветки 0.5.1–0.7.4 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
   `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`,
@@ -45,7 +45,10 @@
   `.omp-plugin/marketplace.json` `metapeka-omp` и страница сравнения
   `docs/comparison.md` EN/RU/ZH), 0.7.4 (леджер субагентов: `costTotals` по
   файлам, перезапись заменяет вклад, хвост прошлой сессии, `spend` в
-  `status --json`, stop `budget-spend` по всему кусту).
+  `status --json`, stop `budget-spend` по всему кусту), 1.0.0 (релиз:
+  tarball-установка проверена, релизные заметки
+  `docs/release-notes-1.0.0.md`, пакет без сборки, ограничение CLI под
+  `node_modules`).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
@@ -66,11 +69,13 @@
 
 ## Следующий этап
 
-1. **Этап 1.0** — следующий: установка из tarball (`npm pack`, линк из
-   распакованного каталога, Settings и extension load) и релизные заметки;
-   npm/marketplace-публикация — только с явного разрешения владельца. План
-   0.7 закрыт: 0.7.0–0.7.4 влиты, леджер субагентов считает весь куст.
-   Не парсить внутренности cache-monitor.
+1. **1.0.0 сделан** (2026-11-27): установка из tarball (`npm pack` →
+   распаковка → `omp plugin link <dir>/package`) проверена, релизные
+   заметки `docs/release-notes-1.0.0.md` написаны. Осталось решение
+   владельца: push 1.0.0, GitHub release/tag `v1.0.0`, npm/marketplace.
+   Известное ограничение: CLI-скрипты не запускаются из дерева
+   `node_modules` (Node не снимает типы); расширение грузится. Не парсить
+   внутренности cache-monitor.
 2. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
 3. Публикация остаётся локальной (`omp plugin link`; D10).
 4. Hub старта сессии и `brief` — личный runbook, вне продукта (joint plan
@@ -105,7 +110,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.7.4. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 1.0.0. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11–D16).
 > Settings → Plugins — основной способ настройки, env — fallback.
 > `/handoff-preflight` advisory. `next-session:` применяет только launcher
@@ -117,4 +122,5 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 > внутренности cache-monitor.
 > Spend-триггер `handoffAtSpendUsd` — измеренные деньги, offsets без
 > полного перечитывания JSONL.
-> Публикация — по разрешению владельца (D10); 0.6.0 запушен.
+> Публикация — по разрешению владельца (D10); 1.0.0 слит в `main` локально,
+> push ждёт решения.

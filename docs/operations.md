@@ -5,10 +5,28 @@
 
 ## Установка и проверка
 
+Из клона:
+
 ```bash
 omp plugin link /home/db1/projects/omp-agent-workflow
 omp plugin list
 ```
+
+Из tarball (без реестра и сборки):
+
+```bash
+npm pack                                   # omp-agent-workflow-1.0.0.tgz
+mkdir -p ~/opt/omp-agent-workflow
+tar xzf omp-agent-workflow-1.0.0.tgz -C ~/opt/omp-agent-workflow
+omp plugin link ~/opt/omp-agent-workflow/package
+omp plugin list                            # omp-agent-workflow@1.0.0
+```
+
+Каталог сохранить: `bin/omp-yoda` и остальные CLI запускаются из него.
+Ставить под `node_modules` (`npm install`) нельзя для CLI: Node 22 не
+снимает типы с файлов под `node_modules`
+(`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`); расширение при этом
+загружается. Подробности — [release-notes-1.0.0.md](release-notes-1.0.0.md).
 
 После установки перезапустить OMP. Ставить одним способом: link **или**
 копия в `~/.omp/agent/extensions/`, не оба.

@@ -8,16 +8,28 @@ OAW — короткое имя продукта; `workflow` — только е
 
 Довести OAW до релиза 1.0: context guard, ручной и автоматический handoff,
 оркестратор задач и экономика сессий без обязательных внешних сервисов.
-План 0.7 закрыт (0.7.0–0.7.4 в `main`); следующий этап — 1.0: установка из
-tarball и релизные заметки (`ROADMAP.md`).
+1.0.0 собран: установка из tarball проверена, релизные заметки написаны
+(`docs/release-notes-1.0.0.md`). Осталось решение владельца о публикации
+(push, GitHub release `v1.0.0`, npm/marketplace — D10).
 
 ## Состояние
 
-`main` = `origin/main`, версия `0.7.4`; последний код-коммит — `cc0f522`,
-после него только docs, и они запушены. CI зелёный на `cc0f522` (0.7.4) и на
-docs-коммитах после него; Pages задеплоен. Открытых работ нет: план 0.7
-закрыт, следующая задача — этап 1.0. В `main`:
+Версия `1.0.0`; в `main` слит локальный ff-only коммит релиза поверх
+`origin/main` (`dae9e9d`), push не выполнялся — ждёт разрешения владельца.
+Последний запушенный код — `cc0f522` (0.7.4); CI зелёный на нём и на docs
+после него, Pages задеплоен. Открытых работ по коду нет. В `main`:
 
+- 1.0.0 релиз: версия `1.0.0` в `package.json` и
+  `.omp-plugin/marketplace.json`; пакет — 79 файлов, в него входят
+  `.omp-plugin/marketplace.json` и `CONTRIBUTING.md`; установка из tarball
+  проверена (`npm pack` → распаковка → `omp plugin link <dir>/package`:
+  `omp plugin list` 1.0.0, Settings 15 ключей, `omp plugin doctor` ok,
+  extension load exit 0, `doctor --json` exit 0 — 10 pass/2 warn/4 skip,
+  `omp-yoda --version` exit 0, `omp-preset --preset plan --flags` — модель
+  и thinking, `next-session`/supervisor — exit 0); релизные заметки
+  `docs/release-notes-1.0.0.md`, запись `[1.0.0]` в `CHANGELOG.md`, раздел
+  tarball и ссылка на заметки в README EN/RU/ZH; README-факты исправлены
+  (15 настроек, badge 386/386), вики-версия 1.0.0; runtime не менялся;
 - 0.7.4 леджер субагентов: `STATE.budgets.costTotals` — вклад каждого
   session-файла (root, вложенные subagent-сессии, сессии после handoff),
   `spendUsd` = Σ вкладов; перезапись на месте (компакция) заменяет вклад
@@ -93,6 +105,7 @@ GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
 | Economics summary 0.7.2 | `economics --summary`: `summarizeEconomics()` в `lib/handoff-economics.ts` — `sessions`/`handoffs`/`measuredSessions`/`boundaries`/`turns` (`null`, если не измерено ничего), измеренный `spendUsd` (сумма цен ходов прочитанных сессий), `medianTurnUsd`, `avgBoundaryUsd` и `hitTrend` (`up\|down\|flat` при пороге 0.5 pp включительно); аддитивное `summary` в JSON, блок `Сводка:` с отношением `BORDER` к обычному ходу; без флага отчёт прежний, частичное покрытие — note `N из M` |
 | Discovery 0.7.3 | `.omp-plugin/marketplace.json`: каталог `metapeka-omp`, один плагин `source: "./"`, версия/имя/домашняя страница; `omp plugin marketplace add` парсит каталог, dry-run install резолвит `omp-agent-workflow@metapeka-omp` (упирается только в уже linked имя); `test/marketplace.test.mjs` (5) держит версию равной `package.json`. `docs/comparison.md` + RU/ZH: встроенные средства OMP, ближайшие плагины, «что выбрать», самопроверка, установка |
 | Ledger 0.7.4 | `lib/orchestrator/ledger.ts`: `projectBudgets` (дельта прибавляется, `restarted` заменяет вклад файла) и `ledgerSnapshot`; `cost.ts` отдаёт `entries[]{kind,readable,fullTotalUsd}`; `state.budgets.costTotals` — вклад по файлам, старый state читается как пустая карта; `syncSession` дочитывает хвост прошлой сессии; `status --json` → аддитивный `spend`, preflight `run:` — та же проекция; `start`/`finish` → stop `budget-spend`; тесты `test/ledger.test.mjs` (5) + `orchestrator` (+5) + контракт |
+| Release 1.0.0 | Пакет без сборки и runtime-зависимостей (79 файлов: extension, `lib/`, `bin/`, docs, `.omp-plugin/`, `CONTRIBUTING.md`); установка из tarball проверена — `omp plugin link` распакованного каталога, Settings 15 ключей, `omp plugin doctor` ok, extension load exit 0, packaged `doctor --json` exit 0, launcher и preset — exit 0; релизные заметки `docs/release-notes-1.0.0.md`; CLI-скрипты не запускаются из дерева `node_modules` (Node не снимает типы) — documented |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -411,15 +424,30 @@ omp plugin marketplace add "$PWD" --json && \
   omp plugin marketplace remove metapeka-omp --json   # каталог парсится, конфиг возвращён
 curl -sS -o /dev/null -w '%{http_code}\n' \
   https://metapeka.github.io/omp-agent-workflow/       # 200
+
+# tarball 1.0.0 (проверено 2026-11-27)
+npm pack --pack-destination /tmp/oaw-rel1               # 79 файлов
+mkdir -p /tmp/oaw-accept && tar xzf /tmp/oaw-rel1/omp-agent-workflow-1.0.0.tgz -C /tmp/oaw-accept
+omp plugin link /tmp/oaw-accept/package --json
+omp plugin list --json | jq '.npm[]|select(.name=="omp-agent-workflow")|.version'   # 1.0.0
+omp plugin config list omp-agent-workflow --json | jq '.schema|length'  # 15
+omp plugin doctor --json | jq '.[]|select(.name=="plugin:omp-agent-workflow")'
+omp --no-extensions -e /tmp/oaw-accept/package/index.ts \
+  -e /tmp/oaw-accept/package/orchestrator.ts --no-session --mode json \
+  -p 'Reply with exactly: OK'                          # exit 0
+node --experimental-strip-types --disable-warning=ExperimentalWarning \
+  /tmp/oaw-accept/package/bin/omp-orchestrate doctor --json | jq .ok   # true
+/tmp/oaw-accept/package/bin/omp-yoda --version          # exit 0
+/tmp/oaw-accept/package/bin/omp-preset --preset plan --flags
+omp plugin link /home/db1/projects/omp-agent-workflow --json  # вернуть боевую ссылку
 ```
 
 ## Следующие шаги
 
-1. Этап 1.0 — следующий: установка из tarball (`npm pack`, линк из
-   распакованного каталога, проверка Settings и extension load) и релизные
-   заметки; npm/marketplace-публикация — только с явного разрешения
-   владельца. План 0.7 закрыт: 0.7.0–0.7.4 влиты, леджер субагентов
-   считает весь куст.
+1. 1.0.0 собран и слит в `main` локально: установка из tarball проверена,
+   релизные заметки `docs/release-notes-1.0.0.md` написаны. Осталось
+   решение владельца: push 1.0.0, GitHub release/tag `v1.0.0`,
+   npm/marketplace (D10). Не парсить внутренности cache-monitor.
 2. Проверить 0.7.1 в TUI: `omp plugin list`, `/handoff-preflight` на этом
    файле (строки `HANDOFF.md: разделы 6/6`, отсутствие ложных warn по
    синонимам), state без раздела — warn по строке и фикс в «вручную»,
@@ -446,6 +474,13 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Риски
 
+- Tarball/marketplace-копия под `node_modules`: Node 22 не снимает типы с
+  файлов там (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), поэтому
+  `bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset` и вызовы
+  launcher'а к ним работают только из распакованного каталога/клона
+  (`omp plugin link`); расширение из `node_modules` грузится (проверено).
+  Исправление — только сборка JS для bin (prepack) — отдельное решение, в
+  1.0 не делалось; ограничение записано в release notes и runbook.
 - Установленный пакет без резолвимого OMP loader → Settings игнорируются,
   работает env fallback.
 - `costs --json` — отдельный CLI соседнего продукта: `omp plugin link` bin в
