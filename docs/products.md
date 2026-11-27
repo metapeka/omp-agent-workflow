@@ -24,7 +24,7 @@
 |---|---|---|---|---|
 | OAW | `omp-agent-workflow` | context guard, handoff, supervisor, оркестратор задач, CLI JSON | 0.7.1 | `origin` GitHub |
 | cache-monitor | `omp-cache-monitor` | hit rate кэша, `/cache-monitor`, `costs --json` | 0.11.0 | `origin` GitHub |
-| usage | `omp-usage` | CLI `usage-metrics`, Orca-панель `local.usage-panel` | 0.2.0 | локальный, origin нет |
+| usage | `omp-usage` | CLI `usage-metrics`, Orca-панель `local.usage-panel` (Usage / Project skills / Library / Cost) | 0.3.0 | локальный, origin нет |
 | skill-library | `omp-skill-library` | CLI v1 (`status/doctor/link/scan/adopt/relink`) + opt-in `session_start` hook | 0.3.0 | локальный, origin нет |
 
 Сессии: `usage-*` — usage, `skill-*` — skill-library; у OAW и cache-monitor
@@ -39,7 +39,7 @@
 | `usage-metrics --json` | usage | панель `local.usage-panel` | 1 |
 | `usage-metrics inventory --json` | usage | панель | 2 |
 | `usage-metrics cost --json` | usage (`omp stats -j`) | панель | 1 |
-| `skill-library status/doctor --json` | skill-library | панель omp-usage (`managed`), скрипты | 1 |
+| `skill-library status/doctor --json` | skill-library | панель omp-usage (`managed`, вкладка Library), скрипты | 1 |
 
 Правила: изменение аддитивное; ломающее — новая `schemaVersion` и правка
 консьюмера в том же коммите у владельца; консьюмер проверяет
