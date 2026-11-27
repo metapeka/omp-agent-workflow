@@ -34,6 +34,8 @@ export interface SessionMetrics {
 	costUsd: number;
 	/** Последний ответ модели: reasoning share считается по нему. */
 	last: { output: number; reasoning: number } | null;
+	/** Timestamp последней компакции в этом файле (ISO) или `null`. */
+	lastCompactionAt: string | null;
 }
 
 function emptyMetrics(): SessionMetrics {
@@ -47,6 +49,7 @@ function emptyMetrics(): SessionMetrics {
 		reasoning: 0,
 		costUsd: 0,
 		last: null,
+		lastCompactionAt: null,
 	};
 }
 
@@ -123,6 +126,24 @@ function usageOfLine(line: string): Record<string, unknown> | null {
 }
 
 /**
+ * Запись о компакции в session JSONL: либо отдельный тип, либо служебный
+ * `model_usage` с purpose `compaction…`. Общий матчер для экономики и
+ * quality gate, чтобы детектор не разъезжался.
+ */
+export function isCompactionRecord(record: Record<string, unknown>): boolean {
+	const type = record["type"];
+	const customType = record["customType"];
+	if (type === "compaction") return true;
+	if (customType === "compaction") return true;
+	const purpose = record["purpose"];
+	return (
+		type === "model_usage" &&
+		typeof purpose === "string" &&
+		purpose.startsWith("compaction")
+	);
+}
+
+/**
  * Суммарные метрики сессии. `sessionFile === null` или файла нет —
  * `available: false`; пустая сессия — `available: true`, `requests: 0`.
  */
@@ -131,6 +152,24 @@ export function readSessionMetrics(sessionFile: string | null): SessionMetrics {
 	if (!sessionFile || !existsSync(sessionFile)) return metrics;
 	metrics.available = true;
 	for (const line of sessionLines(sessionFile)) {
+		// Компакция — до быстрого фильтра usage: запись может не иметь usage.
+		if (line.includes("compaction")) {
+			let record: Record<string, unknown> | null = null;
+			try {
+				record = recordOf(JSON.parse(line));
+			} catch {
+				// битая строка не рушит метрики
+			}
+			if (record && isCompactionRecord(record)) {
+				const at = record["timestamp"];
+				if (
+					typeof at === "string" &&
+					(metrics.lastCompactionAt === null || at > metrics.lastCompactionAt)
+				) {
+					metrics.lastCompactionAt = at;
+				}
+			}
+		}
 		const usage = usageOfLine(line);
 		if (!usage) continue;
 		const cost = recordOf(usage.cost);

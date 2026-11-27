@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-27. Версия: `0.6.0`.
+Дата: 2026-11-27. Версия: `0.7.1`.
 
 ## Сейчас
 
@@ -24,7 +24,7 @@
       env `OMP_HANDOFF_AT_USD`, `0`/`off` = выкл; триггер по фактическому
       `usage.cost.total` (инкрементальные offsets), cooldown/supervisor/
       `⚠ HANDOFF`, marker `reason: spend`; тесты, docs.
-- [ ] 0.7.1 quality gate: ключевые секции `HANDOFF.md` и компакция после
+- [x] 0.7.1 quality gate: ключевые секции `HANDOFF.md` и компакция после
       обновления state — advisory-warning в preflight.
 - [ ] 0.7.2 `economics --summary`: агрегат цепочки, средняя цена границы,
       тренд hit.

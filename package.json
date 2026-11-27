@@ -1,6 +1,6 @@
 {
   "name": "omp-agent-workflow",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "description": "Deterministic context guard, session handoff, and worktree orchestration for OMP (oh-my-pi)",
   "keywords": [

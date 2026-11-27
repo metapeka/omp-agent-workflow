@@ -16,7 +16,7 @@ import { basename, resolve } from "node:path";
 import type { CostsTurn } from "./costs-client.ts";
 import { readCostsSummary, resolveCostsCommand } from "./costs-client.ts";
 import { parseSessionInfo, pidAlive } from "./session-info.ts";
-import { sessionLines } from "./session-metrics.ts";
+import { isCompactionRecord, sessionLines } from "./session-metrics.ts";
 
 /** Лимит цепочки: защита от огромного/циклического генеалогического дерева. */
 export const MAX_CHAIN_NODES = 20;
@@ -113,19 +113,6 @@ function usageCostOf(record: Record<string, unknown>): number | null {
 	const cost = recordOf(usage["cost"]);
 	if (!cost) return null;
 	return numberOrNull(cost["total"]);
-}
-
-function isCompactionRecord(record: Record<string, unknown>): boolean {
-	const type = record["type"];
-	const customType = record["customType"];
-	if (type === "compaction") return true;
-	if (customType === "compaction") return true;
-	const purpose = record["purpose"];
-	return (
-		type === "model_usage" &&
-		typeof purpose === "string" &&
-		purpose.startsWith("compaction")
-	);
 }
 
 /**

@@ -2144,6 +2144,28 @@ describe("/handoff-preflight", () => {
 		}
 	});
 
+	it("offers the quality-gate fix as a manual step", async () => {
+		const { dir } = preflightRepo({
+			"HANDOFF.md": "# Цель\n## Состояние\n## Файлы\n## Проверки\n## Следующие шаги\n",
+			"index.ts": "export {};\n",
+		});
+		try {
+			const { commands } = install();
+			const { askDialog } = actionDialog();
+			const v = view(40, { cwd: dir, askDialog });
+			await command(commands, "handoff-preflight", v.ctx);
+
+			assert.match(
+				v.notes[0].text,
+				/HANDOFF\.md\s+⚠\s+нет раздела «решения»/,
+			);
+			assert.match(v.notes.at(-1).text, /• дописать в HANDOFF\.md: решения/);
+			assert.match(v.notes.at(-1).text, /preflight: OK/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("offers commit for a dirty worktree", async () => {
 		const { dir } = preflightRepo({
 			"HANDOFF.md": "# state\n",

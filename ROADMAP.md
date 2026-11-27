@@ -411,7 +411,7 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
       offsets, без полного перечитывания JSONL каждый ход); тот же
       cooldown, supervisor и `⚠ HANDOFF`; причина в marker — `spend`.
       Деньги только измеренные, не оценка по прайсу.
-- [ ] **0.7.1 Quality gate в preflight.** Advisory-warning, если в
+- [x] **0.7.1 Quality gate в preflight.** Advisory-warning, если в
       `HANDOFF.md` нет ключевых секций (цель/состояние/решения/файлы/
       проверки/дальше) или после обновления state была компакция. Ничего
       не блокирует, кастомные форматы не ломаются.

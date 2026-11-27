@@ -59,6 +59,12 @@ import {
 	lastReasoningShare,
 	readSessionMetrics,
 } from "./lib/session-metrics.ts";
+import type { SessionMetrics } from "./lib/session-metrics.ts";
+import {
+	scanStateSections,
+	STATE_SECTION_LABELS,
+	STATE_SECTION_ORDER,
+} from "./lib/state-sections.ts";
 import { readCostsSummary } from "./lib/costs-client.ts";
 import { readSessionCost } from "./lib/orchestrator/cost.ts";
 
@@ -185,6 +191,8 @@ export interface PreflightCheck {
 	status: PreflightStatus;
 	id?: string;
 	text: string;
+	/** Ручное действие, которое закрывает находку; попадает в блок «вручную». */
+	fix?: string;
 }
 
 export interface PreflightReport {
@@ -272,12 +280,72 @@ function stateSizeCheck(
 }
 
 /**
+ * Quality gate 0.7.1: ключевые разделы state. Только advisory-warning:
+ * кастомные форматы не ломаются, вердикт не меняется ни на одной находке.
+ * Нестандартный формат без единого узнаваемого заголовка — одна строка,
+ * иначе — строка на каждый отсутствующий раздел.
+ */
+function stateSectionsChecks(stateFile: string, text: string): PreflightCheck[] {
+	const { found, missing } = scanStateSections(text);
+	if (found.length === 0) {
+		const names = STATE_SECTION_ORDER.map((key) => STATE_SECTION_LABELS[key]);
+		return [
+			{
+				status: "warn",
+				id: "state-sections",
+				text: `${stateFile}: нестандартный формат — нет узнаваемых разделов`,
+				fix: `сверить ${stateFile} с шаблоном: ${names.join(", ")}`,
+			},
+		];
+	}
+	if (missing.length === 0) {
+		const total = STATE_SECTION_ORDER.length;
+		return [
+			{
+				status: "pass",
+				id: "state-sections",
+				text: `${stateFile}: разделы ${total}/${total}`,
+			},
+		];
+	}
+	const fix = `дописать в ${stateFile}: ${missing
+		.map((key) => STATE_SECTION_LABELS[key])
+		.join(", ")}`;
+	return missing.map((key) => ({
+		status: "warn" as const,
+		id: "state-sections",
+		text: `${stateFile}: нет раздела «${STATE_SECTION_LABELS[key]}» — допиши перед handoff`,
+		fix,
+	}));
+}
+
+/**
+ * Компакция после последней записи state: детали разговора могли не попасть
+ * в `HANDOFF.md`. Если state перезаписан после компакции — предупреждения нет.
+ */
+function compactionCheck(
+	stateFile: string,
+	stateMtimeMs: number,
+	metrics: SessionMetrics,
+): PreflightCheck | null {
+	const at = metrics.lastCompactionAt;
+	if (!at) return null;
+	const time = Date.parse(at);
+	if (!Number.isFinite(time) || stateMtimeMs > time) return null;
+	return {
+		status: "warn",
+		id: "state-compaction",
+		text: `${stateFile}: компакция после state — детали могли потеряться`,
+		fix: `сверить ${stateFile} с сессией после компакции и дописать потерянное`,
+	};
+}
+
+/**
  * Метрики сессии из JSONL: cache hit, reasoning share последнего хода,
  * spend. Только измеренные величины; цена границы — вне этого модуля.
  * Read-only, файла нет — строк нет.
  */
-function sessionChecks(sessionFile: string | null): PreflightCheck[] {
-	const metrics = readSessionMetrics(sessionFile);
+function sessionChecks(metrics: SessionMetrics): PreflightCheck[] {
 	if (!metrics.available || metrics.requests === 0) return [];
 	const checks: PreflightCheck[] = [];
 
@@ -467,15 +535,23 @@ export function runPreflight(
 	stateFile = STATE_FILE,
 ): PreflightReport {
 	const checks: PreflightCheck[] = [];
-	const add = (status: PreflightStatus, text: string, id?: string): void => {
-		checks.push(id ? { status, id, text } : { status, text });
+	const add = (
+		status: PreflightStatus,
+		text: string,
+		id?: string,
+		fix?: string,
+	): void => {
+		checks.push({ status, text, id, fix });
 	};
 
 	const statePath = resolve(cwd, stateFile);
+	const metrics = readSessionMetrics(sessionFile);
 	let stateText: string | null = null;
+	let stateMtimeMs: number | null = null;
 	if (existsSync(statePath)) {
 		try {
 			stateText = readFileSync(statePath, "utf8");
+			stateMtimeMs = statSync(statePath).mtimeMs;
 		} catch {
 			stateText = null;
 		}
@@ -483,13 +559,22 @@ export function runPreflight(
 	if (stateText !== null) {
 		const size = stateSizeCheck(stateFile, stateText.length);
 		add(size.status, size.text, size.id);
+		for (const check of stateSectionsChecks(stateFile, stateText)) {
+			add(check.status, check.text, check.id, check.fix);
+		}
+		if (stateMtimeMs !== null) {
+			const compaction = compactionCheck(stateFile, stateMtimeMs, metrics);
+			if (compaction) {
+				add(compaction.status, compaction.text, compaction.id, compaction.fix);
+			}
+		}
 		const advisory = advisoryCheck(stateText);
 		if (advisory) add(advisory.status, advisory.text, "next-session");
 	} else {
 		add("fail", `${stateFile}: нет — сначала обнови state`, "state");
 	}
 
-	for (const check of sessionChecks(sessionFile)) checks.push(check);
+	for (const check of sessionChecks(metrics)) checks.push(check);
 	for (const check of costsChecks(sessionFile)) checks.push(check);
 	for (const check of orchestratorChecks(cwd)) checks.push(check);
 
@@ -896,6 +981,22 @@ const MANUAL_HANDOFF_STEPS = [
 	"удалить worktree после выхода",
 ];
 
+/** Находки quality gate без автоматического действия — ручным шагом. */
+function manualHandoffSteps(report: PreflightReport): string[] {
+	const fixes = [
+		...new Set(
+			report.checks
+				.filter((check) => check.status !== "pass" && check.fix)
+				.map((check) => check.fix as string),
+		),
+	];
+	if (fixes.length === 0) return MANUAL_HANDOFF_STEPS;
+	const steps = [...MANUAL_HANDOFF_STEPS];
+	const anchor = steps.indexOf("обновить HANDOFF.md под следующую сессию");
+	steps.splice(anchor < 0 ? steps.length : anchor, 0, ...fixes);
+	return steps;
+}
+
 /** Оставляет в меню только то, что действительно требует действия. */
 function actionsForPreflight(report: PreflightReport): HandoffAction[] {
 	const byId = new Map<string, PreflightCheck>();
@@ -976,7 +1077,7 @@ function formatPreflightResult(
 		[
 			DIVIDER,
 			"PREFLIGHT · вручную/агентом",
-			...MANUAL_HANDOFF_STEPS.map((step) => `• ${step}`),
+			...manualHandoffSteps(report).map((step) => `• ${step}`),
 		].join("\n"),
 		formatPreflight(report, "итог", options),
 	];

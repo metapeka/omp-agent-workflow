@@ -4,6 +4,30 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.7.1] — 2026-11-27
+
+### Added
+
+- **Quality gate in `/handoff-preflight`.** Six canonical `HANDOFF.md`
+  sections from the README protocol (`goal`, `state`, `decisions`, `files`,
+  `checks`, `next step`) are matched by ATX headings and synonyms, including
+  the English template; headings inside fenced code are ignored. A complete
+  state prints one `разделы 6/6` pass row, every missing section prints its
+  own `warn` row, and a custom format without a single recognised heading
+  prints one `нестандартный формат` row instead of six.
+- **Compaction-after-state warning.** `readSessionMetrics` now records
+  `lastCompactionAt` in the same JSONL pass; preflight warns when the latest
+  compaction in the current session is newer than the `HANDOFF.md` mtime, and
+  stays quiet once the state is rewritten after it.
+- Quality-gate findings never change `ready`; each one carries a `fix` string
+  that preflight prints as a separate step in the `вручную/агентом` block, so
+  the finding is paired with a concrete action and remains skippable.
+
+### Changed
+
+- The compaction-record matcher is now exported by `lib/session-metrics.ts`
+  and reused by `lib/handoff-economics.ts` instead of being duplicated.
+
 ## [0.7.0] — 2026-11-27
 
 ### Added

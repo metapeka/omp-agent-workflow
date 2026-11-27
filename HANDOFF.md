@@ -2,80 +2,32 @@
 
 Дата: 2026-11-27. Основной репозиторий: `~/projects/omp-agent-workflow`.
 OAW — короткое имя продукта; `workflow` — только его режимы и ключи
-(`workflowMode`, статус-ключ).
-`main`, версия `0.7.0`; последний код — spend-aware handoff: Settings
-`handoffAtSpendUsd` (15-й ключ) и env `OMP_HANDOFF_AT_USD`, триггер по
-измеренному `usage.cost.total` с инкрементальными offsets, marker
-`reason: "spend"` (см. CHANGELOG 0.7.0); влито `3ba713d`, запушено, CI
-зелёный.
-До него в `main` — read-only отчёт `omp-orchestrate economics`
-«до/после handoff» (см. CHANGELOG 0.6.1) и цена границы handoff в preflight
-из `omp-cache-monitor costs --json` (CLI нет — graceful skip, см. CHANGELOG
-0.6.0).
-Ветки 0.5.1–0.7.0 (включая `feat/doctor`, `feat/oaw-name`,
-`feat/execution`, `feat/contracts`, `feat/state-contracts`, `feat/presets`,
-`feat/handoff-flight-recorder`, `feat/preflight-output`,
-`feat/preflight-push`, `feat/handoff-economics`, `feat/spend-handoff`)
-слиты ff-only, worktrees удалены. GitHub:
-`metapeka/omp-agent-workflow`
-(public), тег и release `v0.5.14`, CI на Node 22 зелёный. Вики —
-`docs/README.md`; backlog — `TODO.md`.
+(`workflowMode`, статус-ключ). Вики — `docs/README.md`; backlog — `TODO.md`.
 
-Сессия 2026-11-26 (вторая) закрыта: F3-метрики preflight проверены
-(`npm run verify`, `check:names`, extension load) и закоммичены `4eeff3d`;
-review-находки исправлены (spend при нулевом output, `STATE.plan.path`,
-`formatTokens`, UTF-8 тест); найден и исправлен боевой дефект preflight
-`commit`: в репозитории, где `.omp-handoff-*` в `.gitignore` (GridSnap),
-явный exclude-pathspec ронял `git add` — теперь add-all + снятие
-runtime-путей с индекса. Дерево чистое после коммитов. Публикация
-остаётся локальной (D10); запрос `costs --json` для 0.6 сформулирован и
-ждёт cache-monitor (в 0.10.1 CLI нет — только `/cache-monitor costs` в TUI).
+## Цель
 
-`main` совпадал с `origin/main` (`cb00d0d`) до коммитов 0.5.24; push 0.5.24
-в `origin/main` сделан с явного разрешения владельца (D10: по умолчанию
-публикация локальная).
+Довести OAW до релиза 1.0: context guard, ручной и автоматический handoff,
+оркестратор задач и экономика сессий без обязательных внешних сервисов.
+Следующий этап — 0.7 (`ROADMAP.md`), после него 1.0.
 
-Сессия 2026-11-26 (третья): добавлен flight recorder — в текст запроса
-HANDOFF попадают ветка, короткий HEAD и до 6 незакоммиченных путей
-(read-only git, runtime-файлы исключены, бюджет 300 символов); handoff
-по-прежнему не трогает git и дерево. Карта защит и точек в цикле —
-`docs/guards.md`; обновлены вики, `handoff-flow.md`, FAQ, contracts,
-README EN/RU/ZH. Проверено `npm run verify`.
+## Состояние
 
-0.5.25: вывод preflight — таблица `GROUP  ST  DETAIL` с расчётной шириной и
-переносом (широкий терминал) и группы с иконками + вердикт сверху (уже 70
-колонок); глифы из `theme.symbol` (`✔ ⦸ ✘`, ascii `[+]`). Push 0.5.24
-сделан (`8326f1c`), коммиты 0.5.25 — локальные, до разрешения.
+`main`, версия `0.7.1`, влито и запушено, CI на Node 22 зелёный. В `main`:
 
-0.5.26: preflight предлагает действие `push`, когда у ветки есть upstream и
-незапушенные коммиты; `git push` без `--force` (timeout 120 с), только по
-выбору в меню; отказ remote не двигает ref; без upstream действия нет.
-Упавшие проверки или commit пропускают push. Коммиты 0.5.25–0.5.26
-запушены в `origin/main` (`667e72d`) с явного разрешения владельца; CI
-зелёный.
+- 0.7.1 quality gate в `/handoff-preflight`: шесть ключевых разделов
+  `HANDOFF.md` (цель/состояние/решения/файлы/проверки/дальше) и компакция
+  после state — advisory-warning, фикс строкой в блоке «вручную»
+  (`docs/guards.md`);
+- 0.7.0 spend-aware handoff: `handoffAtSpendUsd` (15-й ключ) и
+  `OMP_HANDOFF_AT_USD`, маркер `reason: "spend"`; P1 ревью (OMP переписывает
+  JSONL на месте после компакции) закрыт `CostRead.restarted`;
+- 0.6.x: цена границы handoff из `omp-cache-monitor costs --json` v1 и
+  read-only `omp-orchestrate economics` (`CHANGELOG.md`).
 
-0.6.0: `/handoff-preflight` показывает цену границы из
-`omp-cache-monitor costs --json` (schemaVersion 1) — медиана холодных ходов
-(`cacheRead == 0` после первого) против тёплых (`cacheRead > 0`) и разрез по
-моделям при >1 модели. Значения — фактический `usage.cost.total`, не оценка
-по прайсу. CLI ищется по `OMP_CACHE_MONITOR_CLI` или в `PATH`; нет/упал/
-timeout 2 с/другая схема — строк нет, preflight не меняется. В cache-monitor
-0.11.0 CLI влит в его `main` (`5c9eeb8`), ветка `feat/costs-json`
-сохранена; OAW-изменения — `lib/costs-client.ts`, `test/costs-client.test.mjs`.
-
-2026-11-27: push 0.6.0 (`ecc3a01`) в `origin/main` сделан с разрешения
-владельца, CI зелёный. cache-monitor 0.11.0 опубликован
-([v0.11.0](https://github.com/metapeka/omp-cache-monitor/releases/tag/v0.11.0),
-tag/release, CI зелёный); bin `omp-cache-monitor` — симлинк в
-`~/.local/bin`, preflight находит его через `PATH` без env.
-
-0.7.0 (`3ba713d`): spend-aware handoff влит в `main` и запушен, CI зелёный.
-Ревью нашло P1 — после компакции OMP переписывает JSONL на месте, старые
-offsets давали двойной счёт; исправлено (`CostRead.restarted`, пересчёт
-total при перезаписи и на `session_compact`). 352 теста, typecheck, 15
-ключей Settings, extension load exit 0. Worktree удалён, ветка
-`feat/spend-handoff` сохранена. Дальше по плану 0.7 — quality gate,
-`economics --summary`, discovery, ledger субагентов (`ROADMAP.md`).
+GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
+Ветки 0.5.1–0.7.1 слиты ff-only, worktrees удалены, ветки `feat/*`
+сохранены. Публикация по умолчанию локальная (D10); push — только с явного
+разрешения владельца.
 
 ## Что готово
 
@@ -99,6 +51,7 @@ total при перезаписи и на `session_compact`). 352 теста, ty
 | Status 0.5.13 | `SUP OFF` и `T2 verify` в том же ключе |
 | Economics 0.6.1 | `omp-orchestrate economics`: цепочка `parentSession`, граница только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1; ветка `feat/handoff-economics` |
 | Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `restarted`/`session_compact` пересчитывают total, не сбрасывая spend; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); влито `3ba713d` |
+| Quality gate 0.7.1 | `lib/state-sections.ts`: шесть ключевых разделов `HANDOFF.md` по заголовкам и синонимам (EN/RU), код-блоки не в счёт; отсутствующий раздел — отдельный warn, нестандартный формат — одна строка; `lastCompactionAt` из того же JSONL-прохода, warn если компакция позже mtime state; фикс — строкой в «вручную»; `ready` не меняется |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -357,7 +310,9 @@ Lifecycle-логи supervisor — stderr; `--dry-run` JSON остаётся чи
 | Запрос cache-monitor | `docs/research/cache-monitor-costs-api.md` |
 | Клиент costs | `lib/costs-client.ts` |
 | Advisory CLI | `bin/omp-next-session` |
+| Ключевые разделы state | `lib/state-sections.ts` |
 | Тесты guard/preflight | `test/context-guard.test.mjs` |
+| Тесты разделов state | `test/state-sections.test.mjs` |
 | Тесты costs | `test/costs-client.test.mjs` |
 | Тесты advisory | `test/next-session.test.mjs` |
 | Тесты presets | `test/presets.test.mjs` |
@@ -410,17 +365,19 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. 0.7.1 quality gate — следующая задача по плану 0.7: advisory-warning в
-   `/handoff-preflight`, если в `HANDOFF.md` нет ключевых секций
-   (цель/состояние/решения/файлы/проверки/дальше) или после обновления
-   state была компакция. Перед реализацией показать 3–4 варианта строки.
-   Затем 0.7.2 `economics --summary`.
-2. Новая сессия загрузит 0.7.0; проверить `omp plugin list`, отсутствие
-   `/handoff` в наших командах (builtin работает), `/handoff-preflight`
-   с advisory-строкой, метриками и строкой `usage-border` (при
-   `OMP_CACHE_MONITOR_CLI` или `omp-cache-monitor` в `PATH`; без CLI строки
-   нет), `⚠ HANDOFF` при spend-пороге (`OMP_HANDOFF_AT_USD`), `SUP OFF` в
-   TUI, `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и
+1. 0.7.2 `economics --summary` — следующая задача по плану 0.7: агрегат по
+   цепочке (сессии, границы, средняя цена границы, тренд hit rate) поверх
+   готового `omp-orchestrate economics`. Затем 0.7.3 discovery и 0.7.4
+   ledger субагентов.
+2. Проверить 0.7.1 в TUI: `omp plugin list`, `/handoff-preflight` на этом
+   файле (строки `HANDOFF.md: разделы 6/6`, отсутствие ложных warn по
+   синонимам), state без раздела — warn по строке и фикс в «вручную»,
+   сессия с компакцией после state — warn `компакция после state`;
+   `npm run check:names`, `/handoff-preflight` с advisory-строкой,
+   метриками и строкой `usage-border` (при `OMP_CACHE_MONITOR_CLI` или
+   `omp-cache-monitor` в `PATH`; без CLI строки нет), `⚠ HANDOFF` при
+   spend-пороге (`OMP_HANDOFF_AT_USD`), `SUP OFF` в TUI,
+   `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и
    `bin/omp-yoda --preset plan --version` (флаги модели, supervisor,
    exit 0). `doctor --json` на чистом репо — exit 0, без Orca — warn;
    `--strict` — exit 1. На пороге handoff проверить строку `Дерево:` в
@@ -457,6 +414,13 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   supervisor'а и не блокирует `/handoff-new`. Выбранные действия `commit`
   и `merge` меняют репозиторий: merge только ff-only в чистый `main`
   worktree, commit — `git add -A` без runtime-файлов `.omp-handoff-*`.
+- Quality gate 0.7.1 — тоже эвристика: заголовки узнаются по синонимам,
+  поэтому нестандартный, но осмысленный state может получить warn
+  `нестандартный формат` или лишний/пропущенный раздел; ложных fail нет,
+  вердикт не меняется. Компакция сравнивается с mtime файла, а не с
+  коммитом: `touch` без правки скрывает предупреждение, правка без `touch`
+  в пределах той же секунды — нет. Детектор компакции читает только
+  текущую сессию; компакция в дочерней сессии не учитывается.
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.
