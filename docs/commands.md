@@ -186,9 +186,12 @@ agent-team или cache-monitor — `warn`/`skip`; битые настройки
 
 `refs` — read-only список `refs/omp-worktree-backup/*`: эти ref'ы пишет
 cleanup worktree, и они хранят tip'ы коммитов. Печатает короткий sha, дату
-коммита, ветку и subject; `--json` — `{schemaVersion: 1, dir, baseRepo,
-refs[{ref,branch,sha,short,subject,committedAt}]}`. Команда ничего не пишет
-и не двигает refs; восстановление ветки и WIP — [recovery.md](recovery.md).
+коммита, ветку и subject; последней строкой — самый старый ref, его
+возраст в днях и готовую команду `git update-ref -d` (порог и срок
+хранения не задаются: решение за владельцем). `--json` — `{schemaVersion:
+1, dir, baseRepo, refs[{ref,branch,sha,short,subject,committedAt}]}`.
+Команда ничего не пишет и не двигает refs; восстановление ветки и WIP —
+[recovery.md](recovery.md).
 
 `status --json` с 0.7.4 отдаёт аддитивный блок `spend` — леджер прогона:
 `measured`, `spentUsd` (root + subagent-сессии + сессии вне текущего дерева),

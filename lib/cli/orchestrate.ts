@@ -193,6 +193,20 @@ function renderRefs(result: BackupRefsReport) {
 	}
 	if (result.refs.length === 0) {
 		lines.push("нет backup-ref: удалённых worktree в этом репозитории не было");
+		return lines.join("\n");
+	}
+	// Ref'ы копятся и никем не чистятся: показываем самый старый и команду,
+	// но ничего не удаляем и порог не задаём — срок хранения решает владелец.
+	const oldest = result.refs[result.refs.length - 1];
+	const committed = Date.parse(oldest.committedAt);
+	if (Number.isFinite(committed)) {
+		const ageDays = Math.max(
+			0,
+			Math.floor((Date.now() - committed) / 86_400_000),
+		);
+		lines.push(
+			`самый старый: ${oldest.branch} (${oldest.short}, ${ageDays} дн. назад) — если tip не нужен: git update-ref -d ${oldest.ref}`,
+		);
 	}
 	return lines.join("\n");
 }

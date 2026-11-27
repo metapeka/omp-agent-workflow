@@ -26,7 +26,9 @@ a failed task) is closed, and backup refs get a read-only listing.
   `refs/omp-worktree-backup/*` (short sha, commit date, branch, subject,
   `schemaVersion: 1`), so a removed worktree's tip can be found without
   remembering `git for-each-ref`. Plans are optional: `baseRepo` comes from
-  `AUTOPLAN.md` or the git common dir.
+  `AUTOPLAN.md` or the git common dir. Text output ends with the oldest ref,
+  its age in days and a ready `git update-ref -d` command (no threshold and
+  no automatic pruning: retention stays an owner decision).
 - [`docs/recovery.md`](docs/recovery.md): what survives a removal, how to
   restore a branch from a backup ref and WIP from a snapshot, snapshot
   hygiene, and what is not recoverable (ignored files, the parent session

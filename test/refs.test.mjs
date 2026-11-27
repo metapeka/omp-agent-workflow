@@ -90,7 +90,7 @@ describe("backup refs", () => {
 		assert.deepEqual(report.refs, []);
 	});
 
-	it("prints the same report as JSON from the CLI", async () => {
+	it("prints the same report as JSON and a prune hint from the CLI", async () => {
 		const base = await gitRepo();
 		await mustRun("git", [
 			"-C",
@@ -116,5 +116,10 @@ describe("backup refs", () => {
 		assert.equal(text.status, 0, text.stderr);
 		assert.match(text.stdout, /backup refs: 1/);
 		assert.match(text.stdout, /feat-gone/);
+		assert.match(text.stdout, /самый старый: feat-gone \(/);
+		assert.match(
+			text.stdout,
+			/git update-ref -d refs\/omp-worktree-backup\/feat-gone-1795755435123/,
+		);
 	});
 });
