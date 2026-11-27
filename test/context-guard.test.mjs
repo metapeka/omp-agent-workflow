@@ -51,7 +51,6 @@ const ENV_KEYS = [
 	"OMP_SUPERVISOR_RETRIES",
 	"OMP_SUPERVISOR_LOG_LEVEL",
 	"ORCA_TERMINAL_HANDLE",
-	"XDG_STATE_HOME",
 ];
 
 // Supervisor gates читают ambient env; тесты стартуют от чистого состояния.
@@ -201,12 +200,21 @@ async function command(commands, name, ctx, args = "") {
 	await definition.handler(args, ctx);
 }
 
+// STATE-каталог всегда во временной папке: extension копирует session JSONL
+// перед handoff, и тесты не должны писать в домашний `~/.local/state`.
+let stateHome = null;
+
 beforeEach(() => {
 	for (const key of ENV_KEYS) delete process.env[key];
+	stateHome = mkdtempSync(join(tmpdir(), "cg-state-home-"));
+	process.env.XDG_STATE_HOME = stateHome;
 });
 
 afterEach(() => {
 	for (const key of ENV_KEYS) delete process.env[key];
+	delete process.env.XDG_STATE_HOME;
+	if (stateHome) rmSync(stateHome, { recursive: true, force: true });
+	stateHome = null;
 });
 
 describe("context warnings", () => {
