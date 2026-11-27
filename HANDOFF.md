@@ -13,6 +13,20 @@ OAW — короткое имя продукта; `workflow` — только е
 написаны (`docs/release-notes-1.0.0.md`). Открытым остаётся только
 npm/marketplace — отдельным решением владельца (D10).
 
+## Сейчас (кратко для новой сессии)
+
+- Версия `1.0.0` выпущена: `main` = `origin/main`, тег и GitHub release
+  `v1.0.0` опубликованы, tarball приложен asset'ом, CI зелёный гейтом
+  `npm run verify`, Pages задеплоен.
+- Живьём проверены (2026-11-27): preflight-таблица и меню, `/wrap`,
+  `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
+- Открыто: решение по npm/marketplace (D10). Никаких работ по коду в полёте.
+- Очередь страховки (анализ готов, код не писался): WIP-patch перед
+  `force`-удалением упавшей задачи; `omp-orchestrate refs` + `docs/recovery.md`;
+  решение по копии session JSONL до handoff.
+- Этот файл больше 32k символов: `/handoff-new` встроит первые 32 000 и
+  оставит маркер обрезки — хвостовые разделы дочитывать из файла.
+
 ## Состояние
 
 Версия `1.0.0`; `main` = `origin/main`, все коммиты 1.0.0 запушены:
@@ -179,6 +193,38 @@ release notes скачивают asset, `npm pack` оставлен альтер
 в summary) — «до/после» измеримо только по живому файлу. Тестовая
 yoda-сессия сразу начинает задачу из continuation prompt — такие прогоны
 закрывать сразу после детекта.
+
+
+## Страховка без sandbox (анализ 2026-11-27)
+
+Проверено на одноразовом `/tmp`-репо (создан, probe, удалён). Работают:
+guard `removeWorktree` (dirty/current/live/unmerged), backup-ref
+`refs/omp-worktree-backup/<branch>-<ts>` до удаления, ветка по умолчанию
+остаётся, tip переживает `git gc --prune=now` и восстанавливается
+`git update-ref refs/heads/<branch> <backupRef>`; preflight блокирует dirty /
+detached / нет коммитов / не влито; `/handoff-new` не трогает git.
+
+Две дырки:
+
+1. **Retry упавшей задачи теряет WIP.** `start` на `failed` вызывает
+   `removeWorktree({force:true, requireMerged:false})`
+   (`lib/orchestrator/actions.ts:344`): коммиты целы (backup-ref +
+   `-failed-<ts>`), но `force` пропускает проверку чистоты и `--force`
+   удаляет каталог. Проба: backup-ref содержал коммит, WIP-файл — нет.
+   Рекомендация: перед force-удалением писать `git status --porcelain`,
+   `git diff HEAD` и untracked в
+   `~/.local/state/omp-agent-workflow/wip/<repo>-<branch>-<ts>.patch`,
+   путь — в stop/error detail (~40 строк + 2 теста).
+2. **Session JSONL удаляется OMP при `newSession`.** `economics` штатно
+   пишет «родительская сессия отсутствует», `null` в summary; «до»-окно
+   задним числом не восстановить. Решение владельца: best-effort копия
+   session-файла при записи marker (переписка — только локально) или
+   принять ограничение.
+
+Гигиена: backup-ref'ы хранятся в base-репо и никем не чистятся — нужен
+срок хранения/prune-подсказка. Sandbox для этого класса риска отвергнут:
+рецепт меняет место запуска агента, а `orca worktree rm` по хостовым
+деревьям страхует только guard.
 
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
@@ -502,20 +548,25 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 1. 1.0.0 выпущен: запушен, тег/release `v1.0.0`, CI зелёный, Pages
    задеплоен. Открытым остаётся npm/marketplace — отдельное решение
    владельца (D10). Не парсить внутренности cache-monitor.
-2. TUI и automatic handoff проверены живьём 2026-11-27 (см. «Живая
+2. Страховка без sandbox (см. раздел выше), по решению владельца:
+   WIP-patch перед `force`-удалением упавшей задачи, `omp-orchestrate refs`
+   (read-only список backup-ref) + `docs/recovery.md`, копия session JSONL
+   до handoff. Начинать с WIP-patch — это единственная потеря данных,
+   воспроизведённая пробой.
+3. TUI и automatic handoff проверены живьём 2026-11-27 (см. «Живая
    проверка 1.0.0»): preflight-таблица и меню, `/wrap`, `YODA-SUP`,
    `⚠ HANDOFF`, marker → `/handoff-new` → continuation. Повторять только
    после изменений в этих поверхностях.
-3. 0.6 economics закрыт содержательно (0.6.1): `omp-orchestrate economics`
+4. 0.6 economics закрыт содержательно (0.6.1): `omp-orchestrate economics`
    строит цепочку по `parentSession`, считает окна «до/после», hit rate,
    цену первого хода и `recoveryTurns`, ищет компакции. Компакций в
    локальных данных нет — вывод data-gated, отчёт пишет «нет записей».
    OAW не парсит внутренности cache-monitor.
-4. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
+5. F3-метрики сделаны в 0.5.23, flight recorder — в 0.5.24; F4
    `--plan-yolo` — только после замера.
-5. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
+6. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
-6. TUI E2E `/wrap` — опционально. Публикация остаётся локальной (D10).
+7. TUI E2E `/wrap` — опционально. Публикация остаётся локальной (D10).
 
 ## Риски
 
