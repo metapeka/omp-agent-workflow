@@ -46,6 +46,7 @@ import {
 	worktreePath,
 	type WorktreeBackend,
 } from "./worktrees.ts";
+import type { WipSnapshot } from "./wip.ts";
 
 export const SESSION_INFO_FILE = ".omp-handoff-session.json";
 
@@ -66,6 +67,8 @@ export interface ActionContext {
 	now?: Date;
 	backend?: WorktreeBackend;
 	verifyTimeoutMs?: number;
+	/** Куда писать WIP-снимок при reset упавшей задачи; default в `wipStateDir()`. */
+	wipDir?: string;
 }
 
 interface Paths {
@@ -280,6 +283,8 @@ export type StartResult =
 			worktree: string;
 			branch: string;
 			prompt: string;
+			/** WIP-снимок упавшей попытки, снятый перед force-удалением. */
+			wip: WipSnapshot | null;
 	  }
 	| { kind: "stop"; reason: string; detail: string }
 	| { kind: "handoff"; reason: "task-boundary"; detail: string };
@@ -326,6 +331,7 @@ export async function start(
 
 		const baseRepo = await resolveBaseRepo(ctx.dir, plan.config.baseRepo);
 		const backend = ctx.backend ?? plan.config.backend;
+		let resetWip: WipSnapshot | null = null;
 		if (state.current) {
 			if (state.current.status !== "failed") {
 				throw new ActionError(
@@ -334,7 +340,7 @@ export async function start(
 			}
 			const failed = state.current;
 			try {
-				await removeWorktree({
+				const removal = await removeWorktree({
 					backend,
 					baseRepo,
 					baseBranch: plan.config.baseBranch,
@@ -345,7 +351,10 @@ export async function start(
 					// so the retry can create a fresh one.
 					force: true,
 					requireMerged: false,
+					wipDir: ctx.wipDir,
+					now,
 				});
+				resetWip = removal.wip;
 			} catch (error) {
 				throw new ActionError(
 					`cannot reset failed task ${failed.id}: ${
@@ -398,6 +407,12 @@ export async function start(
 				setStop(state, decision.reason, decision.detail, now);
 			}
 			writeState(statePath, state);
+			if (resetWip) {
+				return {
+					...decision,
+					detail: `${decision.detail}; WIP сохранён: ${resetWip.patchPath}`,
+				};
+			}
 			return decision;
 		}
 		if (id && decision.task.id !== id) {
@@ -431,6 +446,7 @@ export async function start(
 			worktree: info.path,
 			branch: info.branch,
 			prompt: buildImplementerPrompt(decision.task, info.path),
+			wip: resetWip,
 		};
 	} finally {
 		release();

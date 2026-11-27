@@ -10,6 +10,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -578,6 +579,7 @@ async function scenario(options = {}) {
 			mode: "yoda-supervised",
 			now: NOW,
 			handoffAt: 55,
+			wipDir: tempDir(),
 		},
 	};
 }
@@ -746,6 +748,36 @@ describe("actions on a real git repo", () => {
 			await mustRun("git", ["-C", s.base, "rev-parse", "main"])
 		).stdout.trim();
 		assert.notEqual(preservedTip, baseTip);
+	});
+
+	it("snapshots uncommitted work before resetting a failed task", async () => {
+		const s = await scenario({ verify: 'node -e "process.exit(1)"' });
+		const first = await start(s.ctx, "T1");
+		assert.equal(first.kind, "started");
+		writeFileSync(join(first.worktree, "wip.txt"), "unfinished\n");
+
+		const failed = await verify(s.ctx, "T1");
+		assert.equal(failed.ok, false);
+		assert.equal(readState(join(s.control, STATE_FILE)).current.status, "failed");
+
+		const second = await start(s.ctx, "T1");
+		assert.equal(second.kind, "started");
+		assert.ok(second.wip, "WIP snapshot expected on retry");
+		assert.equal(second.wip.files, 1);
+		assert.match(readFileSync(second.wip.patchPath, "utf8"), /\+unfinished/);
+		assert.equal(existsSync(join(second.worktree, "wip.txt")), false);
+
+		await mustRun("git", [
+			"-C",
+			second.worktree,
+			"apply",
+			"--3way",
+			second.wip.patchPath,
+		]);
+		assert.equal(
+			readFileSync(join(second.worktree, "wip.txt"), "utf8"),
+			"unfinished\n",
+		);
 	});
 
 	it("merges review:false without a reviewer verdict", async () => {

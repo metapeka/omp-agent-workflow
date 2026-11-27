@@ -10,6 +10,7 @@
  *   bin/omp-orchestrate stop --reason gate
  *   bin/omp-orchestrate resume
  *   bin/omp-orchestrate doctor [--json] [--strict]
+ *   bin/omp-orchestrate refs [--json]
  *   bin/omp-orchestrate economics [--session FILE] [--turns N] [--summary] [--json]
  */
 import { resolve } from "node:path";
@@ -44,6 +45,7 @@ import {
 } from "../handoff-economics.ts";
 import { doctor, renderDoctor } from "../orchestrator/doctor.ts";
 import { PlanError } from "../orchestrator/plan.ts";
+import { backupRefs, type BackupRefsReport } from "../orchestrator/refs.ts";
 import { LockError, StateError } from "../orchestrator/state.ts";
 import { CommandError } from "../orchestrator/worktrees.ts";
 
@@ -55,6 +57,7 @@ type CliResult =
 	| StopResult
 	| StatusResult
 	| NextResult
+	| BackupRefsReport
 	| { kind: "resumed" };
 
 const USAGE = `Использование:
@@ -67,6 +70,7 @@ const USAGE = `Использование:
   omp-orchestrate stop --reason REASON [--detail TEXT] [--json]
   omp-orchestrate resume [--json]
   omp-orchestrate doctor [--json] [--strict]
+  omp-orchestrate refs [--json]
   omp-orchestrate economics [--session FILE] [--turns N] [--summary] [--json] [--dir PATH]
     (--session-file — то же, что --session; без --session берётся свежая живая запись .omp-handoff-session.json)
 
@@ -93,6 +97,7 @@ const { values, positionals } = parseArgs({
 		context: { type: "string" },
 		backend: { type: "string" },
 		"verify-timeout": { type: "string" },
+		"wip-dir": { type: "string" },
 		commit: { type: "string" },
 		review: { type: "string" },
 		reason: { type: "string" },
@@ -145,6 +150,7 @@ function buildContext(): ActionContext {
 		backend,
 		verifyTimeoutMs:
 			verifyTimeout === undefined ? undefined : verifyTimeout * 1000,
+		wipDir: values["wip-dir"],
 	};
 }
 
@@ -175,14 +181,39 @@ function renderStatus(result: StatusResult) {
 	return lines.join("\n");
 }
 
+function renderRefs(result: BackupRefsReport) {
+	const lines = [
+		`base: ${result.baseRepo}`,
+		`backup refs: ${result.refs.length}`,
+	];
+	for (const ref of result.refs) {
+		lines.push(
+			`${ref.short}  ${ref.committedAt}  ${ref.branch}  ${ref.subject}`,
+		);
+	}
+	if (result.refs.length === 0) {
+		lines.push("нет backup-ref: удалённых worktree в этом репозитории не было");
+	}
+	return lines.join("\n");
+}
+
 function render(result: CliResult) {
 	if (typeof result !== "object" || result === null) return String(result);
+	if ("refs" in result) return renderRefs(result);
 	if ("plan" in result) return renderStatus(result);
 	switch (result.kind) {
 		case "task":
 			return `next: ${result.task.id} — ${result.task.title} (${result.task.branch})`;
-		case "started":
-			return `${result.task.id} started\n${result.prompt}`;
+		case "started": {
+			const lines = [`${result.task.id} started`, result.prompt];
+			if (result.wip) {
+				lines.push(
+					`wip: ${result.wip.patchPath} (${result.wip.files} путей, ${result.wip.patchBytes} байт)`,
+					`wip-status: ${result.wip.statusPath}`,
+				);
+			}
+			return lines.join("\n");
+		}
 		case "verified":
 		case "verify-failed":
 		case "rebased": {
@@ -305,6 +336,9 @@ async function main() {
 			break;
 		case "resume":
 			result = resume(ctx);
+			break;
+		case "refs":
+			result = await backupRefs({ dir: ctx.dir, planPath: ctx.planPath });
 			break;
 		case "doctor": {
 			const report = doctor({

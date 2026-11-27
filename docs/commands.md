@@ -157,7 +157,7 @@
 ### `bin/omp-orchestrate` — headless orchestrator
 
 ```
-bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit SHA|rebase [TASK]|stop --reason R|resume|doctor|economics [--session FILE] [--turns N]
+bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit SHA|rebase [TASK]|stop --reason R|resume|doctor|refs|economics [--session FILE] [--turns N]
 ```
 
 | Флаг | Назначение |
@@ -170,6 +170,7 @@ bin/omp-orchestrate status|next|start [TASK]|verify [TASK]|finish TASK --commit 
 | `--context N` | текущий процент контекста |
 | `--backend orca\|git` | backend worktree |
 | `--verify-timeout SEC` | таймаут verify (по умолчанию 900) |
+| `--wip-dir PATH` | каталог WIP-снимков при reset упавшей задачи (по умолчанию `~/.local/state/omp-agent-workflow/wip`) |
 | `--strict` | `doctor`: повысить `warn` до `fail` |
 | `--session FILE` | `economics`: стартовый session JSONL (алиас `--session-file`) |
 | `--turns N` | `economics`: окно ходов, 1..100 (по умолчанию 10) |
@@ -182,6 +183,12 @@ agent-team или cache-monitor — `warn`/`skip`; битые настройки
 — `fail` (exit 1). `--json` — контракт v1 (`schemaVersion: 1`, `ok`,
 `summary`, `checks[]`), список проверок и стабильные поля `status` — в
 [contracts.md](contracts.md#cli-json-v1-status-и-doctor-0520).
+
+`refs` — read-only список `refs/omp-worktree-backup/*`: эти ref'ы пишет
+cleanup worktree, и они хранят tip'ы коммитов. Печатает короткий sha, дату
+коммита, ветку и subject; `--json` — `{schemaVersion: 1, dir, baseRepo,
+refs[{ref,branch,sha,short,subject,committedAt}]}`. Команда ничего не пишет
+и не двигает refs; восстановление ветки и WIP — [recovery.md](recovery.md).
 
 `status --json` с 0.7.4 отдаёт аддитивный блок `spend` — леджер прогона:
 `measured`, `spentUsd` (root + subagent-сессии + сессии вне текущего дерева),

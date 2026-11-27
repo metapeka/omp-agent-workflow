@@ -346,7 +346,9 @@ Detailed engineering notes: [`docs/commands.md`](docs/commands.md), [`docs/opera
 | `/orchestrate [plan]` | Start or continue `AUTOPLAN.md`; per-task actions live in the `orchestrator` tool |
 | `bin/omp-yoda` | Launcher: supervisor + OMP in `yoda-supervised` |
 | `bin/omp-handoff-supervisor.mjs` | External marker watcher (not an LLM) |
-| `bin/omp-orchestrate` | Headless CLI for the same actions and `doctor` |
+| `bin/omp-orchestrate` | Headless CLI for the same actions and `doctor`; `refs` lists backup refs of removed worktrees |
+
+Recovery of a removed worktree (branch tip from a backup ref, uncommitted work from a WIP patch) is described in [`docs/recovery.md`](docs/recovery.md).
 
 ---
 

@@ -350,6 +350,21 @@ hub читает JSON и не дублирует проверки.
 Не контракт: `state.budgets.costOffsets`, `state.budgets.costTotals`,
 `state.attempts`, прочие runtime-поля и временные/legacy-файлы.
 
+### `bin/omp-orchestrate refs --json` (1.0.1)
+
+Read-only список `refs/omp-worktree-backup/*` — tip'ы коммитов удалённых
+worktree. Ничего не пишет, refs не двигает.
+
+| Поле | Смысл |
+|---|---|
+| `schemaVersion` | `1` |
+| `dir` | абсолютный `--dir` |
+| `baseRepo` | `plan.config.baseRepo`, иначе git common dir |
+| `refs[]{ref,branch,sha,short,subject,committedAt}` | по убыванию `committerdate`; `branch` — догадка: слэши заменены дефисами, метка времени отрезана по `-\d{10,}`, полное имя — в `ref` |
+
+`AUTOPLAN.md` не обязателен: план нужен только ради `baseRepo`. Новые поля
+— аддитивно; удаление/переименование — бамп `schemaVersion`.
+
 ### `bin/omp-orchestrate doctor [--json] [--strict]`
 
 Read-only, без сети, `STATE.json` и рабочие файлы не меняются; zero runtime

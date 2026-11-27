@@ -1,8 +1,8 @@
 # Защиты OAW: что, зачем и где в цикле
 
-Дата: 2026-11-27. Версия: `1.0.0`. Контракт — [contracts.md](contracts.md),
+Дата: 2026-11-27. Версия: `1.0.1`. Контракт — [contracts.md](contracts.md),
 поток handoff — [handoff-flow.md](handoff-flow.md), диагностика —
-[operations.md](operations.md).
+[operations.md](operations.md), восстановление — [recovery.md](recovery.md).
 
 OAW решает две разные задачи, и путать их нельзя:
 
@@ -54,6 +54,8 @@ flowchart TD
 | **Компакция переписала JSONL: spend прыгает и даёт ложный stop** | `restarted` заменяет вклад файла (пересчёт с нуля), а не прибавляет полную сумму | `projectBudgets` | **0.7.4** |
 | **Хвост прошлой сессии теряется на handoff** | перед сменой `run.sessionFile` старый root дочитывается тем же offset-чтением | `syncSession` | **0.7.4** |
 | **CLI-скрипты не запускаются в установленной копии: Node не снимает типы под `node_modules`** | шимы `bin/` регистрируют `lib/ts-loader.mjs` (`node:module.stripTypeScriptTypes`); один код-путь для клона, tarball и `node_modules`; регрессия держится `test/package-run.test.mjs` | `bin/omp-orchestrate`, `bin/omp-next-session`, `bin/omp-preset`, `bin/omp-yoda` | **1.0.0** |
+| **`force`-удаление worktree упавшей задачи уносит незакоммиченные файлы: backup-ref хранит только коммиты** | WIP-снимок до удаления: патч (tracked + untracked через временный индекс) и `.status` в `~/.local/state/omp-agent-workflow/wip/`; путь — в выводе `start` или в тексте ошибки; сбой снимка — отказ от удаления | `removeWorktree` при `force: true` | **1.0.1** |
+| **Tip удалённой ветки не найти после cleanup** | read-only `omp-orchestrate refs` по `refs/omp-worktree-backup/*`; восстановление — `docs/recovery.md` | `refs`, `removeWorktree` (backup-ref) | **1.0.1** |
 
 ## 0.5.24: flight recorder
 
@@ -180,12 +182,64 @@ status), `index.ts` (preflight run row); тесты — `test/ledger.test.mjs`,
 Код: `lib/cli/*.ts`, `lib/ts-loader.mjs`, `bin/*`;
 тест — `test/package-run.test.mjs`.
 
+## 1.0.1: WIP-снимок перед `force`-удалением
+
+**Почему.** Retry упавшей задачи (`start` на `current.status === "failed"`)
+удаляет её worktree через `force`, потому что попытка может быть грязной и
+не влитой. Коммиты при этом целы — backup-ref и переименованная ветка
+`<branch>-failed-<ts>`, — но `--force` удаляет каталог вместе с
+незакоммиченными файлами. Проба 2026-11-27: backup-ref содержал коммит,
+WIP-файл исчез. Flight recorder handoff такой файл описывает, но не
+сохраняет; новой сессии он тоже не видит.
+
+**Что добавлено.** Перед удалением при `force: true` и грязном дереве
+`removeWorktree` вызывает `captureWorkInProgress`:
+
+- `git status --porcelain --untracked-files=all` — список путей и
+  `dirty`-счётчик;
+- патч через временный индекс (`GIT_INDEX_FILE`): `read-tree HEAD` +
+  `add -A` + `diff --cached --binary HEAD`, то есть tracked-изменения и
+  новые файлы, без изменения рабочего дерева и настоящего индекса;
+- `<snapshot>.status` — ветка, HEAD, статус и готовая команда восстановления;
+- имя: `<repo>-<branch>-<ISO-ts>` в `$XDG_STATE_HOME/omp-agent-workflow/wip/`.
+
+Сбой снимка (нет каталога, git отказал) пробрасывается и **отменяет
+удаление**: терять WIP молча нельзя. Путь к снимку входит в результат
+`start` (`wip`) и в текст ошибки, если удаление всё-таки упало после снимка.
+
+**Что это не даёт.** Ignored-файлы (`node_modules`, `.env`) в патч не
+входят; снимок не заменяет коммит; автоматической очистки нет — срок
+хранения выбирает владелец.
+
+Код: `lib/orchestrator/wip.ts`, вызов в `removeWorktree`,
+поле `wip` в `StartResult`; тесты — `test/worktree-remove.test.mjs`,
+`test/orchestrator.test.mjs`; восстановление — [recovery.md](recovery.md).
+
+## 1.0.1: `omp-orchestrate refs`
+
+**Почему.** Backup-ref — единственный след коммитов удалённого worktree, но
+узнать о нём можно было только через `git for-each-ref` по памяти. Гигиена
+из «Страховка без sandbox»: ref'ы копятся и никем не чистятся.
+
+**Что добавлено.** Read-only команда: `for-each-ref --sort=-committerdate`
+по `refs/omp-worktree-backup/`, поля `ref`, `branch`, `sha`, `short`,
+`subject`, `committedAt`; текст и `--json` (`schemaVersion: 1`). План
+читается только ради `config.baseRepo`, без плана base выводится из git.
+Ничего не пишет, refs не двигает; удаление ref'ов — по-прежнему вручную
+(`git update-ref -d`).
+
+Код: `lib/orchestrator/refs.ts`, `lib/cli/orchestrate.ts`;
+тест — `test/refs.test.mjs`.
+
 ## Чем защита не является
 
 - Не блокер: `/handoff-preflight` по-прежнему advisory, `/handoff-new`
   проверяет только наличие state-файла.
-- Не сохранение diff: пути и статусы, не содержимое; WIP не коммитится и не
-  стешится автоматически.
+- Не сохранение diff в handoff: в запросе handoff — пути и статусы, не
+  содержимое; WIP-снимок 1.0.1 — отдельная точка, только при
+  `force`-удалении worktree.
+- WIP-снимок не покрывает ignored-файлы и не возвращает JSONL родительской
+  сессии, удалённый OMP при `newSession` (см. [recovery.md](recovery.md)).
 - Не замена `HANDOFF.md`: строка в запросе — напоминание записать WIP в
   документ, иначе новая сессия его не увидит.
 - Не защита от смены модели внутри сессии: модель задаётся при запуске

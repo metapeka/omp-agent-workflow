@@ -4,6 +4,44 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [1.0.1] — 2026-11-27
+
+Safety without a sandbox: the one reproduced data loss (uncommitted work of
+a failed task) is closed, and backup refs get a read-only listing.
+
+### Added
+
+- **WIP snapshot before a forced removal.** `start` on a `failed` task
+  removes its worktree with `force`; the backup ref keeps commits but the
+  directory (and every uncommitted file in it) went with the removal. Now
+  `removeWorktree` captures the dirty tree first: a patch of tracked changes
+  plus untracked files (built through a throwaway `GIT_INDEX_FILE`, so the
+  working tree and the real index are untouched) and a `.status` sidecar
+  with branch, HEAD, `git status` and the restore command, under
+  `$XDG_STATE_HOME/omp-agent-workflow/wip/` (`--wip-dir` overrides). A
+  failed snapshot aborts the removal; the path is printed by `start`
+  (`wip`, `wip-status`) and included in the error if the removal fails after
+  the snapshot.
+- **`omp-orchestrate refs [--json]`.** Read-only listing of
+  `refs/omp-worktree-backup/*` (short sha, commit date, branch, subject,
+  `schemaVersion: 1`), so a removed worktree's tip can be found without
+  remembering `git for-each-ref`. Plans are optional: `baseRepo` comes from
+  `AUTOPLAN.md` or the git common dir.
+- [`docs/recovery.md`](docs/recovery.md): what survives a removal, how to
+  restore a branch from a backup ref and WIP from a snapshot, snapshot
+  hygiene, and what is not recoverable (ignored files, the parent session
+  JSONL OMP deletes on `newSession`).
+
+### Changed
+
+- `lib/orchestrator/actions.ts`: `start` returns an additive `wip` field
+  (snapshot or `null`) and appends the snapshot path to a stop/handoff detail
+  produced right after a failed-task reset.
+- Docs: `docs/guards.md` (two new rows and sections), `docs/commands.md`
+  (`refs`, `--wip-dir`), `docs/contracts.md` (`refs --json` v1),
+  `docs/README.md` (recovery page and reading route), version bumped to
+  1.0.1 in `package.json` and the marketplace catalog.
+
 ## [1.0.0] — 2026-11-27
 
 First stable release: the plugin surface built in 0.5–0.7 is frozen as the
@@ -714,4 +752,5 @@ First stable release: the plugin surface built in 0.5–0.7 is frozen as the
 - Context guard, `/handoff`, `/handoff-new`, supervisor marker protocol,
   automatic handoff, Yoda modes.
 
+[1.0.1]: https://github.com/metapeka/omp-agent-workflow/compare/v1.0.0...v1.0.1
 [0.5.14]: https://github.com/metapeka/omp-agent-workflow/compare/v0.5.13...v0.5.14

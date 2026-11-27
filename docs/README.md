@@ -4,7 +4,7 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `1.0.0` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `1.0.1` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
 `next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты + метрики
@@ -12,6 +12,9 @@ preflight + flight recorder handoff + цена границы из `costs --json
 `1.0.0` — стабильный релиз: установка из tarball проверена (распаковка +
 `omp plugin link`, Settings и extension load), релизные заметки —
 [release-notes-1.0.0.md](release-notes-1.0.0.md); runtime не менялся.
+`1.0.1` — страховка без sandbox: WIP-снимок перед `force`-удалением
+worktree упавшей задачи и read-only `omp-orchestrate refs`; восстановление
+ветки и WIP — [recovery.md](recovery.md).
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).
@@ -97,6 +100,7 @@ costs --json` v1: медиана холодных ходов против тёп
 | Быстрый ответ на типовой вопрос | [faq.md](faq.md) |
 | Разбираешься, как проходит handoff | [handoff-flow.md](handoff-flow.md) → [contracts.md](contracts.md) |
 | Ищешь, где стоят защиты от поломки/затирания | [guards.md](guards.md) → [handoff-flow.md](handoff-flow.md) |
+| Восстанавливаешь ветку или потерянную работу | [recovery.md](recovery.md) → [guards.md](guards.md) |
 | Понимаешь кэш, сессии и цену сброса | [Pages: EN](https://metapeka.github.io/omp-agent-workflow/) → [RU](https://metapeka.github.io/omp-agent-workflow/ru/) → [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |
 | Принимаешь решение по продукту | [decisions.md](decisions.md) |
 
@@ -113,7 +117,8 @@ costs --json` v1: медиана холодных ходов против тёп
 | [wrap.md](wrap.md) | `/wrap` 0.5.1: карточки, safety для cleanup, handoff, следующая задача |
 | [operations.md](operations.md) | Runbook: установка, запуск, supervisor, worktree, проверки, типовые сбои |
 | [handoff-flow.md](handoff-flow.md) | Два пути handoff: OMP без Orca (вручную) и Orca + supervisor (автоматически); кто вызывает `/handoff-new` и кто стартует новую сессию; снимок дерева в запросе (0.5.24) |
-| [guards.md](guards.md) | Карта защит: угроза → защита → точка в цикле → версия; чем защита не является; flight recorder 0.5.24 |
+| [guards.md](guards.md) | Карта защит: угроза → защита → точка в цикле → версия; чем защита не является; flight recorder 0.5.24; WIP-снимок и `refs` 1.0.1 |
+| [recovery.md](recovery.md) | Восстановление: backup-ref → ветка, WIP-патч → файлы, что переживает удаление и что нет; гигиена снимков |
 | [decisions.md](decisions.md) | Подтверждённые решения D1–D10, отклонённые альтернативы, открытые вопросы |
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |
 | [research/market-landscape.md](research/market-landscape.md) | Рынок на 2026-11-23: PI, OMP и GitHub; ближайшие аналоги, чего нет ни у кого, выводы для позиционирования; переводы [RU](research/market-landscape.ru.md), [ZH](research/market-landscape.zh-CN.md) |

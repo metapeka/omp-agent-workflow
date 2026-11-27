@@ -11,6 +11,9 @@ import { spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdtempSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -90,6 +93,7 @@ function removeArgs(base, path, branch, extra = {}) {
 		branch,
 		currentWorktree: base,
 		terminals: [],
+		wipDir: tempDir(),
 		...extra,
 	};
 }
@@ -154,6 +158,78 @@ describe("removeWorktree safety", () => {
 		assert.equal(existsSync(path), false);
 		assert.equal(forced.branchRetained, true);
 		assert.equal(await branchExists(base, "feat/dirty"), true);
+	});
+
+	it("captures WIP before a forced removal and the patch restores it", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		const path = await addWorktree(base, root, "feat/wip");
+		writeFileSync(join(path, "README.md"), "changed\n");
+		writeFileSync(join(path, "fresh.txt"), "fresh\n");
+		mkdirSync(join(path, "sub"));
+		writeFileSync(join(path, "sub", "nested.txt"), "nested\n");
+
+		const forced = await removeWorktree(
+			removeArgs(base, path, "feat/wip", { force: true }),
+		);
+		assert.equal(existsSync(path), false);
+		assert.ok(forced.wip, "WIP snapshot expected");
+		assert.equal(forced.wip.files, 3);
+		assert.equal(forced.wip.head.length, 40);
+		const patch = readFileSync(forced.wip.patchPath, "utf8");
+		assert.match(patch, /\+changed/);
+		assert.match(patch, /\+fresh/);
+		assert.match(patch, /\+nested/);
+		const status = readFileSync(forced.wip.statusPath, "utf8");
+		assert.match(status, /branch: feat\/wip/);
+		assert.match(status, /git -C <worktree> apply --3way/);
+
+		const restored = await addWorktree(base, root, "feat/restore");
+		await mustRun("git", ["-C", restored, "apply", "--3way", forced.wip.patchPath]);
+		assert.equal(readFileSync(join(restored, "README.md"), "utf8"), "changed\n");
+		assert.equal(readFileSync(join(restored, "fresh.txt"), "utf8"), "fresh\n");
+		assert.equal(
+			readFileSync(join(restored, "sub", "nested.txt"), "utf8"),
+			"nested\n",
+		);
+	});
+
+	it("writes no WIP snapshot when a forced removal finds a clean tree", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		const wipDir = tempDir();
+		const path = await addWorktree(base, root, "feat/clean");
+
+		const forced = await removeWorktree(
+			removeArgs(base, path, "feat/clean", { force: true, wipDir }),
+		);
+		assert.equal(existsSync(path), false);
+		assert.equal(forced.wip, null);
+		assert.equal(existsSync(wipDir), true);
+		assert.deepEqual(readdirSync(wipDir), []);
+	});
+
+	it("refuses a forced removal when the WIP snapshot cannot be written", async () => {
+		const base = await gitRepo();
+		const root = tempDir();
+		const blocked = join(tempDir(), "not-a-dir");
+		writeFileSync(blocked, "occupied\n");
+		const path = await addWorktree(base, root, "feat/nosnapshot", {
+			dirty: true,
+		});
+
+		await assert.rejects(
+			() =>
+				removeWorktree(
+					removeArgs(base, path, "feat/nosnapshot", {
+						force: true,
+						wipDir: blocked,
+					}),
+				),
+			/EEXIST|ENOTDIR|exist/i,
+		);
+		assert.equal(existsSync(path), true);
+		assert.equal(await branchExists(base, "feat/nosnapshot"), true);
 	});
 
 	it("refuses the current worktree", async () => {

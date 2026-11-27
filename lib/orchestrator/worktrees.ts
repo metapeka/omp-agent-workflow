@@ -16,6 +16,8 @@ import {
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
+import { captureWorkInProgress, type WipSnapshot } from "./wip.ts";
+
 export type WorktreeBackend = "orca" | "git";
 
 export interface CommandResult {
@@ -455,6 +457,10 @@ export interface RemoveWorktreeInput {
 	/** Тесты: готовый список терминалов Orca; `undefined` — запросить у Orca. */
 	terminals?: readonly OrcaTerminalRecord[];
 	procRoot?: string;
+	/** Куда писать WIP-снимок перед `force`; default `~/.local/state/omp-agent-workflow/wip`. */
+	wipDir?: string;
+	/** Тесты: фиксированное время в имени WIP-снимка. */
+	now?: Date;
 	run?: CommandRunner;
 }
 
@@ -466,6 +472,8 @@ export interface RemoveWorktreeResult {
 	branchDeleted: boolean;
 	branchRetained: boolean;
 	usedGitFallback: boolean;
+	/** Снимок незакоммиченной работы перед `force`; `null` — дерево было чистое. */
+	wip: WipSnapshot | null;
 	/** Stale-запись Orca: как её убрать. */
 	warning: string | null;
 }
@@ -602,6 +610,20 @@ export async function removeWorktree(
 		);
 	}
 
+	// backup-ref хранит коммиты, но не незакоммиченные файлы: при `force`
+	// сначала снимок, и только потом удаление. Сбой снимка — отказ.
+	let wip: WipSnapshot | null = null;
+	if (force) {
+		wip = await captureWorkInProgress({
+			worktree: path,
+			baseRepo,
+			branch: input.branch,
+			dir: input.wipDir,
+			now: input.now,
+			run,
+		});
+	}
+
 	const backupRef = backupRefName(input.branch);
 	const backup = await runGit(baseRepo, [
 		"update-ref",
@@ -654,7 +676,9 @@ export async function removeWorktree(
 			timeoutMs: 120_000,
 		});
 		if (gitRemoval.code !== 0 || existsSync(path)) {
-			throw new CommandError("git", gitArgs, gitRemoval);
+			const error = new CommandError("git", gitArgs, gitRemoval);
+			if (wip) error.message += `; WIP сохранён: ${wip.patchPath}`;
+			throw error;
 		}
 	}
 
@@ -681,6 +705,7 @@ export async function removeWorktree(
 		branchDeleted,
 		branchRetained,
 		usedGitFallback,
+		wip,
 		warning,
 	};
 }
