@@ -7,7 +7,8 @@ semantic for the plugin contract, not for OMP itself.
 ## [1.0.2] — 2026-11-27
 
 Two preflight fixes found in an external repo: no `package.json` and a
-foreign `HANDOFF.md` template.
+foreign `HANDOFF.md` template. Notes:
+[release-notes-1.0.2.md](docs/release-notes-1.0.2.md).
 
 ### Fixed
 
