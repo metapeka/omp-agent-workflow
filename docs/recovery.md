@@ -1,6 +1,6 @@
 # Восстановление: ветки, worktree и незакоммиченная работа
 
-Дата: 2026-11-27. Версия: `1.0.1`. Карта защит — [guards.md](guards.md),
+Дата: 2026-11-27. Версия: `1.0.2`. Карта защит — [guards.md](guards.md),
 runbook — [operations.md](operations.md), инцидент с SIGTERM —
 [operations.md#инцидент-2026-11-23](operations.md).
 

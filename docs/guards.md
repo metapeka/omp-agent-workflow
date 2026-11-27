@@ -1,6 +1,6 @@
 # Защиты OAW: что, зачем и где в цикле
 
-Дата: 2026-11-27. Версия: `1.0.1`. Контракт — [contracts.md](contracts.md),
+Дата: 2026-11-27. Версия: `1.0.2`. Контракт — [contracts.md](contracts.md),
 поток handoff — [handoff-flow.md](handoff-flow.md), диагностика —
 [operations.md](operations.md), восстановление — [recovery.md](recovery.md).
 

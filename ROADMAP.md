@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-27. Версия: `1.0.1`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-27. Версия: `1.0.2`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
@@ -10,7 +10,9 @@ preflight, flight recorder в запросе HANDOFF, табличный выв�
 (0.7.2), каталог маркетплейса OMP и страница сравнения (0.7.3) готовы;
 релиз 1.0.0 — установка из tarball проверена, релизные заметки написаны;
 1.0.1 — WIP-снимок перед `force`-удалением и `omp-orchestrate refs`;
-публикация в npm/marketplace — по решению владельца.
+1.0.2 — preflight в чужом репозитории (меню без no-op проверок, итог без
+диалога, синонимы разделов state); публикация в npm/marketplace — по
+решению владельца.
 Оперативный список — `TODO.md`.
 
 ## Принципы

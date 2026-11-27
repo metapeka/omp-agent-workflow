@@ -16,9 +16,10 @@ npm/marketplace — отдельным решением владельца (D10)
 ## Сейчас (кратко для новой сессии)
 
 - Версия `1.0.2` выпущена 2026-11-27: `main` = `origin/main`
-  (`4bc1d7c`), тег и GitHub release `v1.0.2` опубликованы, tarball
-  asset'ом (89 файлов, sha256 `525e2f…17a8`), CI на `4bc1d7c` зелёный,
-  Pages задеплоен. В релизе: preflight не предлагает «проверки» без
+  (`8208966`), тег и GitHub release `v1.0.2` опубликованы, tarball
+  asset'ом (89 файлов, sha256 `52529e2f…17a8`; скачан и распакован —
+  `package.json` 1.0.2, каталог `.omp-plugin/` на месте), CI на `8208966`
+  зелёный, Pages задеплоен. В релизе: preflight не предлагает «проверки» без
   `scripts.test`/`typecheck` (в docs/audit-репозитории это был
   гарантированный `⦸`), пустое меню сразу печатает итог; синонимы
   разделов state покрывают чужие шаблоны (`Проверено как`, `Открыто`,
@@ -34,18 +35,21 @@ npm/marketplace — отдельным решением владельца (D10)
   asset'ом, CI на `npm run verify`, Pages задеплоен.
 - Живьём проверены (2026-11-27): preflight-таблица и меню, `/wrap`,
   `YODA-SUP`, `⚠ HANDOFF`, marker → `/handoff-new` → continuation (1.2 с).
-- Репозиторий на `d4dfa35` (`main` = `origin/main`), дерево чистое; CI и
+- Репозиторий на `8208966` (`main` = `origin/main`), дерево чистое; CI и
   Pages зелёные. После релиза `v1.0.1` (`1b4874f`) — только документы:
-  изоляция `XDG_STATE_HOME` в тестах (`01bfc85`) и случай промаха
-  провайдера в explainer (`d4dfa35`).
+  изоляция `XDG_STATE_HOME` в тестах (`01bfc85`), случай промаха
+  провайдера в explainer (`d4dfa35`) и релиз 1.0.2 (preflight в чужом
+  репозитории).
 - Промах провайдера 2026-11-27 задокументирован в Pages EN/RU/ZH
   (`#provider-miss`) и в вики: сессия `dc_aievent`, шлюз `cline-pass`,
   модель `deepseek-v4.1-flash-1017`, префикс 252k; ходовые числа
   05:18:06 / 05:22:06 (после 4-мин `wait`) / 05:22:16 (`cacheRead 0`,
   $0.0756) / 05:26:19 (снова 99,9%). Виновник — кэш-слой провайдера;
   правила отличия от смены префикса и от TTL — в разделе.
-- Открыто: только npm/marketplace — отдельным решением владельца (D10).
-  Страховка без sandbox закрыта целиком (1.0.1).
+- Открыто: живой прогон приёмки `external` (C1) и машиночитаемый статус
+  Ensemble (`agent-team status --json`) — нужна team-сессия и ответ
+  Ensemble; публикация npm/marketplace — отдельным решением владельца
+  (D10). Страховка без sandbox закрыта целиком (1.0.1).
 - Тесты не пишут в реальный state: `context-guard` даёт каждому тесту свой
   `XDG_STATE_HOME` (`01bfc85`), иначе копия session JSONL из handoff-тестов
   складывалась в `~/.local/state/omp-agent-workflow/sessions/`.
@@ -59,7 +63,7 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Состояние
 
-Версия `1.0.2`; релиз `4bc1d7c` запушен (`main` = `origin/main`), тег и
+Версия `1.0.2`; релиз `8208966` запушен (`main` = `origin/main`), тег и
 release `v1.0.2` с tarball asset'ом; заметки —
 `docs/release-notes-1.0.2.md`. Предыдущий релиз — `1.0.1` (`1b4874f`).
 1.0.2 — preflight в чужом репозитории: меню без no-op проверок, пустое
@@ -617,10 +621,11 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 
 ## Следующие шаги
 
-1. 1.0.1 опубликован (2026-11-27): push `main`, тег/release `v1.0.1`,
-   tarball asset (`sha256 7365f73a…7c4ad`), CI зелёный, Pages задеплоен.
-   Отдельным решением остаётся только npm/marketplace (D10). Не парсить
-   внутренности cache-monitor.
+1. 1.0.2 опубликован (2026-11-27): push `main` (`8208966`), тег/release
+   `v1.0.2`, tarball asset (89 файлов, `sha256 52529e2f…17a8`), CI зелёный,
+   Pages задеплоен; 1.0.1 к тому же опубликован (`1b4874f`, `sha256
+   7365f73a…7c4ad`). Отдельным решением остаётся только npm/marketplace
+   (D10). Не парсить внутренности cache-monitor.
 2. Страховка без sandbox закрыта целиком в 1.0.1: WIP-патч перед
    `force`-удалением, `omp-orchestrate refs`, копия session JSONL до
    handoff и `docs/recovery.md`.

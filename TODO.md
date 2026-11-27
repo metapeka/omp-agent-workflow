@@ -3,10 +3,17 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-27. Версия: `1.0.1`.
+Дата: 2026-11-27. Версия: `1.0.2`.
 
 ## Сейчас
 
+- [x] 1.0.2 — preflight в чужом репозитории (2026-11-27): `checks`
+      предлагаются только при `scripts.test`/`typecheck`
+      (`actionsForPreflight` + общий `readCheckScripts`), пустое меню
+      печатает итог без диалога, синонимы разделов state узнают чужие
+      шаблоны; опубликован — push `main` (`8208966`), тег/release
+      `v1.0.2`, tarball asset (89 файлов, sha256 `52529e2f…17a8`),
+      CI зелёный, Pages задеплоен; `npm run verify` — 409 тестов.
 - [x] Подготовка к приёмке `execution: external` (2026-11-27): сценарий
       `docs/acceptance-ensemble.md`; A1–A9 пройдены на `/tmp`-фикстуре
       (отказы `start/verify/finish/rebase`, `STATE.json`/worktree не

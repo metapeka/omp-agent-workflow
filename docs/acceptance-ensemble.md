@@ -1,6 +1,6 @@
 # Приёмка `execution: external`: OAW + Ensemble
 
-Дата: 2026-11-27. OAW `1.0.1`; проверено на Orca `1.4.278`, Ensemble
+Дата: 2026-11-27. OAW `1.0.2` (A1–A9 сняты на 1.0.1); проверено на Orca `1.4.278`, Ensemble
 `0.5.5`, OMP `19.2.1`, Node `22.23.5`. Контракт —
 [contracts.md](contracts.md), решение — D15 в [decisions.md](decisions.md),
 карта защит — [guards.md](guards.md).
@@ -29,7 +29,7 @@ A1–A9 — детерминированные, без живого Ensemble. C1
 
 ## Предусловия
 
-- OAW линкован: `omp plugin list` → `omp-agent-workflow@1.0.1`.
+- OAW линкован: `omp plugin list` → `omp-agent-workflow@1.0.2`.
 - Orca запущена, `orca plugin list` → `duegin.ensemble` в состоянии
   `running`.
 - Репозиторий-фикстура: `AUTOPLAN.md` с `plan.execution: "external"`,
