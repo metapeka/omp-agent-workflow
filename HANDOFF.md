@@ -142,6 +142,41 @@ Push 1.0.0 выполнен с разрешения владельца; npm/mark
 | Release 0.5.14 | публичный GitHub-репозиторий, tag/release, tri-lingual README, CI green |
 | Проверки | `npm run check:names` (OMP builtins: 105, наших 5, конфликтов 0), `npm test`, `npm run typecheck`, extension load exit 0, launcher `--preset`/`--preset=`, HTML tag/link check + browser screenshots |
 
+## Живая проверка 1.0.0 (2026-11-27)
+
+Три проверки в отдельных Orca-worktree; tracked-код не менялся, кроме доков.
+
+**TUI (`/handoff-preflight`, `/wrap`, статус).** Живая сессия `bin/omp-yoda`:
+таблица `GROUP  ST  DETAIL`, `HANDOFF.md ✔ разделы 6/6`, вердикт, меню
+действий с отказом от всех и возврат в промпт; `/wrap` показал карточки,
+Esc отменил без изменений. Статус: `YODA-SUP`; `⚠ HANDOFF` наблюдён при
+`OMP_HANDOFF_AT_USD=0.001` (после хода). `OMP_HANDOFF_AT=1` не сработал,
+потому что в Settings задан `handoffAtPercent=30` — приоритет
+Settings > env, документирован. В тестовом дереве untracked `AUTOPLAN.md`
+дал `git ✘` и блокер preflight: план намеренно не runtime — ответ в FAQ.
+
+**Automatic handoff E2E.** Launcher и supervisor в Orca terminal; marker
+`{"reason":"context","sessionFile":…}` (поля как в `index.ts`); лог
+supervisor: `marker → /handoff-new sent → new session detected →
+continuation prompt sent`. Marker потреблён, session map обновлён, новая
+сессия с `parentSession`, первое сообщение — `Прочитай HANDOFF.md и
+продолжи следующую задачу…`, HANDOFF вложен (32349 символов; обрезка 32k
+сработала). Тайминги: marker → сессия 1.20 с, map 1.21 с; предупреждений
+`SUP OFF`/`terminal handle нет` нет. Найден и исправлен дефект
+документации: `bin/omp-yoda --dir` не существует (`fdedbe4`).
+
+**CI и релиз.** CI переведён на `npm run verify` (`de0556d`, теперь
+`check:names` — гейт). Tarball из тега (83 файла, sha256
+`aaed0a86…b495691`) приложен к release `v1.0.0`; скачанный asset совпадает
+по sha, `npm i` из него даёт рабочие CLI. README EN/RU/ZH, runbook и
+release notes скачивают asset, `npm pack` оставлен альтернативой.
+
+**Наблюдения.** OMP при `newSession` удаляет JSONL родительской сессии:
+`economics` деградирует штатно (`родительская сессия отсутствует`, `null`
+в summary) — «до/после» измеримо только по живому файлу. Тестовая
+yoda-сессия сразу начинает задачу из continuation prompt — такие прогоны
+закрывать сразу после детекта.
+
 ## Инцидент 2026-11-23: SIGTERM при `orca worktree rm`
 
 **Факты.** В `omp-cache-monitor` после merge `feat/ui-presets` команда
@@ -464,19 +499,10 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 1. 1.0.0 выпущен: запушен, тег/release `v1.0.0`, CI зелёный, Pages
    задеплоен. Открытым остаётся npm/marketplace — отдельное решение
    владельца (D10). Не парсить внутренности cache-monitor.
-2. Проверить 0.7.1 в TUI: `omp plugin list`, `/handoff-preflight` на этом
-   файле (строки `HANDOFF.md: разделы 6/6`, отсутствие ложных warn по
-   синонимам), state без раздела — warn по строке и фикс в «вручную»,
-   сессия с компакцией после state — warn `компакция после state`;
-   `npm run check:names`, `/handoff-preflight` с advisory-строкой,
-   метриками и строкой `usage-border` (при `OMP_CACHE_MONITOR_CLI` или
-   `omp-cache-monitor` в `PATH`; без CLI строки нет), `⚠ HANDOFF` при
-   spend-пороге (`OMP_HANDOFF_AT_USD`), `SUP OFF` в TUI,
-   `OMP_WORKFLOW_MODE=off bin/omp-yoda` без supervisor и
-   `bin/omp-yoda --preset plan --version` (флаги модели, supervisor,
-   exit 0). `doctor --json` на чистом репо — exit 0, без Orca — warn;
-   `--strict` — exit 1. На пороге handoff проверить строку `Дерево:` в
-   запросе (ветка, HEAD, грязные пути).
+2. TUI и automatic handoff проверены живьём 2026-11-27 (см. «Живая
+   проверка 1.0.0»): preflight-таблица и меню, `/wrap`, `YODA-SUP`,
+   `⚠ HANDOFF`, marker → `/handoff-new` → continuation. Повторять только
+   после изменений в этих поверхностях.
 3. 0.6 economics закрыт содержательно (0.6.1): `omp-orchestrate economics`
    строит цепочку по `parentSession`, считает окна «до/после», hit rate,
    цену первого хода и `recoveryTurns`, ищет компакции. Компакций в
@@ -490,6 +516,14 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 
 ## Риски
 
+- OMP при `newSession` (в том числе `/handoff-new`) удаляет JSONL
+  родительской сессии. `economics` не падает — пишет
+  `родительская сессия отсутствует` и `null` в summary, но «до»-окно
+  измеримо только пока файл жив; ledger-хвост прошлой сессии после handoff
+  читать нечего. Данные не восстанавливаются задним числом.
+- `AUTOPLAN.md` не в `RUNTIME_PATHS`: untracked/modified план — грязное
+  дерево и блокер preflight с предложением коммита. Это осознанно (план —
+  вход оркестратора); локальный план — через `.gitignore` проекта.
 - CLI под `node_modules` (tarball/marketplace-копия): шимы `bin/` регистрируют
   `lib/ts-loader.mjs`, который читает `.ts` через `fs` и снимает типы
   `node:module.stripTypeScriptTypes`; для остальных URL делегирует штатному

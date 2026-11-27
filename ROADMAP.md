@@ -463,6 +463,14 @@ cross-harness handoff; PR-автоматизацию; уведомления.
       и ссылку на заметки.
 - [x] Push `main`, тег и GitHub release `v1.0.0` — опубликованы
       2026-11-27; CI зелёный, Pages задеплоен.
+- [x] Живая проверка 1.0.0: TUI (`/handoff-preflight` таблица + меню,
+      `/wrap` карточки, `YODA-SUP`, `⚠ HANDOFF`) и automatic handoff E2E
+      (marker → `/handoff-new` → continuation, 1.2 с; HANDOFF вложен,
+      обрезка 32k).
+- [x] CI: один гейт `npm run verify` (теперь `check:names` тоже в CI).
+- [x] Release asset: tarball 1.0.0 (83 файла, sha256) приложен к релизу;
+      README EN/RU/ZH, runbook и release notes скачивают его, `npm pack` —
+      альтернатива из клона.
 - [ ] npm/marketplace-публикация — только с явного разрешения владельца
       (D10); следующий отдельный разговор.
 

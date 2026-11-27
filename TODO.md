@@ -21,6 +21,11 @@
       2026-11-26). Изменение — отдельным разрешением владельца.
 - [x] GitHub release/tag `v1.0.0` и push 1.0.0 — 2026-11-27, CI зелёный,
       Pages задеплоен.
+- [x] Живая проверка 1.0.0: TUI (`/handoff-preflight`, `/wrap`, `YODA-SUP`,
+      `⚠ HANDOFF`) и automatic handoff E2E (marker → `/handoff-new` →
+      continuation, 1.2 с); CI на `npm run verify`; tarball 1.0.0 приложен
+      к релизу как asset; FAQ: `AUTOPLAN.md` не runtime, economics после
+      удалённого родителя.
 - [ ] Опционально: полный TUI E2E `/wrap` на Orca-managed worktree
       (confirm/cancel и branch retained); core Orca и TUI confirm/cancel
       уже проверены.
