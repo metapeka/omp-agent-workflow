@@ -9,25 +9,30 @@ semantic for the plugin contract, not for OMP itself.
 ### Added
 
 - `omp-orchestrate economics --summary`: an aggregate over the whole chain on
-  top of the per-border report — `sessions`, `handoffs`, `boundaries`,
-  `turns`, measured `spendUsd` (sum of turn prices across chain sessions),
+  top of the per-border report — `sessions`, `handoffs`, `measuredSessions`
+  (sessions actually read through `costs --json`), `boundaries`, `turns`
+  (`null` when nothing was measured; a measured empty session is honest `0`),
+  measured `spendUsd` (sum of turn prices over the measured sessions),
   `medianTurnUsd`, `avgBoundaryUsd` (mean first-turn price at a border) and
   `hitTrend` (mean before/after hit rate, `deltaPp`, `direction`
-  `up|down|flat` at a 0.5 pp threshold). JSON gains an additive `summary`
-  object; without the flag the report and its JSON are byte-identical.
+  `up|down|flat` at an inclusive 0.5 pp threshold). JSON gains an additive
+  `summary` object; without the flag the report and its JSON are
+  byte-identical.
 - Human output prints the aggregate as a borderless
   `SESSIONS … BORDER` table above the boundary detail, with the `BORDER`
   ratio to a normal turn and a `hit: before → after` line.
-- Missing measurements stay `null` with the note
-  `сводка: измеренных цен ходов нет`; no zeros are invented and the optional
-  cache-monitor CLI stays optional.
+- Missing measurements stay `null`: an unmeasured chain gets
+  `сводка: измеренных цен ходов нет`, and a chain with prices for only part
+  of its sessions gets `сводка: цены ходов прочитаны у N из M сессий`
+  instead of presenting a lower bound as the total. No zeros are invented and
+  the optional cache-monitor CLI stays optional.
 
 ### Tests
 
-- `test/handoff-economics.test.mjs` (36): aggregate values on the two-session
+- `test/handoff-economics.test.mjs` (37): aggregate values on the two-session
   fixture, unchanged report without the flag, data-gated nulls without the
-  CLI, `up|down|flat` threshold, rendered block plus retained detail, CLI
-  `--summary` in both JSON and text.
+  CLI, partial-coverage note, inclusive `up|down|flat` threshold, rendered
+  block plus retained detail, CLI `--summary` in both JSON and text.
 
 ### Docs
 

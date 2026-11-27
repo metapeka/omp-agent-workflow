@@ -344,7 +344,7 @@ bin/omp-orchestrate economics --summary --session "$SESSION"  # 整链聚合
 bin/omp-orchestrate economics --json > economics.json   # schemaVersion 1
 ```
 
-`--summary` 在逐条边界明细之上增加一行聚合：链中的会话数、handoff 数与已测量的边界数，已测量的总支出与回合价格中位数，边界首回合的平均价格（及其与普通回合的比值），以及「前/后」窗口的缓存命中率趋势。JSON 增加 `summary` 对象；不带该标志时报告及其 JSON 完全不变。未测量的值保持 `null`，不会编造零。
+`--summary` 在逐条边界明细之上增加一行聚合：链中的会话数、handoff 数与已测量的边界数，实际被测量的会话数，已测量的总支出与回合价格中位数，边界首回合的平均价格（及其与普通回合的比值），以及「前/后」窗口的缓存命中率趋势。JSON 增加 `summary` 对象；不带该标志时报告及其 JSON 完全不变。未测量的值保持 `null`；当只有部分会话有价格时，note 会写出 `N из M`，不会把部分合计当作整链支出，也不会编造零。
 
 没有 `--session` 时取 `--dir` 中 `.omp-handoff-session.json` 最新且存活的记录。没有 cache-monitor CLI（或报告损坏）时 `boundaries` 为空并附 note，exit 0；会话不存在为 exit 1，参数错误为 exit 2。不写文件，不走网络。
 

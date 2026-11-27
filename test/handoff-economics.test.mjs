@@ -817,6 +817,7 @@ describe("handoff economics: chain summary", () => {
 		assert.deepEqual(report.summary, {
 			sessions: 2,
 			handoffs: 1,
+			measuredSessions: 2,
 			boundaries: 1,
 			turns: 9,
 			// 0.001+0.002+0.003+0.004+0.005 + 0.05+0.04+0.002+0.002
@@ -854,8 +855,9 @@ describe("handoff economics: chain summary", () => {
 		assert.deepEqual(report.summary, {
 			sessions: 2,
 			handoffs: 1,
+			measuredSessions: 0,
 			boundaries: 0,
-			turns: 0,
+			turns: null,
 			spendUsd: null,
 			medianTurnUsd: null,
 			avgBoundaryUsd: null,
@@ -869,6 +871,29 @@ describe("handoff economics: chain summary", () => {
 		assert.ok(
 			report.notes.some((note) =>
 				note.includes("сводка: измеренных цен ходов нет"),
+			),
+		);
+	});
+
+	it("reports partial coverage instead of presenting a lower bound as total", () => {
+		const { parent, child } = chainFixture();
+		// Родитель без отчёта costs: сумма по ребёнку — не весь spend цепочки.
+		rmSync(`${parent}.costs.json`);
+		const report = buildEconomicsReport({
+			sessionFile: child,
+			turns: 2,
+			summary: true,
+			env: { ...process.env, OMP_CACHE_MONITOR_CLI: fakeCli() },
+		});
+		assert.equal(report.summary.sessions, 2);
+		assert.equal(report.summary.measuredSessions, 1);
+		assert.equal(report.summary.boundaries, 0);
+		assert.equal(report.summary.spendUsd, 0.094);
+		assert.equal(report.summary.avgBoundaryUsd, null);
+		assert.equal(report.summary.hitTrend.direction, null);
+		assert.ok(
+			report.notes.some((note) =>
+				note.includes("сводка: цены ходов прочитаны у 1 из 2 сессий"),
 			),
 		);
 	});
@@ -894,6 +919,8 @@ describe("handoff economics: chain summary", () => {
 		assert.equal(direction(70, 50).direction, "down");
 		assert.equal(direction(90, 90.2).direction, "flat");
 		assert.equal(direction(90.4, 90).direction, "flat");
+		assert.equal(direction(90, 90.5).direction, "up");
+		assert.equal(direction(90.5, 90).direction, "down");
 		assert.deepEqual(direction(90, 90.2).deltaPp, 0.2);
 
 		const empty = summarizeEconomics(chain.slice(0, 1), [], []);

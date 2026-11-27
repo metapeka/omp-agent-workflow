@@ -74,8 +74,11 @@ export interface EconomicsHitTrend {
 export interface EconomicsSummary {
 	sessions: number;
 	handoffs: number;
+	/** Сколько сессий цепочки реально прочитано через costs --json. */
+	measuredSessions: number;
 	boundaries: number;
-	turns: number;
+	/** `null`, если ни одна сессия не измерена; измеренная пустая — `0`. */
+	turns: number | null;
 	spendUsd: number | null;
 	medianTurnUsd: number | null;
 	avgBoundaryUsd: number | null;
@@ -271,8 +274,9 @@ export function summarizeEconomics(
 	return {
 		sessions: chain.length,
 		handoffs: chain.filter((node) => node.handoff).length,
+		measuredSessions: sessionTurns.length,
 		boundaries: boundaries.length,
-		turns: allTurns.length,
+		turns: sessionTurns.length === 0 ? null : allTurns.length,
 		spendUsd:
 			priced.length === 0
 				? null
@@ -287,9 +291,9 @@ export function summarizeEconomics(
 			direction:
 				delta === null
 					? null
-					: delta > HIT_TREND_FLAT_PP
+					: delta >= HIT_TREND_FLAT_PP
 						? "up"
-						: delta < -HIT_TREND_FLAT_PP
+						: delta <= -HIT_TREND_FLAT_PP
 							? "down"
 							: "flat",
 		},
@@ -523,6 +527,11 @@ export function buildEconomicsReport(input: EconomicsInput): EconomicsReport {
 		summary = summarizeEconomics(chain, boundaries, sessionTurns);
 		if (summary.spendUsd === null) {
 			pushNote(notes, "сводка: измеренных цен ходов нет");
+		} else if (summary.measuredSessions < chain.length) {
+			pushNote(
+				notes,
+				`сводка: цены ходов прочитаны у ${summary.measuredSessions} из ${chain.length} сессий`,
+			);
 		}
 	}
 
@@ -621,7 +630,7 @@ function renderSummary(summary: EconomicsSummary): string[] {
 		String(summary.sessions),
 		String(summary.handoffs),
 		String(summary.boundaries),
-		String(summary.turns),
+		String(summary.turns === null ? "—" : summary.turns),
 		formatMoney(summary.spendUsd),
 		formatMoney(summary.medianTurnUsd),
 		border,

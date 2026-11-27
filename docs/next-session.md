@@ -1,15 +1,17 @@
-# Next session: OAW (`omp-agent-workflow`) 0.7.0
+# Next session: OAW (`omp-agent-workflow`) 0.7.2
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.6.1`;
-  ветка `feat/spend-handoff` — `0.7.0` (ещё не слита).
-- Ветки 0.5.1–0.6.0 (включая `feat/doctor`, `feat/oaw-name`,
+- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.7.2`
+  (0.7.0–0.7.2 влиты локально); `origin/main` — 0.7.0, push ждёт
+  разрешения владельца.
+- Ветки 0.5.1–0.7.2 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
-  `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`)
+  `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`,
+  `feat/spend-handoff`, `feat/handoff-economics`, `feat/economics-summary`)
   слиты ff-only; worktrees удалены.
 - Готово: 0.3 (guard/handoff/Yoda), 0.5 (orchestrator), 0.5.1 (`/wrap`),
   0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4–0.5.5
@@ -34,7 +36,12 @@
   (`omp-orchestrate economics`: цепочка по `parentSession`, окна «до/после»,
   hit rate, цена первого хода, `recoveryTurns`, компакции; JSON v1),
   0.7.0 (spend-aware handoff: `handoffAtSpendUsd` и `OMP_HANDOFF_AT_USD`,
-  инкрементальные offsets по session JSONL, marker `reason: "spend"`).
+  инкрементальные offsets по session JSONL, marker `reason: "spend"`),
+  0.7.1 (quality gate в preflight: шесть ключевых разделов `HANDOFF.md` по
+  синонимам и компакция после state — advisory-warning с фиксом),
+  0.7.2 (`omp-orchestrate economics --summary`: агрегат цепочки, средняя
+  цена первого хода на границе с отношением к обычному ходу, тренд hit
+  rate; аддитивное поле `summary` в JSON).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
@@ -55,16 +62,12 @@
 
 ## Следующий этап
 
-1. **0.7.0 spend-aware handoff** реализован в `feat/spend-handoff`:
-   второй триггер по измеренному `usage.cost.total` с offsets, общий
-   cooldown/supervisor/`⚠ HANDOFF`. Осталось слить ff-only и проверить на
-   живой сессии с ценами. **0.6 economics**: реализовано в
-   `feat/handoff-economics` (0.6.1) —
-   `omp-orchestrate economics`: цепочка по `parentSession`, граница только у
-   ребёнка с маркером `handoff`, окна «до/после», hit rate, цена первого
-   хода, `recoveryTurns`, детектор компакций; JSON v1, graceful skip без CLI.
-   Компакций в локальных данных нет — вывод data-gated. Осталось слить
-   ветку. Не парсить внутренности cache-monitor.
+1. **0.7.3 discovery** — следующий этап: `.omp-plugin/marketplace.json` и
+   страница сравнения; npm/marketplace — только с явного разрешения
+   владельца. Затем 0.7.4 ledger субагентов (`maxSpendUsd` по дочерним
+   сессиям, расход в `status --json`, stop при перерасходе). 0.7.0–0.7.2
+   влиты в `main`; 0.6 economics закрыт `economics --summary`. Не парсить
+   внутренности cache-monitor.
 2. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
 3. Публикация остаётся локальной (`omp plugin link`; D10).
 4. Hub старта сессии и `brief` — личный runbook, вне продукта (joint plan
@@ -99,15 +102,16 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.7.0. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.7.2. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11–D16).
 > Settings → Plugins — основной способ настройки, env — fallback.
 > `/handoff-preflight` advisory. `next-session:` применяет только launcher
 > при старте; `--preset` важнее Settings и отменяет advisory.
 > `execution: external` в `AUTOPLAN.md` отдаёт задачи Ensemble и блокирует
-> `start/verify/finish/rebase` в OAW. 0.6 economics: `omp-orchestrate
-> economics` — read-only «до/после handoff» (цепочка `parentSession`, JSON v1,
-> graceful skip без CLI); не парсить внутренности cache-monitor.
+> `start/verify/finish/rebase` в OAW. 0.6 economics: `omp-orchestrate economics`
+> — read-only «до/после handoff» (цепочка `parentSession`, JSON v1,
+> graceful skip без CLI); `--summary` добавляет агрегат цепочки; не парсить
+> внутренности cache-monitor.
 > Spend-триггер `handoffAtSpendUsd` — измеренные деньги, offsets без
 > полного перечитывания JSONL.
 > Публикация — по разрешению владельца (D10); 0.6.0 запушен.

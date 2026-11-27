@@ -216,15 +216,20 @@ node --experimental-strip-types bin/omp-orchestrate economics \
 Ничего не пишется, сеть не используется.
 
 `--summary` добавляет аддитивное поле `summary` (без флага его нет, отчёт и
-JSON прежние): `sessions`, `handoffs`, `boundaries`, `turns`, `spendUsd`
-(сумма измеренных цен ходов всей цепочки), `medianTurnUsd` (медиана цены
-хода), `avgBoundaryUsd` (средняя цена первого хода на границах) и
-`hitTrend{beforePercent,afterPercent,deltaPp,direction}` — среднее hit rate
-окон «до» и «после» по границам, `direction` = `up|down|flat` (порог
-0.5 pp) или `null`. В тексте блок `Сводка:` стоит над деталями: счётчики,
-деньги, `BORDER` с отношением к обычному ходу и строка `hit: до → после`.
-Неизмеренное — `null` плюс note `сводка: измеренных цен ходов нет`; нули не
-подставляются.
+JSON прежние): `sessions`, `handoffs`, `measuredSessions` (сколько сессий
+цепочки реально прочитано через `costs --json`), `boundaries`, `turns`
+(`null`, если не измерена ни одна сессия; измеренная пустая — `0`),
+`spendUsd` (сумма измеренных цен ходов прочитанных сессий), `medianTurnUsd`
+(медиана цены хода), `avgBoundaryUsd` (средняя цена первого хода на
+границах) и `hitTrend{beforePercent,afterPercent,deltaPp,direction}` —
+среднее hit rate окон «до» и «после» по границам, `direction` =
+`up|down|flat` (порог 0.5 pp включительно: `|deltaPp| ≥ 0.5` — тренд) или
+`null`. В тексте блок `Сводка:` стоит над деталями: счётчики, деньги,
+`BORDER` с отношением к обычному ходу и строка `hit: до → после`.
+Неизмеренное — `null`; когда не измерено ничего, note
+`сводка: измеренных цен ходов нет`, а когда прочитана только часть цепочки —
+note `сводка: цены ходов прочитаны у N из M сессий`, чтобы частичная сумма
+не читалась как весь spend. Нули не подставляются.
 
 При `execution: external` в `AUTOPLAN.md` `start`, `verify`, `finish` и
 `rebase` возвращают `stop: external-run`: задачи ведёт Ensemble (Orca
