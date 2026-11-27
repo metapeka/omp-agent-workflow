@@ -295,8 +295,8 @@ function stateSectionsChecks(stateFile: string, text: string): PreflightCheck[] 
 			{
 				status: "warn",
 				id: "state-sections",
-				text: `${stateFile}: нестандартный формат — нет узнаваемых разделов`,
-				fix: `сверить ${stateFile} с шаблоном: ${names.join(", ")}`,
+				text: `${stateFile}: нестандартный формат — нет разделов шаблона OAW (вне OAW допустимо)`,
+				fix: `оставить как есть, если state ведётся по своему шаблону; иначе сверить ${stateFile} с шаблоном: ${names.join(", ")}`,
 			},
 		];
 	}
@@ -1015,13 +1015,28 @@ function manualHandoffSteps(report: PreflightReport): string[] {
 	return steps;
 }
 
-/** Оставляет в меню только то, что действительно требует действия. */
-function actionsForPreflight(report: PreflightReport): HandoffAction[] {
+/**
+ * Оставляет в меню только то, что действительно требует действия.
+ * Проверки предлагаются лишь при запускаемых скриптах: иначе выбор
+ * «Сделать» давал бы гарантированный `⦸ пропущено — package.json нет`.
+ */
+export function actionsForPreflight(
+	report: PreflightReport,
+	cwd: string,
+): HandoffAction[] {
 	const byId = new Map<string, PreflightCheck>();
 	for (const check of report.checks) {
 		if (check.id) byId.set(check.id, check);
 	}
-	const actions: HandoffAction[] = [CHECKS_ACTION];
+	const actions: HandoffAction[] = [];
+	const scripts = readCheckScripts(cwd);
+	// Нет package.json или нет test/typecheck — предлагать нечего; битый или
+	// нечитаемый package.json предлагается, чтобы находка была видна.
+	const checksUsable =
+		scripts.names.length > 0 ||
+		scripts.problem === "invalid" ||
+		scripts.problem === "unreadable";
+	if (checksUsable) actions.push(CHECKS_ACTION);
 	if (byId.get("worktree")?.status === "fail") actions.push(COMMIT_ACTION);
 	if (byId.get("merge")?.status === "warn") actions.push(MERGE_ACTION);
 	const upstream = byId.get("upstream");
@@ -1376,8 +1391,19 @@ function runNpmScript(
 	return promise;
 }
 
-/** Запускает scripts.test и scripts.typecheck из package.json, если они есть. */
-async function performChecks(cwd: string): Promise<HandoffActionReport> {
+/** Что preflight умеет запускать: `scripts.test`/`scripts.typecheck`. */
+export interface CheckScripts {
+	names: string[];
+	problem: "missing" | "unreadable" | "invalid" | null;
+	message?: string;
+}
+
+/**
+ * Читает `package.json` и отбирает скрипты проверок; ничего не запускает.
+ * `problem` отличает отсутствие файла от битого/нечитаемого — меню действий
+ * предлагает проверки только при `problem === null` и непустых `names`.
+ */
+export function readCheckScripts(cwd: string): CheckScripts {
 	let text: string;
 	try {
 		text = readFileSync(resolve(cwd, "package.json"), "utf8");
@@ -1389,29 +1415,15 @@ async function performChecks(cwd: string): Promise<HandoffActionReport> {
 			typeof error.code === "string"
 				? error.code
 				: null;
-		if (code === "ENOENT") {
-			return {
-				id: "checks",
-				status: "skipped",
-				text: "проверки: пропущено — package.json нет, тесты не запускались",
-			};
-		}
+		if (code === "ENOENT") return { names: [], problem: "missing" };
 		const message = error instanceof Error ? error.message : String(error);
-		return {
-			id: "checks",
-			status: "failed",
-			text: `проверки: ошибка — package.json не читается: ${message}`,
-		};
+		return { names: [], problem: "unreadable", message };
 	}
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(text);
 	} catch {
-		return {
-			id: "checks",
-			status: "failed",
-			text: "проверки: ошибка — package.json битый JSON",
-		};
+		return { names: [], problem: "invalid" };
 	}
 	let raw: unknown = null;
 	if (parsed && typeof parsed === "object" && "scripts" in parsed) {
@@ -1423,7 +1435,33 @@ async function performChecks(cwd: string): Promise<HandoffActionReport> {
 			if (typeof command === "string") scripts[name] = command;
 		}
 	}
-	const names = ["test", "typecheck"].filter((name) => name in scripts);
+	return {
+		names: ["test", "typecheck"].filter((name) => name in scripts),
+		problem: null,
+	};
+}
+
+/** Запускает scripts.test и scripts.typecheck из package.json, если они есть. */
+async function performChecks(cwd: string): Promise<HandoffActionReport> {
+	const scripts = readCheckScripts(cwd);
+	if (scripts.problem === "missing") {
+		return {
+			id: "checks",
+			status: "skipped",
+			text: "проверки: пропущено — package.json нет, тесты не запускались",
+		};
+	}
+	if (scripts.problem !== null) {
+		return {
+			id: "checks",
+			status: "failed",
+			text:
+				scripts.problem === "unreadable"
+					? `проверки: ошибка — package.json не читается: ${scripts.message ?? "неизвестная ошибка"}`
+					: "проверки: ошибка — package.json битый JSON",
+		};
+	}
+	const names = scripts.names;
 	if (names.length === 0) {
 		return {
 			id: "checks",
@@ -2156,7 +2194,16 @@ export default function contextGuard(pi: ExtensionAPI): void {
 				formatPreflight(initial, "состояние до действий", { symbols, columns }),
 				initial.ready ? "info" : "warning",
 			);
-			const available = actionsForPreflight(initial);
+			const available = actionsForPreflight(initial, ctx.cwd);
+			if (available.length === 0) {
+				// Действий нет — диалог не открываем, итог и ручные шаги сразу.
+				notify(
+					ctx,
+					formatPreflightResult(initial, [], { symbols, columns }),
+					initial.ready ? "info" : "warning",
+				);
+				return;
+			}
 			const outcome = await askHandoffActions(ctx, available);
 			if (outcome.status === "cancelled") {
 				notify(ctx, "PREFLIGHT отменён: действия не выбраны.", "info");

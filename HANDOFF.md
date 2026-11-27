@@ -15,6 +15,13 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Сейчас (кратко для новой сессии)
 
+- 1.0.2 (не выпущен, локально в `main`): preflight не предлагает
+  «проверки» без `scripts.test`/`typecheck` (в docs/audit-репозитории это
+  был гарантированный `⦸`), а пустое меню сразу печатает итог; синонимы
+  разделов state покрывают чужие шаблоны (`Проверено как`, `Открыто`,
+  `Главные выводы`), «нестандартный формат» говорит «нет разделов шаблона
+  OAW (вне OAW допустимо)». Версии в `package.json` и
+  `.omp-plugin/marketplace.json` — 1.0.2; тег и push — по решению владельца.
 - Версия `1.0.1` выпущена 2026-11-27: `main` = `origin/main`, тег и GitHub
   release `v1.0.1` опубликованы, tarball приложен asset'ом (87 файлов,
   sha256 `7365f73a…7c4ad`), CI на `1b4874f` зелёный, Pages задеплоен.
@@ -50,7 +57,8 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Состояние
 
-Версия `1.0.1`; релиз `1b4874f` запушен (`main` = `origin/main`), тег и
+Версия `1.0.2` (не выпущена), последний релиз — `1.0.1`; `1b4874f` запушен
+(`main` = `origin/main`), тег и
 release `v1.0.1` с tarball asset'ом; после него — только документы до
 `d4dfa35` (изоляция `XDG_STATE_HOME` в тестах, случай промаха провайдера в
 explainer EN/RU/ZH). 1.0.1 — страховка без sandbox:
@@ -59,6 +67,13 @@ WIP-патч перед `force`-удалением упавшей задачи, 
 `docs/recovery.md`; `npm run verify` — 403 теста, typecheck, `check:names`
 зелёные. В `main`:
 
+- 1.0.2 preflight: `readCheckScripts` (общий с `performChecks`),
+  `actionsForPreflight(report, cwd)` — `checks` только при запускаемых
+  скриптах (битый `package.json` предлагается, чтобы показать ошибку);
+  пустое меню печатает итог сразу; синонимы разделов в
+  `lib/state-sections.ts`; тесты — `test/preflight-actions.test.mjs`,
+  `test/state-sections.test.mjs`, `test/context-guard.test.mjs` (меню без
+  no-op).
 - 1.0.1 копия session JSONL: `lib/session-archive.ts` +
   `archiveSessionOnce` в `index.ts` — файл копируется в
   `$XDG_STATE_HOME/omp-agent-workflow/sessions/<stem>.handoff-<ts>.jsonl`

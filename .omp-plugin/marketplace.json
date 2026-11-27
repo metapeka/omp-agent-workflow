@@ -11,7 +11,7 @@
       "name": "omp-agent-workflow",
       "source": "./",
       "description": "Deterministic context guard, handoff into a fresh session, an external supervisor outside the agent process, and plan/worktree/verify/ff-merge orchestration for OMP.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "category": "workflow",
       "tags": [
         "context",

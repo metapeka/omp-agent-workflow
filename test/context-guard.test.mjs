@@ -2210,7 +2210,7 @@ describe("/handoff-preflight", () => {
 		}
 	});
 
-	it("shows the state first and offers only needed actions", async () => {
+	it("prints the result without a dialog when no action can be run", async () => {
 		const { dir } = preflightRepo({
 			"HANDOFF.md": "# state\n",
 			"index.ts": "export {};\n",
@@ -2221,17 +2221,15 @@ describe("/handoff-preflight", () => {
 			const v = view(40, { cwd: dir, askDialog });
 			await command(commands, "handoff-preflight", v.ctx);
 
-			assert.equal(asked.length, 1);
-			assert.deepEqual(
-				asked[0].map((question) => question.id),
-				["checks"],
-			);
+			// Нет package.json и git чист — ни проверок, ни коммита: меню не нужно.
+			assert.equal(asked.length, 0);
+			assert.equal(v.notes.length, 2);
 			assert.match(v.notes[0].text, /состояние до действий/);
 			assert.match(v.notes.at(-1).text, /PREFLIGHT · действия/);
 			assert.match(v.notes.at(-1).text, /— не выбраны/);
 			assert.match(v.notes.at(-1).text, /PREFLIGHT · итог/);
 			assert.match(v.notes.at(-1).text, /preflight: OK/);
-			assert.doesNotMatch(v.notes.at(-1).text, /коммит:|проверки:|merge:/);
+			assert.match(v.notes.at(-1).text, /• удалить worktree после выхода/);
 			assert.equal(v.notes.at(-1).level, "info");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -2274,7 +2272,7 @@ describe("/handoff-preflight", () => {
 
 			assert.deepEqual(
 				asked[0].map((question) => question.id),
-				["checks", "commit"],
+				["commit"],
 			);
 			assert.match(v.notes[0].text, /изменено файлов 1/);
 			assert.match(v.notes.at(-1).text, /preflight: блокеры/);
@@ -2322,7 +2320,7 @@ describe("/handoff-preflight", () => {
 
 			assert.deepEqual(
 				asked[0].map((question) => question.id),
-				["checks", "commit"],
+				["commit"],
 			);
 			assert.equal(run("log", "-1", "--format=%s"), "test: handoff");
 			assert.equal(run("status", "--porcelain"), "");
@@ -2558,7 +2556,7 @@ describe("/handoff-preflight", () => {
 
 			assert.deepEqual(
 				asked[0].map((question) => question.id),
-				["checks", "merge"],
+				["merge"],
 			);
 			assert.match(v.notes.at(-1).text, /✔ merge: main @ [0-9a-f]+/);
 			assert.match(v.notes.at(-1).text, /влита в main/);
@@ -2718,9 +2716,12 @@ describe("/handoff-preflight", () => {
 	it("stops when the action menu is cancelled", async () => {
 		const { dir } = preflightRepo({
 			"HANDOFF.md": "# state\n",
-			"index.ts": "export {};\n",
+			"code.ts": "export {};\n",
 		});
 		try {
+			// Грязное дерево — единственное доступное действие это commit,
+			// поэтому диалог открывается и его можно отменить.
+			writeFileSync(join(dir, "code.ts"), "export const x = 1;\n");
 			const { commands } = install();
 			const v = view(40, { cwd: dir, askDialog: async () => undefined });
 			await command(commands, "handoff-preflight", v.ctx);
@@ -2966,7 +2967,7 @@ describe("/handoff-preflight", () => {
 
 			assert.deepEqual(
 				asked[0].map((question) => question.id),
-				["checks", "push"],
+				["push"],
 			);
 			assert.match(v.notes.at(-1).text, /✔ push: 1 коммит в origin\/main/);
 			assert.match(v.notes.at(-1).text, /✔ preflight: OK/);
@@ -2992,10 +2993,10 @@ describe("/handoff-preflight", () => {
 
 			await command(commands, "handoff-preflight", v.ctx);
 
-			assert.deepEqual(
-				asked[0].map((question) => question.id),
-				["checks"],
-			);
+			// Ничего не требуется: ни проверок, ни push — меню не открывается.
+			assert.equal(asked.length, 0);
+			assert.match(v.notes.at(-1).text, /PREFLIGHT · итог/);
+			assert.doesNotMatch(v.notes.at(-1).text, /push:/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 			rmSync(remote, { recursive: true, force: true });

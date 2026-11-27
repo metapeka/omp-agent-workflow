@@ -4,7 +4,7 @@
 раз, как устроен OMP, Orca и контракт workflow. Источник истины — код,
 тесты и git; эта вики объясняет, где что лежит и почему сделано именно так.
 
-Версия: `1.0.1` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
+Версия: `1.0.2` (context guard 0.3 + orchestrator 0.5 + wrap + supervisor
 singleton + additive Orca + Settings + status key + safe cleanup + handoff
 guards + multi-session info + fallback compaction + kill switch + advisory
 `next-session:` + CLI JSON v1 и `doctor` + `execution` + пресеты + метрики
@@ -15,6 +15,10 @@ preflight + flight recorder handoff + цена границы из `costs --json
 `1.0.1` — страховка без sandbox: WIP-снимок перед `force`-удалением
 worktree упавшей задачи и read-only `omp-orchestrate refs`; восстановление
 ветки и WIP — [recovery.md](recovery.md).
+`1.0.2` — preflight в чужом репозитории: меню без no-op проверок (`checks`
+только при `scripts.test`/`typecheck`), пустое меню сразу печатает итог;
+синонимы разделов state узнают чужие шаблоны (`Проверено как`, `Открыто`,
+`Главные выводы`), «нестандартный формат» допустим вне OAW.
 Этап `0.5` — orchestrator и subagent-петля: реализован (этапы A–D); live
 TUI E2E пройден 2026-11-22. См. [orchestrator.md](orchestrator.md).
 `0.5.1` — `/wrap`: guided завершение работы, см. [wrap.md](wrap.md).

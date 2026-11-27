@@ -36,11 +36,11 @@ export const STATE_SECTION_LABELS: Record<StateSectionKey, string> = {
 
 const PATTERNS: Record<StateSectionKey, RegExp> = {
 	goal: /цел|goal|purpose|objective|мисси/i,
-	state: /состоян|готов|статус|прогресс|итог|state|status|progress|summary/i,
-	decisions: /решени|договор|decision|\badr\b|(?:^|\W)d\d+\b/i,
+	state: /состоян|готов|статус|прогресс|итог|закрыт|включен|state|status|progress|summary/i,
+	decisions: /решени|договор|вывод|decision|\badr\b|(?:^|\W)d\d+\b/i,
 	files: /файл|где что|структур|layout|files?|paths?|modules?|компонент/i,
-	checks: /проверк|тест|check|test|verif|валидац/i,
-	next: /следующ|дальше|next|todo|roadmap|шаг/i,
+	checks: /проверк|проверен|тест|check|test|verif|валидац/i,
+	next: /следующ|дальше|открыт|что делать|next|todo|roadmap|шаг/i,
 };
 
 export interface StateSections {

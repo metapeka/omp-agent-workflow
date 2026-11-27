@@ -4,6 +4,26 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [1.0.2] — 2026-11-27
+
+Two preflight fixes found in an external repo: no `package.json` and a
+foreign `HANDOFF.md` template.
+
+### Fixed
+
+- **Menu no longer offers checks it cannot run.** `actionsForPreflight`
+  offers the checks action only when `package.json` has `scripts.test` or
+  `scripts.typecheck` (new `readCheckScripts`, shared with `performChecks`).
+  Before, preflight in a docs/audit directory showed «Прогнать npm test и
+  typecheck?» and answered `⦸ проверки: пропущено — package.json нет`. With
+  no available action the dialog is skipped and the result block
+  (`действия`, `вручную/агентом`, `итог`) is printed straight away.
+- **Foreign `HANDOFF.md` templates are recognised.** Section synonyms cover
+  `Проверено как` (checks), `Открыто`/`Что делать` (next),
+  `Что закрыто`/`Что включено` (state), `Главные выводы` (decisions); the
+  "no recognised headings" row now says the OAW template is absent and is
+  acceptable outside OAW instead of demanding a rewrite.
+
 ## [1.0.1] — 2026-11-27
 
 Safety without a sandbox: the one reproduced data loss (uncommitted work of
