@@ -14,6 +14,12 @@
       `start`/error detail; `omp-orchestrate refs [--json]` (read-only
       backup-refs); `docs/recovery.md`; проверено `npm run verify` —
       396 тестов, typecheck, `check:names`; commit `0582edf`.
+- [x] 1.0.1 — `refs` подсказывает гигиену: текст печатает самый старый
+      backup-ref, его возраст и готовую `git update-ref -d`; порогов и
+      авточистки нет — срок хранения решает владелец; commit `1d5891b`.
+- [x] 1.0.1 — `docs/next-session.md` переписан под 1.0.1: состояние,
+      очередь (push/tag, session JSONL, внешняя приёмка Ensemble),
+      проверки, стартовый prompt.
 - [ ] 1.0.1 — push и тег `v1.0.1` (по решению владельца; локально `main`
       впереди `origin/main`).
 - [ ] Решение владельца: копия session JSONL перед handoff (best-effort при

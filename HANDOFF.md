@@ -15,7 +15,7 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Сейчас (кратко для новой сессии)
 
-- Версия `1.0.1` в `main` (`0582edf`): WIP-патч перед `force`-удалением
+- Версия `1.0.1` в `main` (`1d5891b`): WIP-патч перед `force`-удалением
   упавшей задачи, `omp-orchestrate refs`, `docs/recovery.md`; 396 тестов,
   typecheck и `check:names` зелёные. Не запушено и не тегировано.
 - 1.0.0 выпущен 2026-11-27: тег и GitHub release `v1.0.0`, tarball
@@ -29,7 +29,7 @@ npm/marketplace — отдельным решением владельца (D10)
 
 ## Состояние
 
-Версия `1.0.1`; `main` = `0582edf` и локально опережает `origin/main`
+Версия `1.0.1`; `main` = `1d5891b` и локально опережает `origin/main`
 (push 1.0.1 не выполнялся). 1.0.1 — страховка без sandbox:
 WIP-патч перед `force`-удалением упавшей задачи, read-only
 `omp-orchestrate refs` и `docs/recovery.md`; `npm run verify` — 396 тестов,
@@ -140,7 +140,7 @@ Push 1.0.0 выполнен с разрешения владельца; npm/mark
 | Ledger 0.7.4 | `lib/orchestrator/ledger.ts`: `projectBudgets` (дельта прибавляется, `restarted` заменяет вклад файла) и `ledgerSnapshot`; `cost.ts` отдаёт `entries[]{kind,readable,fullTotalUsd}`; `state.budgets.costTotals` — вклад по файлам, старый state читается как пустая карта; `syncSession` дочитывает хвост прошлой сессии; `status --json` → аддитивный `spend`, preflight `run:` — та же проекция; `start`/`finish` → stop `budget-spend`; тесты `test/ledger.test.mjs` (5) + `orchestrator` (+5) + контракт |
 | Release 1.0.0 | Пакет без сборки и runtime-зависимостей (83 файла: extension, `lib/`, `bin/`, docs, `.omp-plugin/`, `CONTRIBUTING.md`); установка из tarball проверена — `omp plugin link` распакованного каталога, Settings 15 ключей, `omp plugin doctor` ok, extension load exit 0, packaged `doctor --json` exit 0, launcher и preset — exit 0; релизные заметки `docs/release-notes-1.0.0.md`; CLI под `node_modules` работают через `lib/ts-loader.mjs` (шимы `bin/`), регрессия — `test/package-run.test.mjs` |
 | WIP-снимок 1.0.1 | `lib/orchestrator/wip.ts`: перед `force`-удалением грязного worktree — патч (tracked + untracked через временный `GIT_INDEX_FILE`, рабочее дерево и настоящий индекс не меняются) и `.status` (ветка, HEAD, `git status`, команда восстановления) в `$XDG_STATE_HOME/omp-agent-workflow/wip/`; сбой снимка отменяет удаление; `start` на `failed` отдаёт `wip`, печатает `wip:`/`wip-status:` и добавляет путь в stop/handoff detail; восстановление — `docs/recovery.md`; тесты — `test/worktree-remove.test.mjs` (3), `test/orchestrator.test.mjs` (1) |
-| Backup refs 1.0.1 | `omp-orchestrate refs [--json]` — read-only `refs/omp-worktree-backup/*` через `for-each-ref --sort=-committerdate`: `ref`, `branch`, `sha`, `short`, `subject`, `committedAt`, `schemaVersion: 1`; план опционален (base repo из git); ничего не пишет; тест — `test/refs.test.mjs` (3) |
+| Backup refs 1.0.1 | `omp-orchestrate refs [--json]` — read-only `refs/omp-worktree-backup/*` через `for-each-ref --sort=-committerdate`: `ref`, `branch`, `sha`, `short`, `subject`, `committedAt`, `schemaVersion: 1`; текст заканчивается самым старым ref, его возрастом и командой `git update-ref -d` (порогов и авточистки нет); план опционален (base repo из git); ничего не пишет; тест — `test/refs.test.mjs` (3) |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -561,7 +561,7 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 
 ## Следующие шаги
 
-1. 1.0.1 в `main` (`0582edf`), не запушен: push и тег `v1.0.1` — по
+1. 1.0.1 в `main` (`1d5891b`), не запушен: push и тег `v1.0.1` — по
    решению владельца; npm/marketplace — отдельное решение (D10). Не
    парсить внутренности cache-monitor.
 2. Страховка без sandbox: WIP-patch перед `force`-удалением,
@@ -683,7 +683,8 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 - Cleanup отказывает при dirty/current/live — это защита: `finish` вернёт
   warning, worktree останется; повтор после выхода из сессии/закрытия PTY.
 - `refs/omp-worktree-backup/*` накапливаются; список — `omp-orchestrate
-  refs`, удалять вручную (`git update-ref -d`), когда tip больше не нужен.
+  refs` (в тексте — самый старый ref, возраст и готовая команда
+  `git update-ref -d`), удалять вручную, когда tip больше не нужен.
   WIP-снимки в `~/.local/state/omp-agent-workflow/wip/` тоже не чистятся
   автоматически и не покрывают ignored-файлы; восстановление —
   `docs/recovery.md`.
