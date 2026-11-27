@@ -67,6 +67,7 @@ import {
 } from "./lib/state-sections.ts";
 import { readCostsSummary } from "./lib/costs-client.ts";
 import { readSessionCost } from "./lib/orchestrator/cost.ts";
+import { ledgerSnapshot, projectBudgets } from "./lib/orchestrator/ledger.ts";
 
 /** Сжать контекст, не потеряв цель, решения, файлы и проверки. */
 const HANDOFF_INSTRUCTIONS =
@@ -435,7 +436,7 @@ function costsChecks(sessionFile: string | null): PreflightCheck[] {
  * План и run из `AUTOPLAN.md` + `STATE.json`: задачи/gates/deps и spend
  * волны. План опционален; отсутствие не предупреждение.
  */
-function orchestratorChecks(cwd: string): PreflightCheck[] {
+function orchestratorChecks(cwd: string, sessionFile: string | null): PreflightCheck[] {
 	const checks: PreflightCheck[] = [];
 
 	let state: OrchestratorState | null = null;
@@ -511,18 +512,34 @@ function orchestratorChecks(cwd: string): PreflightCheck[] {
 		});
 	}
 
-	if (state && (state.run?.active || state.budgets.spendUsd > 0)) {
-		const configured = plan?.config.budgets.maxSpendUsd ?? 0;
-		const spend = state.budgets.spendUsd;
-		const task = state.current
-			? `${state.current.id} ${taskStatusLabel(state.current.status)}`
-			: "нет текущей задачи";
-		const limit = configured > 0 ? ` / ${formatUsd(configured)}` : "";
-		checks.push({
-			status: configured > 0 && spend >= configured * 0.9 ? "warn" : "pass",
-			id: "run",
-			text: `run: ${task}, spend ${formatUsd(spend)}${limit}`,
-		});
+	if (state) {
+		// Один источник цифры с `status --json` и гейтом start/finish (0.7.4).
+		const read = readSessionCost(sessionFile, state.budgets.costOffsets);
+		const limits = plan?.config.budgets ?? {
+			maxTasksPerSession: 0,
+			maxSpendUsd: 0,
+			maxMinutes: 0,
+		};
+		const ledger = ledgerSnapshot(
+			projectBudgets(state.budgets, read),
+			limits,
+			read,
+		);
+		if (state.run?.active || ledger.spentUsd > 0) {
+			const configured = limits.maxSpendUsd;
+			const spend = ledger.spentUsd;
+			const task = state.current
+				? `${state.current.id} ${taskStatusLabel(state.current.status)}`
+				: "нет текущей задачи";
+			const limit = configured > 0 ? ` / ${formatUsd(configured)}` : "";
+			const unmeasured = ledger.measured ? "" : ", не измерен";
+			checks.push({
+				status:
+					configured > 0 && spend >= configured * 0.9 ? "warn" : "pass",
+				id: "run",
+				text: `run: ${task}, spend ${formatUsd(spend)}${limit}${unmeasured}`,
+			});
+		}
 	}
 
 	return checks;
@@ -576,7 +593,7 @@ export function runPreflight(
 
 	for (const check of sessionChecks(metrics)) checks.push(check);
 	for (const check of costsChecks(sessionFile)) checks.push(check);
-	for (const check of orchestratorChecks(cwd)) checks.push(check);
+	for (const check of orchestratorChecks(cwd, sessionFile)) checks.push(check);
 
 	const repo = git(cwd, ["rev-parse", "--is-inside-work-tree"]);
 	if (!repo.ok || repo.out !== "true") {

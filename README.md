@@ -79,7 +79,7 @@ Long agent sessions fail at the seams: context runs out, decisions get lost, cle
 - 🧭 **Context guard** — warns at 35%, suggests a handoff at 50%, and triggers a deterministic action at 60/70% instead of hoping the model notices.
 - 🔁 **Real handoff** — starts a **new session**, embeds `HANDOFF.md` + `STATE.json` into its first message, and continues the task. This is not `/compact` in the same thread.
 - 👷 **External supervisor** — a plain Node watcher (not an LLM) that survives the OMP process and sends `/handoff-new` to the terminal handle when the marker appears.
-- 🧩 **Orchestrator** — `AUTOPLAN.md` → worktree → implement → verify → fast-forward merge → safe cleanup → next task, with budgets, gates, and stop reasons in `STATE.json`.
+- 🧩 **Orchestrator** — `AUTOPLAN.md` → worktree → implement → verify → fast-forward merge → safe cleanup → next task, with budgets, gates, and stop reasons in `STATE.json`. The spend budget is a ledger: root session plus subagent sessions, visible in `status --json` as `spend`.
 - 🛡️ **Safe by default** — cleanup refuses dirty, unmerged, current, live-process, or live-terminal worktrees; the branch tip is saved in a backup ref.
 - 🎛️ **Human-in-the-loop `/wrap`** — one menu to finish a session: handoff, cleanup, next worktree, retro-review.
 

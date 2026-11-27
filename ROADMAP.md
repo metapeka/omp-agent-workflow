@@ -1,6 +1,6 @@
 # ROADMAP — omp-agent-workflow
 
-Дата: 2026-11-27. Версия: `0.7.3`. Статус: context guard, handoff, режимы,
+Дата: 2026-11-27. Версия: `0.7.4`. Статус: context guard, handoff, режимы,
 orchestrator/subagent-петля, `/wrap`, supervisor singleton, additive
 Orca-интеграция, Settings, handoff guards, kill switch, advisory
 `next-session:`, CLI JSON v1 и `doctor`, `execution`, пресеты, метрики
@@ -430,9 +430,14 @@ GitHub-репозиторий и release `v0.5.14` есть; npm/marketplace —
       «что выбрать», самопроверка, установка из маркетплейса; ссылки из
       README EN/RU/ZH и вики. npm/marketplace-публикация не выполнялась —
       только с явного разрешения владельца.
-- [ ] **0.7.4 Ledger субагентов.** Проверить, что `maxSpendUsd` учитывает
-      дочерние сессии (уже читает `lib/orchestrator/cost.ts`), и вынести
-      расход в `status --json`; stop при перерасходе.
+- [x] **0.7.4 Ledger субагентов.** Леджер: вклад каждого session-файла в
+      `STATE.budgets.costTotals` (root, вложенные subagent-сессии, сессии
+      после handoff), `spendUsd` = Σ вкладов; перезапись на месте
+      (компакция) заменяет вклад вместо двойного счёта; хвост прошлой
+      сессии дочитывается при смене `run.sessionFile`. `status --json`
+      отдаёт аддитивный `spend{measured,spentUsd,limitUsd,remainingUsd,
+      exceeded,files[]}`, preflight — ту же проекцию; `next` совпадает с
+      гейтом; `start`/`finish` ставят stop `budget-spend`.
 
 Не делаем в 0.7: TTL-countdown без данных провайдера; warming/optimizer
 (не read-only, платно); `/compact` payback (ложная модель); TUI-дашборды;

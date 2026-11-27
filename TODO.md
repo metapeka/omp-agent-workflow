@@ -3,7 +3,7 @@
 Оперативный список задач. Этапы и границы — `ROADMAP.md`; текущее
 состояние — `HANDOFF.md`; контекст следующей сессии — `docs/next-session.md`.
 
-Дата: 2026-11-27. Версия: `0.7.3`.
+Дата: 2026-11-27. Версия: `0.7.4`.
 
 ## Сейчас
 
@@ -33,8 +33,10 @@
       `metapeka-omp`, версия сверяется тестом) + `docs/comparison.md`
       (EN/RU/ZH), установка из маркетплейса в README; npm-публикация — по
       разрешению владельца.
-- [ ] 0.7.4 ledger субагентов: проверить `maxSpendUsd` по дочерним сессиям,
-      вынести в `status --json`, stop при перерасходе.
+- [x] 0.7.4 ledger субагентов: `costTotals` по файлам, перезапись заменяет
+      вклад (компакция не удваивает), хвост прошлой сессии на handoff,
+      `status --json` → `spend`, stop `budget-spend` на `start`/`finish`;
+      тесты, docs.
 
 Не делаем: TTL-countdown без данных, warming/optimizer, `/compact` payback,
 TUI-дашборды, cross-harness handoff, PR-автоматизация, уведомления.

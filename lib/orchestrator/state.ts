@@ -180,6 +180,26 @@ function expectNumber(record: Record<string, unknown>, key: string, where: strin
 	return value;
 }
 
+/**
+ * Вклад session-файлов (0.7.4). Поле аддитивное: старый state без него
+ * читается как пустая карта; нормализованное значение пишется обратно в
+ * объект, чтобы actions видели `costTotals` всегда.
+ */
+function budgetTotals(budgets: Record<string, unknown>): void {
+	const raw = budgets.costTotals;
+	const totals =
+		raw === undefined ? {} : expectRecord(raw, "state.budgets.costTotals");
+	for (const [key, value] of Object.entries(totals)) {
+		if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+			throw new StateError(
+				`state.budgets.costTotals.${key}: expected non-negative number`,
+				"state-corrupt",
+			);
+		}
+	}
+	budgets.costTotals = totals;
+}
+
 function validateState(value: unknown): OrchestratorState {
 	const root = expectRecord(value, "state");
 	if (root.version !== 1) {
@@ -258,7 +278,10 @@ function validateState(value: unknown): OrchestratorState {
 			);
 		}
 	}
-
+	// 0.7.4: вклад файлов. Старые state без поля читаются как пустая карта:
+	// spendUsd остаётся накопленной суммой, следующая перезапись файла
+	// добавит его целиком (лучшего источника в старом state нет).
+	budgetTotals(budgets);
 	if (root.context !== null) {
 		const context = expectRecord(root.context, "state.context");
 		const percent = context.percent;
@@ -347,7 +370,12 @@ export function createInitialState(options: CreateStateOptions): OrchestratorSta
 		current: null,
 		completed: [],
 		attempts: {},
-		budgets: { tasksThisSession: 0, spendUsd: 0, costOffsets: {} },
+		budgets: {
+			tasksThisSession: 0,
+			spendUsd: 0,
+			costOffsets: {},
+			costTotals: {},
+		},
 		context: null,
 		lastHandoff: null,
 		stop: null,

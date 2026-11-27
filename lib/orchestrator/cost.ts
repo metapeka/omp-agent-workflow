@@ -18,11 +18,23 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
+export interface CostEntry {
+	file: string;
+	kind: "root" | "subagent";
+	/** Файл прочитан; stat/open ошибка — false, вклад не меняется. */
+	readable: boolean;
+	deltaUsd: number;
+	/** Полная сумма файла, когда он перечитан с нуля; иначе null. */
+	fullTotalUsd: number | null;
+	offset: number;
+}
+
 export interface CostRead {
 	available: boolean;
 	deltaUsd: number;
 	offsets: Record<string, number>;
 	files: string[];
+	entries: CostEntry[];
 	/**
 	 * true, если хотя бы один файл пришлось читать с начала: размер стал
 	 * меньше сохранённого offset (усечение или перезапись на месте, например
@@ -81,16 +93,24 @@ function readFromOffset(path: string, offset: number): {
 	deltaUsd: number;
 	nextOffset: number;
 	restarted: boolean;
+	readable: boolean;
 } {
 	let size: number;
 	try {
 		size = statSync(path).size;
 	} catch {
-		return { deltaUsd: 0, nextOffset: 0, restarted: false };
+		return {
+			deltaUsd: 0,
+			nextOffset: 0,
+			restarted: false,
+			readable: false,
+		};
 	}
 	const restarted = size < offset;
 	const start = restarted ? 0 : offset;
-	if (start >= size) return { deltaUsd: 0, nextOffset: start, restarted };
+	if (start >= size) {
+		return { deltaUsd: 0, nextOffset: start, restarted, readable: true };
+	}
 	const length = size - start;
 	const chunk = Buffer.alloc(length);
 	let bytesRead = 0;
@@ -99,7 +119,7 @@ function readFromOffset(path: string, offset: number): {
 		fd = openSync(path, "r");
 		bytesRead = readSync(fd, chunk, 0, length, start);
 	} catch {
-		return { deltaUsd: 0, nextOffset: start, restarted };
+		return { deltaUsd: 0, nextOffset: start, restarted, readable: false };
 	} finally {
 		if (fd !== null) {
 			try {
@@ -118,7 +138,7 @@ function readFromOffset(path: string, offset: number): {
 		deltaUsd += costOfLine(line);
 		consumed = newline + 1;
 	}
-	return { deltaUsd, nextOffset: start + consumed, restarted };
+	return { deltaUsd, nextOffset: start + consumed, restarted, readable: true };
 }
 
 /**
@@ -137,6 +157,7 @@ export function readSessionCost(
 			deltaUsd: 0,
 			offsets: { ...previous },
 			files: [],
+			entries: [],
 			restarted: false,
 		};
 	}
@@ -148,12 +169,14 @@ export function readSessionCost(
 			deltaUsd: 0,
 			offsets: { ...previous },
 			files: [],
+			entries: [],
 			restarted: false,
 		};
 	}
 
 	const files = sessionFiles(root);
 	const offsets: Record<string, number> = {};
+	const entries: CostEntry[] = [];
 	let deltaUsd = 0;
 	let restarted = false;
 	for (const file of files) {
@@ -162,6 +185,14 @@ export function readSessionCost(
 		offsets[key] = read.nextOffset;
 		deltaUsd += read.deltaUsd;
 		if (read.restarted) restarted = true;
+		entries.push({
+			file: key,
+			kind: key === root ? "root" : "subagent",
+			readable: read.readable,
+			deltaUsd: read.deltaUsd,
+			fullTotalUsd: read.restarted ? read.deltaUsd : null,
+			offset: read.nextOffset,
+		});
 	}
-	return { available: true, deltaUsd, offsets, files, restarted };
+	return { available: true, deltaUsd, offsets, files, entries, restarted };
 }

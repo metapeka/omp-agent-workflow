@@ -1,6 +1,6 @@
 # Защиты OAW: что, зачем и где в цикле
 
-Дата: 2026-11-27. Версия: `0.7.0`. Контракт — [contracts.md](contracts.md),
+Дата: 2026-11-27. Версия: `0.7.4`. Контракт — [contracts.md](contracts.md),
 поток handoff — [handoff-flow.md](handoff-flow.md), диагностика —
 [operations.md](operations.md).
 
@@ -50,6 +50,9 @@ flowchart TD
 | **Незакоммиченная работа не видна новой сессии** | **flight recorder: ветка, HEAD и до 6 грязных путей в тексте handoff-запроса** | `checkHandoff` перед `sendUserMessage` | **0.5.24** |
 | Плагин мешает, когда не нужен | `workflowMode: off` — ни статуса, ни предупреждений, ни session info, launcher без supervisor | все хуки | 0.5.18 |
 | Два владельца задач (`omp` и Ensemble) | `plan.execution: external` → stop `external-run`; `doctor` предупреждает `two owners` | `start/verify/finish/rebase`, `doctor` | 0.5.21 |
+| **Subagent-сессии не видны в бюджете: прогон тратит в разы больше видимой суммы** | ledger: root + вложенные subagent-файлы, `spendUsd` = Σ вкладов, stop `budget-spend` на старте и после merge | `applyCost`, `start`, `finish`, `status` | **0.7.4** |
+| **Компакция переписала JSONL: spend прыгает и даёт ложный stop** | `restarted` заменяет вклад файла (пересчёт с нуля), а не прибавляет полную сумму | `projectBudgets` | **0.7.4** |
+| **Хвост прошлой сессии теряется на handoff** | перед сменой `run.sessionFile` старый root дочитывается тем же offset-чтением | `syncSession` | **0.7.4** |
 
 ## 0.5.24: flight recorder
 
@@ -118,6 +121,42 @@ HANDOFF: контекст 56% (56k/100k). Заверши текущую зада
 `index.ts`; тесты — `test/state-sections.test.mjs`,
 `test/session-metrics.test.mjs` (gate и `lastCompactionAt`),
 `test/context-guard.test.mjs` (ручной фикс в итоговом выводе).
+
+## 0.7.4: леджер субагентов
+
+**Почему.** Бюджет `maxSpendUsd` — обещание «столько не потратим». Считать
+только корневую сессию нельзя: работа subagent'ов пишется в отдельные JSONL
+рядом, и прогон с активными детьми легко тратит в разы больше видимой
+суммы, не срабатывая ни на одном stop-gate. Вторая угроза — компакция:
+OMP переписывает JSONL на месте, и наивное `spend += прочитанное` удваивает
+сумму, после чего бюджет останавливает прогон по выдуманным деньгам.
+
+**Что добавлено.**
+
+- дерево прогона: root-файл + вложенные файлы subagent-сессий
+  (`<root-stem>/**/*.jsonl`); цена — `usage.cost.total`;
+- вклад каждого файла в `STATE.budgets.costTotals`; `spendUsd` = Σ вкладов:
+  дельта прибавляется, перечитывание с нуля (`restarted`) заменяет вклад;
+- сессии, выпавшие из текущего дерева после handoff, остаются вкладом
+  `previous` — сумма не теряется при смене root;
+- перед сменой `run.sessionFile` хвост прошлой сессии дочитывается, поэтому
+  сообщения после последнего действия не исчезают из бюджета;
+- `status --json` отдаёт `spend{measured,spentUsd,limitUsd,remainingUsd,
+  exceeded,files[]}`, preflight — ту же функцию; гейты `start` и `finish`
+  ставят stop `budget-spend` по этому числу;
+- `measured: false` означает, что session-файл не читается: сумма известна
+  только по прошлым измерениям, и гейт сообщает `cost-unavailable`, если
+  лимит задан.
+
+Старые `STATE.json` без `costTotals` читаются как пустая карта: `spendUsd`
+остаётся накопленной суммой, ближайшая перезапись файла добавит его
+целиком — лучшее, что можно восстановить без потери истории.
+
+Код: `lib/orchestrator/cost.ts` (entries/readable), `ledger.ts`
+(`projectBudgets`, `ledgerSnapshot`), `actions.ts` (applyCost, syncSession,
+status), `index.ts` (preflight run row); тесты — `test/ledger.test.mjs`,
+`test/orchestrator.test.mjs` (rewrite, tail, gates, status),
+`test/contracts.test.mjs` (форма `spend`).
 
 ## Чем защита не является
 

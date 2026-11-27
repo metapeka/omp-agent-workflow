@@ -146,7 +146,11 @@ pid). Запись — temp + `rename`.
   "budgets": {
     "tasksThisSession": 1,
     "spendUsd": 0.42,
-    "costOffsets": { "/home/u/.omp/agent/sessions/.../session.jsonl": 12345 }
+    "costOffsets": { "/home/u/.omp/agent/sessions/.../session.jsonl": 12345 },
+    "costTotals": {
+      "/home/u/.omp/agent/sessions/.../session.jsonl": 0.31,
+      "/home/u/.omp/agent/sessions/.../session/Scan.jsonl": 0.11
+    }
   },
   "context": { "percent": 42, "at": "2026-11-22T12:12:00.000Z" },
   "lastHandoff": { "at": "2026-11-22T11:00:00.000Z", "reason": "task-boundary" },
@@ -160,8 +164,12 @@ pid). Запись — temp + `rename`.
 - `run.active` = пользователь разрешил автоматическое продолжение.
 - `stop` — причина и detail; без снятия `stop` новые subagent-спавны
   блокируются.
-- `tasksThisSession` сбрасывается при смене `run.sessionFile`; spend/time —
-  run-глобальные.
+- `tasksThisSession` сбрасывается при смене `run.sessionFile`; spend и время —
+  на весь прогон плана в этом `STATE`: handoff и `resume` их не сбрасывают
+  (бюджет не выдаётся заново за смену сессии); новый прогон — новый state.
+- `spendUsd` = Σ `costTotals` по файлам: root, subagent-сессии и сессии,
+  выпавшие из текущего дерева после handoff. Перезапись файла на месте
+  (компакция) заменяет вклад файла, а не добавляет его второй раз.
 - `HANDOFF.md` коммитится, `STATE.json` — нет.
 - Потеря/порча state → `state-missing`/`state-corrupt`, не replay задач.
 
@@ -172,7 +180,7 @@ Tool `orchestrator` (`approval: "exec"`) и CLI `bin/omp-orchestrate` вызыв
 
 | Action | Мутация | Предусловия | Результат |
 |---|---|---|---|
-| `status` | нет | — | plan/state/current/budget summary |
+| `status` | нет | — | plan/state/current + ledger `spend` |
 | `next` | нет | plan валиден, hash совпадает | следующий ready task или stop reason |
 | `start [id]` | worktree, branch, state; failed current очищается | deps, gate, budget, branch свободен | task spec + worktree + prompt |
 | `verify [id]` | запуск команд; `status: verified/failed`; failed verify увеличивает attempts | current совпадает | checks, commit |
@@ -273,17 +281,28 @@ stateDiagram-v2
 | Лимит | Семантика | Действие |
 |---|---|---|
 | `maxTasksPerSession` | Задач, завершённых в текущей сессии | supervised → handoff (счётчик сбрасывается); `yoda` → stop |
-| `maxSpendUsd` | Run-глобально, root + subagent-сессии | stop |
+| `maxSpendUsd` | Весь прогон плана: root + subagent-сессии, handoff не сбрасывает | stop |
 | `maxMinutes` | От `run.startedAt`, handoff не сбрасывает | stop |
 
-Spend:
+Spend (леджер, 0.7.4):
 
-- читается из session JSONL: `message.assistant.usage.cost.total`;
-- root session + дочерние сессии по `parentSession`;
-- инкрементально по byte offsets, offsets в `STATE.budgets.costOffsets`;
-- если файл усечён/сменён — offset сбрасывается;
+- цена — `message.assistant.usage.cost.total` из session JSONL;
+- дерево прогона: root-файл + вложенные файлы subagent-сессий
+  `<root-stem>/**/*.jsonl`; sibling-сессия с `parentSession` читается, когда
+  становится новым root (после handoff);
+- вклад каждого файла хранится в `STATE.budgets.costTotals`, `spendUsd` =
+  Σ вкладов; обычное чтение прибавляет дельту, перечитывание с нуля
+  (`restarted`: усечение или перезапись на месте) заменяет вклад — компакция
+  не удваивает сумму;
+- перед сменой `run.sessionFile` хвост прошлой сессии дочитывается, иначе он
+  теряется вместе со старым root;
+- `status --json` отдаёт проекцию `spend{measured,spentUsd,limitUsd,
+  remainingUsd,exceeded,files[]}`; preflight берёт ту же функцию, поэтому
+  цифра одна;
+- гейты: `start` (до работы), `finish` (после merge, ставит stop
+  `budget-spend`) и `next`; `verify`/`rebase` только измеряют и пишут state;
 - native `omp --max-cost` — жёсткий backstop, но per-session; STATE считает
-  run-глобально.
+  весь куст.
 
 ## Handoff на границе
 

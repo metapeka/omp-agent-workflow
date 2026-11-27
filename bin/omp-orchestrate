@@ -134,6 +134,14 @@ function renderStatus(result) {
 	];
 	if (result.next) lines.push(`next: ${result.next.id} — ${result.next.title}`);
 	else lines.push("next: none");
+	if (result.spend) {
+		const spend = result.spend;
+		const limit = spend.limitUsd > 0 ? ` / $${spend.limitUsd.toFixed(2)}` : "";
+		const measured = spend.measured ? "" : ", не измерен";
+		lines.push(
+			`spend: $${spend.spentUsd.toFixed(4)}${limit}, остаток $${spend.remainingUsd.toFixed(4)}, файлов ${spend.files.length}${measured}`,
+		);
+	}
 	if (result.stop) lines.push(`stop: ${result.stop.reason} — ${result.stop.detail}`);
 	if (result.state?.current) {
 		const current = result.state.current;

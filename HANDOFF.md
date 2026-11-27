@@ -12,9 +12,17 @@ OAW — короткое имя продукта; `workflow` — только е
 
 ## Состояние
 
-`main`, версия `0.7.3`, влито и запушено: `origin/main` = `de4c174`.
-CI зелёный на `6dd2436`, `995529a` и `de4c174`; Pages задеплоен. В `main`:
+`main`, версия `0.7.4`, влито локально; `origin/main` на `fef87d5`
+(0.7.3 + docs), push 0.7.4 — в этом цикле по разрешению владельца (D10).
+В `main`:
 
+- 0.7.4 леджер субагентов: `STATE.budgets.costTotals` — вклад каждого
+  session-файла (root, вложенные subagent-сессии, сессии после handoff),
+  `spendUsd` = Σ вкладов; перезапись на месте (компакция) заменяет вклад
+  вместо двойного счёта; хвост прошлой сессии дочитывается при смене
+  `run.sessionFile`; `status --json` отдаёт аддитивный
+  `spend{measured,spentUsd,limitUsd,remainingUsd,exceeded,files[]}`,
+  preflight — ту же проекцию; `start`/`finish` ставят stop `budget-spend`;
 - 0.7.3 discovery: `.omp-plugin/marketplace.json` (каталог `metapeka-omp`,
   `source: "./"`, версия сверяется тестом с `package.json`) и страница
   сравнения `docs/comparison.md` (EN/RU/ZH) — против встроенных средств
@@ -35,8 +43,8 @@ CI зелёный на `6dd2436`, `995529a` и `de4c174`; Pages задеплое
   read-only `omp-orchestrate economics` (`CHANGELOG.md`).
 
 GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
-Ветки 0.5.1–0.7.3 слиты ff-only, worktrees удалены, ветки `feat/*`
-сохранены. Публикация по умолчанию локальная (D10); push 0.7.1–0.7.3
+Ветки 0.5.1–0.7.4 слиты ff-only, worktrees удалены, ветки `feat/*`
+сохранены. Публикация по умолчанию локальная (D10); push 0.7.1–0.7.4
 выполнен с явного разрешения владельца; npm/marketplace-публикация —
 только по отдельному разрешению.
 
@@ -82,6 +90,7 @@ GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
 | Quality gate 0.7.1 | `lib/state-sections.ts`: шесть ключевых разделов `HANDOFF.md` по заголовкам и синонимам (EN/RU), код-блоки не в счёт; отсутствующий раздел — отдельный warn, нестандартный формат — одна строка; `lastCompactionAt` из того же JSONL-прохода, warn если компакция позже mtime state; фикс — строкой в «вручную»; `ready` не меняется |
 | Economics summary 0.7.2 | `economics --summary`: `summarizeEconomics()` в `lib/handoff-economics.ts` — `sessions`/`handoffs`/`measuredSessions`/`boundaries`/`turns` (`null`, если не измерено ничего), измеренный `spendUsd` (сумма цен ходов прочитанных сессий), `medianTurnUsd`, `avgBoundaryUsd` и `hitTrend` (`up\|down\|flat` при пороге 0.5 pp включительно); аддитивное `summary` в JSON, блок `Сводка:` с отношением `BORDER` к обычному ходу; без флага отчёт прежний, частичное покрытие — note `N из M` |
 | Discovery 0.7.3 | `.omp-plugin/marketplace.json`: каталог `metapeka-omp`, один плагин `source: "./"`, версия/имя/домашняя страница; `omp plugin marketplace add` парсит каталог, dry-run install резолвит `omp-agent-workflow@metapeka-omp` (упирается только в уже linked имя); `test/marketplace.test.mjs` (5) держит версию равной `package.json`. `docs/comparison.md` + RU/ZH: встроенные средства OMP, ближайшие плагины, «что выбрать», самопроверка, установка |
+| Ledger 0.7.4 | `lib/orchestrator/ledger.ts`: `projectBudgets` (дельта прибавляется, `restarted` заменяет вклад файла) и `ledgerSnapshot`; `cost.ts` отдаёт `entries[]{kind,readable,fullTotalUsd}`; `state.budgets.costTotals` — вклад по файлам, старый state читается как пустая карта; `syncSession` дочитывает хвост прошлой сессии; `status --json` → аддитивный `spend`, preflight `run:` — та же проекция; `start`/`finish` → stop `budget-spend`; тесты `test/ledger.test.mjs` (5) + `orchestrator` (+5) + контракт |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -343,6 +352,8 @@ Lifecycle-логи supervisor — stderr; `--dry-run` JSON остаётся чи
 | Ключевые разделы state | `lib/state-sections.ts` |
 | Каталог маркетплейса | `.omp-plugin/marketplace.json` |
 | Страница сравнения | `docs/comparison.md` (+ `.ru.md`, `.zh-CN.md`) |
+| Леджер субагентов | `lib/orchestrator/ledger.ts` |
+| Тесты леджера | `test/ledger.test.mjs` |
 | Тесты guard/preflight | `test/context-guard.test.mjs` |
 | Тесты разделов state | `test/state-sections.test.mjs` |
 | Тесты costs | `test/costs-client.test.mjs` |
@@ -393,6 +404,7 @@ node --experimental-strip-types bin/omp-orchestrate doctor --json | jq .ok
 node --experimental-strip-types bin/omp-orchestrate status --json | jq .schemaVersion
 node --experimental-strip-types --test test/handoff-economics.test.mjs   # 37
 node --experimental-strip-types --test test/marketplace.test.mjs        # 5
+node --experimental-strip-types --test test/ledger.test.mjs           # 5
 omp plugin marketplace add "$PWD" --json && \
   omp plugin marketplace remove metapeka-omp --json   # каталог парсится, конфиг возвращён
 curl -sS -o /dev/null -w '%{http_code}\n' \
@@ -401,11 +413,11 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## Следующие шаги
 
-1. 0.7.4 ledger субагентов — следующая задача по плану 0.7: проверить,
-   что `maxSpendUsd` учитывает дочерние сессии (`lib/orchestrator/cost.ts`),
-   вынести расход в `status --json`, stop при перерасходе. 0.7.3 discovery
-   закрыт: каталог `metapeka-omp` и страница сравнения; npm-публикация —
-   только с явного разрешения владельца.
+1. Этап 1.0 — следующий: установка из tarball (`npm pack`, линк из
+   распакованного каталога, проверка Settings и extension load) и релизные
+   заметки; npm/marketplace-публикация — только с явного разрешения
+   владельца. План 0.7 закрыт: 0.7.0–0.7.4 влиты, леджер субагентов
+   считает весь куст.
 2. Проверить 0.7.1 в TUI: `omp plugin list`, `/handoff-preflight` на этом
    файле (строки `HANDOFF.md: разделы 6/6`, отсутствие ложных warn по
    синонимам), state без раздела — warn по строке и фикс в «вручную»,
@@ -472,6 +484,15 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   имя — это проверка резолва, а не ошибка каталога. Страница сравнения
   опирается на обзор 2026-11-23 и новых замеров не содержит: при изменении
   возможностей соседей её нужно перечитывать.
+- Леджер 0.7.4 считает только записанное в JSONL: провайдер без
+  `usage.cost.total` даёт 0 при `measured: true` и не останавливает прогон —
+  это отсутствие измерения, а не ошибка. Читается root плюс вложенные
+  `<root-stem>/**/*.jsonl`; sibling-сессия с `parentSession` попадает в
+  бюджет, только когда станет новым root. `status` показывает проекцию с
+  непрочитанным хвостом, persisted `STATE` — значение последнего действия;
+  расхождение исчезает на следующем действии. Старый state без `costTotals`
+  при перезаписи файла добавит его целиком. Бюджет живёт на весь `STATE`:
+  handoff и `resume` его не сбрасывают — новый бюджет только новым state.
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.

@@ -35,7 +35,7 @@
 | цена границы (`costs --json`) | pass: `usage-border` — медиана холодных ходов против тёплых; `usage-model` — разрез при >1 модели; CLI нет/упал/timeout/другая схема — строк нет |
 | план: задачи, gates, deps | путь — `STATE.plan.path` или `AUTOPLAN.md`; нет плана без state — pass «работа без оркестратора»; state ссылается на отсутствующий план — warn; план не читается — warn |
 | попытки `STATE.attempts` | warn при ≥ 1 |
-| run: текущая задача и spend | pass; warn при ≥ 90% `maxSpendUsd` |
+| run: текущая задача и spend | pass; warn при ≥ 90% `maxSpendUsd`; spend — из леджера (root + subagent-сессии, 0.7.4) |
 | git-репозиторий и коммиты | fail; не-репозиторий — warn и git-проверки пропускаются |
 | worktree чистый | fail со списком файлов (runtime-файлы исключены) |
 | ветка не detached | fail |
@@ -182,6 +182,12 @@ agent-team или cache-monitor — `warn`/`skip`; битые настройки
 — `fail` (exit 1). `--json` — контракт v1 (`schemaVersion: 1`, `ok`,
 `summary`, `checks[]`), список проверок и стабильные поля `status` — в
 [contracts.md](contracts.md#cli-json-v1-status-и-doctor-0520).
+
+`status --json` с 0.7.4 отдаёт аддитивный блок `spend` — леджер прогона:
+`measured`, `spentUsd` (root + subagent-сессии + сессии вне текущего дерева),
+`limitUsd`, `remainingUsd`, `exceeded` и `files[]{session,kind,spendUsd}`;
+без `STATE.json` — `null`. Команда не двигает offsets и не пишет state.
+Человеческий вывод `status` печатает ту же сумму строкой `spend:`.
 
 `economics` — read-only отчёт «до/после handoff» по цепочке сессий: вверх по
 `parentSession` (до 20 узлов, циклы и отсутствующие файлы — note), границей

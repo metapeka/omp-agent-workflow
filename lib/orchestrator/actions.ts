@@ -9,6 +9,7 @@ import { join, resolve } from "node:path";
 
 import { readSessionCost } from "./cost.ts";
 import { workflowModeFromEnv } from "./config.ts";
+import { ledgerSnapshot, projectBudgets, type LedgerSnapshot } from "./ledger.ts";
 import {
 	selectNextTask,
 	readPlan,
@@ -160,6 +161,9 @@ function syncSession(
 	}
 	if (sessionFile && state.run.sessionFile && state.run.sessionFile !== sessionFile) {
 		state.budgets.tasksThisSession = 0;
+		// Хвост прошлой сессии (после последнего действия) иначе потеряется:
+		// следующий read перечислит уже новый root.
+		applyCost(state, state.run.sessionFile);
 	}
 	if (sessionFile) state.run.sessionFile = sessionFile;
 	state.run.mode = mode;
@@ -176,8 +180,7 @@ function recordContext(
 
 function applyCost(state: OrchestratorState, sessionFile: string | null): boolean {
 	const read = readSessionCost(sessionFile, state.budgets.costOffsets);
-	state.budgets.costOffsets = read.offsets;
-	state.budgets.spendUsd += read.deltaUsd;
+	state.budgets = projectBudgets(state.budgets, read);
 	return read.available;
 }
 
@@ -816,6 +819,8 @@ export interface StatusResult {
 	state: OrchestratorState | null;
 	next: TaskSpec | null;
 	stop: StopState | null;
+	/** Леджер прогона (0.7.4): root + subagent-сессии, лимит, остаток. */
+	spend: LedgerSnapshot | null;
 }
 
 export function status(ctx: ActionContext): StatusResult {
@@ -826,6 +831,14 @@ export function status(ctx: ActionContext): StatusResult {
 		plan,
 		state?.completed.map((task) => task.id) ?? [],
 	);
+	let spend: LedgerSnapshot | null = null;
+	if (state) {
+		// Read-only проекция: дочитывает хвост в память, STATE не меняется.
+		const sessionFile = resolveSessionFile(ctx, state);
+		const read = readSessionCost(sessionFile, state.budgets.costOffsets);
+		state.budgets = projectBudgets(state.budgets, read);
+		spend = ledgerSnapshot(state.budgets, plan.config.budgets, read);
+	}
 	return {
 		schemaVersion: 1,
 		plan: {
@@ -838,6 +851,7 @@ export function status(ctx: ActionContext): StatusResult {
 		state,
 		next: next.kind === "task" ? next.task : null,
 		stop: state?.stop ?? null,
+		spend,
 	};
 }
 
@@ -869,10 +883,7 @@ export function next(ctx: ActionContext): NextResult {
 	const cost = readSessionCost(sessionFile, state.budgets.costOffsets);
 	const projected: OrchestratorState = {
 		...state,
-		budgets: {
-			...state.budgets,
-			spendUsd: state.budgets.spendUsd + cost.deltaUsd,
-		},
+		budgets: projectBudgets(state.budgets, cost),
 	};
 	const decision = decide({
 		state: projected,

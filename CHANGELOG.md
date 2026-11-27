@@ -4,6 +4,48 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.7.4] — 2026-11-27
+
+### Added
+
+- **Subagent ledger.** `STATE.budgets.costTotals` stores each session file's
+  measured contribution — root, nested subagent sessions, and sessions left
+  behind after a handoff; `spendUsd` is their sum. The budget now covers what
+  the whole agent tree spent, not only the visible root session.
+- `status --json` gains an additive `spend` block: `measured`, `spentUsd`,
+  `limitUsd`, `remainingUsd`, `exceeded` and `files[]{session,kind,spendUsd,
+  readable}` with `kind` = `root`/`subagent`/`previous`; human `status`
+  prints the same number. `status` stays read-only.
+- Preflight's run row uses the same ledger projection (root + subagents)
+  instead of the raw `state.budgets.spendUsd`.
+
+### Fixed
+
+- Compaction that rewrites a session JSONL in place no longer double-counts:
+  `restarted` replaces the file's contribution instead of adding the re-read
+  sum, which used to trigger a false `budget-spend`.
+- The tail of the previous session (messages after the last action) is
+  flushed before `run.sessionFile` switches on handoff, so the last stretch
+  of work is no longer lost from the budget.
+- `next` uses the same projection, so its read-only verdict matches the gate.
+
+### Tests
+
+- `test/ledger.test.mjs` (5): per-file deltas, rewrite replaces, previous
+  sessions keep contributions, exceeded/remaining, `measured: false` when a
+  known file disappears.
+- `test/orchestrator.test.mjs` (+5): rewrite keeps spend exact, subagent
+  spend stops `start`, previous-session tail is counted, `status` projects
+  without writing, merge over the limit stops and blocks the next start.
+- `test/contracts.test.mjs`: status envelope includes `spend`; shape and
+  `null` without state.
+
+### Docs
+
+- `docs/orchestrator.md` (ledger, STATE-global scope, gates),
+  `docs/contracts.md` (`spend` block), `docs/guards.md` (three threats),
+  `docs/commands.md`, README EN/RU/ZH.
+
 ## [0.7.3] — 2026-11-27
 
 ### Added

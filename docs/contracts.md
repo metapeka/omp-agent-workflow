@@ -329,9 +329,26 @@ hub читает JSON и не дублирует проверки.
 | `state.completed[]` | завершённые задачи (`id`, `commit`, `mergedAt`, `checks`) |
 | `state.stop{reason,detail}` | стоп или `null` |
 | `next` | следующая задача или `null` |
+| `spend` | леджер прогона (0.7.4, см. ниже) или `null`, если state нет |
 
-Не контракт: `state.budgets.costOffsets`, `state.budgets.spendUsd`, прочие
-runtime-поля и временные/legacy-файлы.
+`spend` — аддитивный блок 0.7.4; без `STATE.json` — `null`:
+
+| Поле | Смысл |
+|---|---|
+| `measured` | session-файл читается; `false` — сумма из прошлых измерений неполная |
+| `spentUsd` | Σ вкладов файлов: root + subagent-сессии + сессии вне текущего дерева |
+| `limitUsd` | `plan.budgets.maxSpendUsd` |
+| `remainingUsd` | `max(0, limitUsd - spentUsd)` |
+| `exceeded` | `spentUsd >= limitUsd` |
+| `files[]{session,kind,spendUsd,readable}` | разрез по файлам; `kind` = `root` / `subagent` / `previous` |
+
+`status` не двигает offsets и не пишет `STATE.json`: `state.budgets` в ответе
+— проекция на момент вызова, `state.budgets.spendUsd` совпадает со
+`spend.spentUsd`. Перезапись session-файла на месте (компакция) заменяет
+вклад файла, а не добавляет его второй раз.
+
+Не контракт: `state.budgets.costOffsets`, `state.budgets.costTotals`,
+`state.attempts`, прочие runtime-поля и временные/legacy-файлы.
 
 ### `bin/omp-orchestrate doctor [--json] [--strict]`
 

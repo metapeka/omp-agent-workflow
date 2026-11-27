@@ -922,3 +922,117 @@ describe("actions on a real git repo", () => {
 	});
 });
 
+
+describe("agent ledger: gates and status", () => {
+	async function taskRun(s, id, ctx = s.ctx) {
+		const started = await start(ctx, id);
+		assert.equal(started.kind, "started");
+		await commitFile(started.worktree, `${id}.txt`, `${id}\n`);
+		const verified = await verify(ctx, id);
+		assert.equal(verified.ok, true);
+		return { started, verified };
+	}
+
+	it("keeps spend exact when a compaction rewrites the session file", async () => {
+		const s = await scenario();
+		// Исходник длиннее, чтобы перезапись была строго короче offset.
+		writeFileSync(s.sessionFile, costLine(0.1) + costLine(0.1));
+		const started = await start(s.ctx, "T1");
+		assert.equal(started.kind, "started");
+		let state = readState(join(s.control, STATE_FILE));
+		assert.ok(Math.abs(state.budgets.spendUsd - 0.2) < 1e-9);
+
+		// Перезапись на месте короче offset: компакция, а не append.
+		writeFileSync(s.sessionFile, costLine(0.07));
+		await commitFile(started.worktree, "work.txt", "done\n");
+		const verified = await verify(s.ctx, "T1");
+		assert.equal(verified.ok, true);
+
+		state = readState(join(s.control, STATE_FILE));
+		assert.ok(Math.abs(state.budgets.spendUsd - 0.07) < 1e-9);
+		assert.ok(Math.abs(state.budgets.costTotals[s.sessionFile] - 0.07) < 1e-9);
+	});
+
+	it("stops before work when subagent sessions push spend over the limit", async () => {
+		const s = await scenario({
+			plan: { budgets: { maxSpendUsd: 0.15 } },
+		});
+		const childDir = join(
+			dirname(s.sessionFile),
+			basename(s.sessionFile, ".jsonl"),
+		);
+		mkdirSync(childDir);
+		writeFileSync(join(childDir, "sub.jsonl"), costLine(0.2));
+
+		const started = await start(s.ctx, "T1");
+		assert.equal(started.kind, "stop");
+		assert.equal(started.reason, "budget-spend");
+		const state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.stop.reason, "budget-spend");
+		assert.ok(Math.abs(state.budgets.spendUsd - 0.3) < 1e-9);
+		assert.equal(state.current, null);
+	});
+
+	it("counts the previous session tail when the session file changes", async () => {
+		const s = await scenario();
+		const started = await start(s.ctx, "T1");
+		await commitFile(started.worktree, "work.txt", "done\n");
+
+		// Хвост первой сессии после последнего действия + новая сессия.
+		appendFileSync(s.sessionFile, costLine(0.05));
+		const nextSession = join(tempDir(), "next.jsonl");
+		writeFileSync(nextSession, costLine(0.2));
+		const verified = await verify(
+			{ ...s.ctx, sessionFile: nextSession },
+			"T1",
+		);
+		assert.equal(verified.ok, true);
+
+		const state = readState(join(s.control, STATE_FILE));
+		assert.ok(Math.abs(state.budgets.spendUsd - 0.35) < 1e-9);
+		assert.ok(Math.abs(state.budgets.costTotals[s.sessionFile] - 0.15) < 1e-9);
+		assert.ok(
+			Math.abs(state.budgets.costTotals[nextSession] - 0.2) < 1e-9,
+		);
+	});
+
+	it("reports the measured ledger in status without writing state", async () => {
+		const s = await scenario();
+		await start(s.ctx, "T1");
+		appendFileSync(s.sessionFile, costLine(0.02));
+
+		const result = statusAction(s.ctx);
+		assert.equal(result.spend.measured, true);
+		assert.ok(Math.abs(result.spend.spentUsd - 0.12) < 1e-9);
+		assert.ok(Math.abs(result.state.budgets.spendUsd - 0.12) < 1e-9);
+		assert.equal(result.spend.limitUsd, 5);
+		assert.ok(Math.abs(result.spend.remainingUsd - 4.88) < 1e-9);
+		assert.equal(result.spend.exceeded, false);
+		assert.equal(result.spend.files.length, 1);
+		assert.equal(result.spend.files[0].kind, "root");
+
+		// Read-only: на диске остаётся значение последнего действия.
+		const state = readState(join(s.control, STATE_FILE));
+		assert.ok(Math.abs(state.budgets.spendUsd - 0.1) < 1e-9);
+	});
+
+	it("stops after a merge that pushed spend over the limit", async () => {
+		const s = await scenario({
+			tasks: [T1, T2],
+			plan: { budgets: { maxSpendUsd: 0.12 } },
+		});
+		const { verified } = await taskRun(s, "T1");
+		appendFileSync(s.sessionFile, costLine(0.05));
+
+		const merged = await finish(s.ctx, "T1", verified.commit, "ok");
+		assert.equal(merged.kind, "merged");
+		assert.equal(merged.decision.kind, "stop");
+		assert.equal(merged.decision.reason, "budget-spend");
+
+		const state = readState(join(s.control, STATE_FILE));
+		assert.equal(state.stop.reason, "budget-spend");
+		const blocked = await start(s.ctx, "T2");
+		assert.equal(blocked.kind, "stop");
+		assert.equal(blocked.reason, "budget-spend");
+	});
+});

@@ -1,18 +1,18 @@
-# Next session: OAW (`omp-agent-workflow`) 0.7.3
+# Next session: OAW (`omp-agent-workflow`) 0.7.4
 
 Контекст для новой OMP-сессии. Источник истины — `HANDOFF.md`; вики —
 `docs/README.md`; backlog — `TODO.md`.
 
 ## Состояние
 
-- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.7.3`
-  (0.7.0–0.7.3 влиты и запушены); `origin/main` — `995529a`, push выполнен
-  по разрешению владельца (D10).
-- Ветки 0.5.1–0.7.3 (включая `feat/doctor`, `feat/oaw-name`,
+- Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.7.4`
+  (0.7.0–0.7.4 влиты; 0.7.3 и раньше запушены, 0.7.4 — в этом цикле по
+  разрешению владельца, D10).
+- Ветки 0.5.1–0.7.4 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
   `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`,
   `feat/spend-handoff`, `feat/handoff-economics`, `feat/economics-summary`,
-  `feat/discovery`) слиты ff-only; worktrees удалены.
+  `feat/discovery`, `feat/agent-ledger`) слиты ff-only; worktrees удалены.
 - Готово: 0.3 (guard/handoff/Yoda), 0.5 (orchestrator), 0.5.1 (`/wrap`),
   0.5.2 (supervisor singleton), 0.5.3 (additive Orca), 0.5.4–0.5.5
   (Settings), 0.5.6–0.5.11 (`/handoff-preflight`: таблица, меню
@@ -43,7 +43,9 @@
   цена первого хода на границе с отношением к обычному ходу, тренд hit
   rate; аддитивное поле `summary` в JSON), 0.7.3 (discovery: каталог
   `.omp-plugin/marketplace.json` `metapeka-omp` и страница сравнения
-  `docs/comparison.md` EN/RU/ZH).
+  `docs/comparison.md` EN/RU/ZH), 0.7.4 (леджер субагентов: `costTotals` по
+  файлам, перезапись заменяет вклад, хвост прошлой сессии, `spend` в
+  `status --json`, stop `budget-spend` по всему кусту).
 - `/handoff-new [файл]` встраивает `continuePrompt` + содержимое state-файла
   (лимит 32k, маркер обрезки, fallback при ошибке чтения). `cwd` новой
   сессии — `ctx.cwd`.
@@ -64,11 +66,11 @@
 
 ## Следующий этап
 
-1. **0.7.4 ledger субагентов** — следующий этап: `maxSpendUsd` по
-   дочерним сессиям (`lib/orchestrator/cost.ts`), расход в `status --json`,
-   stop при перерасходе. 0.7.3 discovery закрыт каталогом `metapeka-omp` и
-   страницей сравнения; npm-публикация — только с явного разрешения
-   владельца. Не парсить внутренности cache-monitor.
+1. **Этап 1.0** — следующий: установка из tarball (`npm pack`, линк из
+   распакованного каталога, Settings и extension load) и релизные заметки;
+   npm/marketplace-публикация — только с явного разрешения владельца. План
+   0.7 закрыт: 0.7.0–0.7.4 влиты, леджер субагентов считает весь куст.
+   Не парсить внутренности cache-monitor.
 2. F3-метрики сделаны в 0.5.23; F4 `--plan-yolo` — только после замера.
 3. Публикация остаётся локальной (`omp plugin link`; D10).
 4. Hub старта сессии и `brief` — личный runbook, вне продукта (joint plan
@@ -103,7 +105,7 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 
 ## Стартовый prompt
 
-> Продолжаешь `omp-agent-workflow` 0.7.3. Прочитай `HANDOFF.md`,
+> Продолжаешь `omp-agent-workflow` 0.7.4. Прочитай `HANDOFF.md`,
 > `ROADMAP.md`, `docs/README.md`, `docs/decisions.md` (D11–D16).
 > Settings → Plugins — основной способ настройки, env — fallback.
 > `/handoff-preflight` advisory. `next-session:` применяет только launcher

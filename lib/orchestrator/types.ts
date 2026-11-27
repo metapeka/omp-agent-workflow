@@ -94,6 +94,8 @@ export interface BudgetState {
 	tasksThisSession: number;
 	spendUsd: number;
 	costOffsets: Record<string, number>;
+	/** Измеренный вклад каждого session-файла; spend = Σ вкладов (0.7.4). */
+	costTotals: Record<string, number>;
 }
 
 export interface ContextState {

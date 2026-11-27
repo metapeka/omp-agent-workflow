@@ -91,6 +91,7 @@ describe("CLI JSON v1", () => {
 			"next",
 			"plan",
 			"schemaVersion",
+			"spend",
 			"state",
 			"stop",
 		]);
@@ -100,6 +101,7 @@ describe("CLI JSON v1", () => {
 		assert.equal(parsed.state, null);
 		assert.equal(parsed.stop, null);
 		assert.equal(parsed.next.id, "T1");
+		assert.equal(parsed.spend, null);
 	});
 
 	it("exposes state.run, current, completed and stop when state exists", () => {
@@ -137,6 +139,20 @@ describe("CLI JSON v1", () => {
 		assert.deepEqual(parsed.state.completed, []);
 		assert.equal(parsed.state.stop, null);
 		assert.equal(parsed.next.id, "T1");
+		// 0.7.4: аддитивный блок леджера; без session-файла сумма не измерена.
+		assert.deepEqual(Object.keys(parsed.spend).sort(), [
+			"exceeded",
+			"files",
+			"limitUsd",
+			"measured",
+			"remainingUsd",
+			"spentUsd",
+		]);
+		assert.equal(parsed.spend.measured, false);
+		assert.equal(parsed.spend.spentUsd, 0);
+		assert.equal(parsed.spend.limitUsd, 5);
+		assert.equal(parsed.spend.exceeded, false);
+		assert.deepEqual(parsed.spend.files, []);
 	});
 
 	it("ignores unknown additive plan fields", () => {
