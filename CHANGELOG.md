@@ -4,6 +4,32 @@ All notable changes to `omp-agent-workflow`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are
 semantic for the plugin contract, not for OMP itself.
 
+## [0.7.3] — 2026-11-27
+
+### Added
+
+- `.omp-plugin/marketplace.json`: OMP marketplace catalog `metapeka-omp` with
+  one plugin entry (`source: "./"`, description, version, category, tags,
+  homepage, license). `omp plugin marketplace add <path>` parses it and the
+  marketplace registers under the catalog name; an install dry run resolves
+  `omp-agent-workflow@metapeka-omp` to the plugin name and stops only at the
+  already-linked name conflict.
+- `docs/comparison.md` plus RU/ZH translations: a discovery page that compares
+  the plugin with OMP builtins and the nearest OMP/PI plugins, adds “choose
+  this when” guidance, self-verification commands and marketplace install.
+  Capability data comes from the 2026-11-23 landscape survey; no new claims
+  and no benchmarks.
+- README EN/RU/ZH: marketplace install block next to `omp plugin link`, and
+  the comparison link next to the landscape study; the wiki index lists the
+  page.
+
+### Tests
+
+- `test/marketplace.test.mjs` (5): the identity fields OMP requires, `./`
+  source resolving to a directory with a matching `package.json`, catalog
+  version equal to the plugin version, case-insensitive unique plugin names,
+  https homepage.
+
 ## [0.7.2] — 2026-11-27
 
 ### Added

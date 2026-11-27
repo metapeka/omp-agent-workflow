@@ -1,0 +1,28 @@
+{
+  "name": "metapeka-omp",
+  "owner": {
+    "name": "metapeka"
+  },
+  "metadata": {
+    "description": "OMP plugins by metapeka: deterministic context guard, handoff into a fresh session, and worktree orchestration."
+  },
+  "plugins": [
+    {
+      "name": "omp-agent-workflow",
+      "source": "./",
+      "description": "Deterministic context guard, handoff into a fresh session, an external supervisor outside the agent process, and plan/worktree/verify/ff-merge orchestration for OMP.",
+      "version": "0.7.3",
+      "category": "workflow",
+      "tags": [
+        "context",
+        "handoff",
+        "supervisor",
+        "orchestrator",
+        "worktree",
+        "cost"
+      ],
+      "homepage": "https://metapeka.github.io/omp-agent-workflow/",
+      "license": "MIT"
+    }
+  ]
+}

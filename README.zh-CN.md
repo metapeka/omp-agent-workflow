@@ -138,6 +138,8 @@
 
 该结论背后的公开市场调研——PI、OMP 与 GitHub，2026-11-23：[docs/research/market-landscape.zh-CN.md](docs/research/market-landscape.zh-CN.md)。
 
+专门的对比页——OMP 内置能力与最接近的插件，以及各自适合什么场景：[docs/comparison.zh-CN.md](docs/comparison.zh-CN.md)。
+
 ---
 
 <a id="how"></a>
@@ -209,6 +211,15 @@ omp plugin list
 bin/omp-yoda                  # supervisor + OMP，yoda-supervised
 # 或者不用 launcher：
 OMP_WORKFLOW_MODE=yoda omp
+```
+
+更喜欢市场安装？仓库自带目录文件
+（[`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)）：
+
+```bash
+omp plugin marketplace add metapeka/omp-agent-workflow
+omp plugin marketplace list        # 用于安装的市场名称
+omp plugin install omp-agent-workflow@<marketplace>
 ```
 
 然后使用：

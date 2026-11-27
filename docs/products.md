@@ -22,7 +22,7 @@
 
 | Продукт | Репозиторий | Роль | Версия | Remote |
 |---|---|---|---|---|
-| OAW | `omp-agent-workflow` | context guard, handoff, supervisor, оркестратор задач, CLI JSON | 0.7.2 | `origin` GitHub |
+| OAW | `omp-agent-workflow` | context guard, handoff, supervisor, оркестратор задач, CLI JSON | 0.7.3 | `origin` GitHub |
 | cache-monitor | `omp-cache-monitor` | hit rate кэша, `/cache-monitor`, `costs --json` | 0.11.0 | `origin` GitHub |
 | usage | `omp-usage` | CLI `usage-metrics`, Orca-панель `local.usage-panel` (Usage / Project skills / Library / Cost) | 0.3.0 | локальный, origin нет |
 | skill-library | `omp-skill-library` | CLI v1 (`status/doctor/link/scan/adopt/relink`) + opt-in `session_start` hook | 0.3.0 | локальный, origin нет |

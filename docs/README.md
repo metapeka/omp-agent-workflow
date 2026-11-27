@@ -114,6 +114,7 @@ costs --json` v1: медиана холодных ходов против тёп
 | [decisions.md](decisions.md) | Подтверждённые решения D1–D10, отклонённые альтернативы, открытые вопросы |
 | [AUTOPLAN.example.md](AUTOPLAN.example.md) | Шаблон плана с JSON-блоками и комментариями |
 | [research/market-landscape.md](research/market-landscape.md) | Рынок на 2026-11-23: PI, OMP и GitHub; ближайшие аналоги, чего нет ни у кого, выводы для позиционирования; переводы [RU](research/market-landscape.ru.md), [ZH](research/market-landscape.zh-CN.md) |
+| [comparison.md](comparison.md) | Страница сравнения для discovery: против встроенных средств OMP и ближайших плагинов, когда выбрать OAW и когда — соседа; переводы [RU](comparison.ru.md), [ZH](comparison.zh-CN.md) |
 | [research/model-modes.md](research/model-modes.md) | `[design]` Цены cline-pass, стоимость хода на 100k, замер handoff-payload (20 сессий), цена границы handoff, режим v1 и синтаксис `next-session:`; не контракт |
 | [research/workflow-presets.md](research/workflow-presets.md) | `[готово F1/F2]` Пресеты `routine/plan/review/budget`, `--preset` и `workflowPreset`, `next-session:` в launcher, метрики выбора, `--plan-yolo`; F3–F4 `[design]` |
 | [Pages](https://metapeka.github.io/omp-agent-workflow/) | HTML-разбор: prompt cache, сессии, где помогает плагин, инцидент 2026-11-24, пороги; EN + [RU](https://metapeka.github.io/omp-agent-workflow/ru/) + [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |

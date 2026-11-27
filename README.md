@@ -137,6 +137,8 @@ Each item exists somewhere. The product is the **glue and the guarantees**.
 
 The public landscape study behind this claim — PI, OMP and GitHub, 2026-11-23: [docs/research/market-landscape.md](docs/research/market-landscape.md).
 
+A focused comparison page — OMP builtins and the nearest plugins, and when to choose which: [docs/comparison.md](docs/comparison.md).
+
 ---
 
 <a id="how"></a>
@@ -207,6 +209,15 @@ omp plugin list
 bin/omp-yoda                  # supervisor + OMP in yoda-supervised
 # or, without the launcher:
 OMP_WORKFLOW_MODE=yoda omp
+```
+
+Prefer marketplace sources? The repository ships its own catalog
+([`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)):
+
+```bash
+omp plugin marketplace add metapeka/omp-agent-workflow
+omp plugin marketplace list        # the marketplace name to install from
+omp plugin install omp-agent-workflow@<marketplace>
 ```
 
 Then use:

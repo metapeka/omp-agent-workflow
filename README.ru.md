@@ -138,6 +138,8 @@
 
 Публичный обзор рынка, на котором основан вывод — PI, OMP и GitHub, 2026-11-23: [docs/research/market-landscape.ru.md](docs/research/market-landscape.ru.md).
 
+Страница сравнения — встроенные средства OMP и ближайшие плагины, и что выбрать в каком случае: [docs/comparison.ru.md](docs/comparison.ru.md).
+
 ---
 
 <a id="how"></a>
@@ -209,6 +211,15 @@ omp plugin list
 bin/omp-yoda                  # supervisor + OMP, yoda-supervised
 # или без launcher'а:
 OMP_WORKFLOW_MODE=yoda omp
+```
+
+Предпочитаете маркетплейс? Репозиторий поставляет собственный каталог
+([`.omp-plugin/marketplace.json`](.omp-plugin/marketplace.json)):
+
+```bash
+omp plugin marketplace add metapeka/omp-agent-workflow
+omp plugin marketplace list        # имя маркетплейса для установки
+omp plugin install omp-agent-workflow@<marketplace>
 ```
 
 Дальше:

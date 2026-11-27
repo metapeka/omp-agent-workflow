@@ -12,10 +12,15 @@ OAW — короткое имя продукта; `workflow` — только е
 
 ## Состояние
 
-`main`, версия `0.7.2`, влито локально; `origin/main` на `3ba713d`
-(0.7.0), локальная ветка впереди — push ждёт разрешения владельца (D10).
+`main`, версия `0.7.3`, влито локально; `origin/main` на `6dd2436`
+(0.7.2), push 0.7.3 — в этом цикле по разрешению владельца (D10).
 CI на последнем запушенном коммите зелёный. В `main`:
 
+- 0.7.3 discovery: `.omp-plugin/marketplace.json` (каталог `metapeka-omp`,
+  `source: "./"`, версия сверяется тестом с `package.json`) и страница
+  сравнения `docs/comparison.md` (EN/RU/ZH) — против встроенных средств
+  OMP и ближайших плагинов, «что выбрать», самопроверка, установка из
+  маркетплейса; ссылки из README EN/RU/ZH и вики;
 - 0.7.2 `economics --summary`: агрегат по цепочке (`sessions`, `handoffs`,
   `boundaries`, `turns`, `spendUsd`, `medianTurnUsd`, `avgBoundaryUsd`,
   `hitTrend`) аддитивным полем `summary` в JSON и блоком `Сводка:` в
@@ -31,7 +36,7 @@ CI на последнем запушенном коммите зелёный. �
   read-only `omp-orchestrate economics` (`CHANGELOG.md`).
 
 GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
-Ветки 0.5.1–0.7.2 слиты ff-only, worktrees удалены, ветки `feat/*`
+Ветки 0.5.1–0.7.3 слиты ff-only, worktrees удалены, ветки `feat/*`
 сохранены. Публикация по умолчанию локальная (D10); push — только с явного
 разрешения владельца.
 
@@ -75,7 +80,8 @@ GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
 | Economics 0.6.1 | `omp-orchestrate economics`: цепочка `parentSession`, граница только у handoff-ребёнка, окна/hit/recovery/компакции, JSON v1; ветка `feat/handoff-economics` |
 | Spend handoff 0.7.0 | `handoffAtSpendUsd` (15-й ключ) + `OMP_HANDOFF_AT_USD`: второй, независимый от контекста триггер по измеренному `usage.cost.total`; offsets читают только хвост JSONL (root + дочерние сессии), `restarted`/`session_compact` пересчитывают total, не сбрасывая spend; общий cooldown/supervisor/`⚠ HANDOFF`, marker `reason: "spend"` (оба триггера — `"context"`); влито `3ba713d` |
 | Quality gate 0.7.1 | `lib/state-sections.ts`: шесть ключевых разделов `HANDOFF.md` по заголовкам и синонимам (EN/RU), код-блоки не в счёт; отсутствующий раздел — отдельный warn, нестандартный формат — одна строка; `lastCompactionAt` из того же JSONL-прохода, warn если компакция позже mtime state; фикс — строкой в «вручную»; `ready` не меняется |
-| Economics summary 0.7.2 | `economics --summary`: `summarizeEconomics()` в `lib/handoff-economics.ts` — `sessions`/`handoffs`/`measuredSessions`/`boundaries`/`turns` (`null`, если не измерено ничего), измеренный `spendUsd` (сумма цен ходов прочитанных сессий), `medianTurnUsd`, `avgBoundaryUsd` и `hitTrend` (`up|down|flat` при пороге 0.5 pp включительно); аддитивное `summary` в JSON, блок `Сводка:` с отношением `BORDER` к обычному ходу; без флага отчёт прежний, частичное покрытие — note `N из M` |
+| Economics summary 0.7.2 | `economics --summary`: `summarizeEconomics()` в `lib/handoff-economics.ts` — `sessions`/`handoffs`/`measuredSessions`/`boundaries`/`turns` (`null`, если не измерено ничего), измеренный `spendUsd` (сумма цен ходов прочитанных сессий), `medianTurnUsd`, `avgBoundaryUsd` и `hitTrend` (`up\|down\|flat` при пороге 0.5 pp включительно); аддитивное `summary` в JSON, блок `Сводка:` с отношением `BORDER` к обычному ходу; без флага отчёт прежний, частичное покрытие — note `N из M` |
+| Discovery 0.7.3 | `.omp-plugin/marketplace.json`: каталог `metapeka-omp`, один плагин `source: "./"`, версия/имя/домашняя страница; `omp plugin marketplace add` парсит каталог, dry-run install резолвит `omp-agent-workflow@metapeka-omp` (упирается только в уже linked имя); `test/marketplace.test.mjs` (5) держит версию равной `package.json`. `docs/comparison.md` + RU/ZH: встроенные средства OMP, ближайшие плагины, «что выбрать», самопроверка, установка |
 | Landscape 2026-11-23 | `docs/research/market-landscape.*` (EN/RU/ZH): прямого аналога нет; OMP builtin `/handoff` и worktree-команды учтены; ссылки из README, вики и ROADMAP |
 | Safe cleanup 0.5.14 | `removeWorktree`: merged/clean/current/live guard, без `--delete-branch`/`--force`/`-D`, ветка остаётся, tip в backup-ref; retry failed переименовывает ветку в `-failed-<ts>` |
 | Handoff guards 0.5.15 | state 32k символов (≈10–15k токенов); warning без supervisor/terminal handle; повтор запроса без marker (2 хода, максимум 3) |
@@ -84,7 +90,7 @@ GitHub: `metapeka/omp-agent-workflow` (public), тег и release `v0.5.14`.
 | Kill switch 0.5.18 | `workflowMode: off` (`OMP_WORKFLOW_MODE=off`): плагин молчит, OMP на дефолтах, launcher делает exec omp без supervisor; env off побеждает Settings |
 | Advisory 0.5.19 | `next-session:` первой строкой `HANDOFF.md`: launcher добавляет `--model`/`--thinking` при старте (явные флаги выигрывают), preflight показывает валидность; модель в сессии не меняется (D14) |
 | Doctor 0.5.20 | `bin/omp-orchestrate doctor [--json] [--strict]`: 16 read-only проверок в фиксированном порядке, проба ≤ 2 с, без сети; нет Orca/agent-team/cache-monitor — warn/skip; битые настройки/план/state — fail; `status --json` и `doctor --json` — `schemaVersion: 1` |
-| Execution 0.5.21 | `plan.execution: omp|external` (D15): без поля — `omp`, hash старых планов не меняется; `external` — задачи ведёт Ensemble, `start/verify/finish/rebase` → stop `external-run` без lock/state/worktree; `status`/`next`/`doctor`/handoff работают; `doctor` warn, если external без активного прогона |
+| Execution 0.5.21 | `plan.execution: omp\|external` (D15): без поля — `omp`, hash старых планов не меняется; `external` — задачи ведёт Ensemble, `start/verify/finish/rebase` → stop `external-run` без lock/state/worktree; `status`/`next`/`doctor`/handoff работают; `doctor` warn, если external без активного прогона |
 | Presets 0.5.22 | `routine`/`plan`/`review`/`budget` (D16): Settings `workflowPreset` (14-й ключ) и `--preset`; модель/thinking/пороги/continue prompt, явные значения и флаги выигрывают; явный `--preset` отменяет advisory; `plan` советует `model=flash mode=routine` |
 | Имена команд 0.5.18 | `/handoff` убран (builtin OMP); `npm run check:names` сверяет 105 builtin-имён с нашими 5 в `verify`; коллизий 0 |
 | Гид по командам | `docs/commands.md`: слэш-команды, tool `orchestrator`, меню preflight, карточки `/wrap`, CLI launcher/supervisor/orchestrate, владельцы имён |
@@ -335,6 +341,8 @@ Lifecycle-логи supervisor — stderr; `--dry-run` JSON остаётся чи
 | Клиент costs | `lib/costs-client.ts` |
 | Advisory CLI | `bin/omp-next-session` |
 | Ключевые разделы state | `lib/state-sections.ts` |
+| Каталог маркетплейса | `.omp-plugin/marketplace.json` |
+| Страница сравнения | `docs/comparison.md` (+ `.ru.md`, `.zh-CN.md`) |
 | Тесты guard/preflight | `test/context-guard.test.mjs` |
 | Тесты разделов state | `test/state-sections.test.mjs` |
 | Тесты costs | `test/costs-client.test.mjs` |
@@ -384,16 +392,20 @@ node bin/omp-handoff-supervisor.mjs --dir . --once --dry-run | jq -r .command
 node --experimental-strip-types bin/omp-orchestrate doctor --json | jq .ok
 node --experimental-strip-types bin/omp-orchestrate status --json | jq .schemaVersion
 node --experimental-strip-types --test test/handoff-economics.test.mjs   # 37
+node --experimental-strip-types --test test/marketplace.test.mjs        # 5
+omp plugin marketplace add "$PWD" --json && \
+  omp plugin marketplace remove metapeka-omp --json   # каталог парсится, конфиг возвращён
 curl -sS -o /dev/null -w '%{http_code}\n' \
   https://metapeka.github.io/omp-agent-workflow/       # 200
 ```
 
 ## Следующие шаги
 
-1. 0.7.3 discovery — следующая задача по плану 0.7: `.omp-plugin/marketplace.json`
-   и страница сравнения (npm/marketplace — только с явного разрешения
-   владельца), затем 0.7.4 ledger субагентов. 0.7.2 `economics --summary`
-   закрыт: агрегат цепочки, средняя цена границы, тренд hit rate.
+1. 0.7.4 ledger субагентов — следующая задача по плану 0.7: проверить,
+   что `maxSpendUsd` учитывает дочерние сессии (`lib/orchestrator/cost.ts`),
+   вынести расход в `status --json`, stop при перерасходе. 0.7.3 discovery
+   закрыт: каталог `metapeka-omp` и страница сравнения; npm-публикация —
+   только с явного разрешения владельца.
 2. Проверить 0.7.1 в TUI: `omp plugin list`, `/handoff-preflight` на этом
    файле (строки `HANDOFF.md: разделы 6/6`, отсутствие ложных warn по
    синонимам), state без раздела — warn по строке и фикс в «вручную»,
@@ -453,6 +465,13 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   `N из M`, а не заниженная «полная» сумма. Сводка не заменяет счёт
   провайдера и не экстраполирует: цепочка ограничена 20 узлами, а дочерние
   subagent-сессии в агрегат не входят.
+- Discovery-артефакты — файлы репозитория, а не публикация: каталог
+  читается из клона, поэтому обновление у пользователя — `omp plugin
+  marketplace update`; npm/marketplace-публикация не выполнялась (D10).
+  Dry-run install `omp-agent-workflow@metapeka-omp` упирается в уже linked
+  имя — это проверка резолва, а не ошибка каталога. Страница сравнения
+  опирается на обзор 2026-11-23 и новых замеров не содержит: при изменении
+  возможностей соседей её нужно перечитывать.
 - Встроенный state — снимок на момент `/handoff-new`: если `HANDOFF.md`
   устарел или обрезан, новая сессия должна перечитать файл, а не доверять
   снимку. Содержимое state попадает в файл сессии — секреты туда не писать.
