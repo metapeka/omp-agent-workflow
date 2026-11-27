@@ -6,8 +6,8 @@
 ## Состояние
 
 - Репозиторий: `~/projects/omp-agent-workflow`, `main`, версия `0.7.3`
-  (0.7.0–0.7.3 влиты локально); `origin/main` — 0.7.2 (`6dd2436`),
-  push 0.7.3 — по разрешению владельца (D10).
+  (0.7.0–0.7.3 влиты и запушены); `origin/main` — `995529a`, push выполнен
+  по разрешению владельца (D10).
 - Ветки 0.5.1–0.7.3 (включая `feat/doctor`, `feat/oaw-name`,
   `feat/execution`, `feat/presets`, `feat/handoff-flight-recorder`,
   `feat/preflight-output`, `feat/preflight-push`, `feat/costs-preflight`,
