@@ -297,10 +297,14 @@ next-session: v=1 ts=2026-11-25T00:40Z model=cline-pass/deepseek-v4-pro thinking
   handoff работают; `stop` и `resume` задачи не запускают и доступны.
 - Ensemble — Orca-плагин: `external` требует Orca. OAW без Orca работает
   (D11); `external` — единственный режим, где Orca обязательна.
-- `doctor`: `execution=external` без активного Ensemble — `warn` (в том
-  числе когда `agent-team` недоступен и подтвердить нельзя); активный
-  Ensemble при `external` — `pass`; активный Ensemble вместе с
-  `STATE.run.active` — `warn two owners`; автоблокировки нет.
+- `doctor`: `execution=external` без подтверждённого активного Ensemble —
+  `warn` (в том числе когда `agent-team` недоступен или не отдаёт JSON);
+  активный Ensemble при `external` — `pass`; активный Ensemble вместе с
+  `STATE.run.active` — `warn two owners`; автоблокировки нет. Ensemble
+  `0.5.5` печатает `agent-team status` локализованным текстом без `--json`,
+  поэтому в живом прогоне поле остаётся `warn`: `pass`/`two owners` ждут
+  machine-readable status — сценарий и разрыв в
+  [acceptance-ensemble.md](acceptance-ensemble.md).
 
 ## CLI JSON v1: `status` и `doctor` (0.5.20)
 
@@ -390,7 +394,7 @@ deps. Каждый внешний проб — не дольше 2 с (`spawnSyn
 | `supervisor.lock` | lock `owner.json`, живой pid | warn; skip вне `yoda-supervised` |
 | `terminal.handle` | `ORCA_TERMINAL_HANDLE` | warn; skip вне `yoda-supervised` |
 | `cache.monitor` | `omp plugin list --json` | warn (нужно для 0.6) |
-| `ensemble.active` | `agent-team status --json` | warn; skip, если CLI/JSON нет; при `execution=external` — warn, если прогон не активен |
+| `ensemble.active` | `agent-team status --json` | warn; skip, если CLI/JSON нет; при `execution=external` — warn, если прогон не активен или активность не подтверждена (`agent-team` без JSON) |
 
 Правила:
 
@@ -405,6 +409,11 @@ deps. Каждый внешний проб — не дольше 2 с (`spawnSyn
   (D11: OMP работает без Orca);
 - `ensemble.active` при живом `STATE.run` сообщает `two owners`; автоблокировки
   нет — только `warn`, при `--strict` — `fail`;
+- `ensemble.active` опирается только на JSON-ответ `agent-team status`
+  (поле `active`, `runs[]`, вложенные `run`/`result`); текст и файлы
+  `~/.orca-ensemble/` не парсятся (локализация, внутренний формат,
+  устаревшие прогоны). Ensemble `0.5.5` JSON не отдаёт — в живом прогоне
+  поле `warn`, см. [acceptance-ensemble.md](acceptance-ensemble.md);
 - коллизии имён команд остаются в CI (`npm run check:names`), не в `doctor`;
 - `doctor` не дублирует merge/upstream-проверки — это `/handoff-preflight`
   и hub.

@@ -99,6 +99,7 @@ costs --json` v1: медиана холодных ходов против тёп
 | Разбираешь сбой в TUI/Orca | [operations.md](operations.md) |
 | Быстрый ответ на типовой вопрос | [faq.md](faq.md) |
 | Разбираешься, как проходит handoff | [handoff-flow.md](handoff-flow.md) → [contracts.md](contracts.md) |
+| Проводишь приёмку `execution: external` с Ensemble | [acceptance-ensemble.md](acceptance-ensemble.md) → [contracts.md](contracts.md) |
 | Ищешь, где стоят защиты от поломки/затирания | [guards.md](guards.md) → [handoff-flow.md](handoff-flow.md) |
 | Восстанавливаешь ветку или потерянную работу | [recovery.md](recovery.md) → [guards.md](guards.md) |
 | Понимаешь кэш, сессии и цену сброса | [Pages: EN](https://metapeka.github.io/omp-agent-workflow/) → [RU](https://metapeka.github.io/omp-agent-workflow/ru/) → [ZH](https://metapeka.github.io/omp-agent-workflow/zh/) |
@@ -116,6 +117,7 @@ costs --json` v1: медиана холодных ходов против тёп
 | [orchestrator.md](orchestrator.md) | Дизайн 0.5: роли, `AUTOPLAN.md`, `STATE.json`, действия, политика, бюджеты, stop-gates, handoff на границе, этапы A–D |
 | [wrap.md](wrap.md) | `/wrap` 0.5.1: карточки, safety для cleanup, handoff, следующая задача |
 | [operations.md](operations.md) | Runbook: установка, запуск, supervisor, worktree, проверки, типовые сбои |
+| [acceptance-ensemble.md](acceptance-ensemble.md) | Приёмка `execution: external`: матрица A1–A9/C1, `/tmp`-фикстура, JSON-шим, живой прогон Ensemble, разрыв `agent-team status` без JSON |
 | [handoff-flow.md](handoff-flow.md) | Два пути handoff: OMP без Orca (вручную) и Orca + supervisor (автоматически); кто вызывает `/handoff-new` и кто стартует новую сессию; снимок дерева в запросе (0.5.24) |
 | [guards.md](guards.md) | Карта защит: угроза → защита → точка в цикле → версия; чем защита не является; flight recorder 0.5.24; WIP-снимок и `refs` 1.0.1 |
 | [recovery.md](recovery.md) | Восстановление: backup-ref → ветка, WIP-патч → файлы, что переживает удаление и что нет; гигиена снимков |

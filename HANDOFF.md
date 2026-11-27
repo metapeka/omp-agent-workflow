@@ -40,6 +40,11 @@ npm/marketplace — отдельным решением владельца (D10)
 - Тесты не пишут в реальный state: `context-guard` даёт каждому тесту свой
   `XDG_STATE_HOME` (`01bfc85`), иначе копия session JSONL из handoff-тестов
   складывалась в `~/.local/state/omp-agent-workflow/sessions/`.
+- Приёмка `execution: external` подготовлена 2026-11-27:
+  `docs/acceptance-ensemble.md`; A1–A9 пройдены на `/tmp`-фикстуре
+  (отказы, нет state/worktree, JSON-шим даёт `pass`/`two owners`). Живой
+  Ensemble 0.5.5 не отдаёт JSON (`agent-team status` — текст), поэтому C1
+  ожидаемо `warn`; запрос машинного статуса — в TODO.
 - Этот файл больше 32k символов: `/handoff-new` встроит первые 32 000 и
   оставит маркер обрезки — хвостовые разделы дочитывать из файла.
 
@@ -616,6 +621,8 @@ node --experimental-strip-types --test test/package-run.test.mjs   # 3
 6. Ответ Orca по [stablyai/orca#47665](https://github.com/stablyai/orca/issues/47665)
    (`orca worktree rm` шлёт SIGTERM caller'у внутри worktree).
 7. TUI E2E `/wrap` — опционально. Публикация остаётся локальной (D10).
+8. Живой прогон приёмки `external` — по `docs/acceptance-ensemble.md`;
+   без JSON-статуса Ensemble ожидание C1 — `warn` (не `pass`).
 
 ## Риски
 

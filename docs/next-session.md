@@ -35,8 +35,11 @@
 
 ## Следующий этап
 
-1. Orca/Ensemble-приёмка: на репозитории с `execution: external` проверить
-   `doctor` (`two owners`), отказы OAW и живой прогон Ensemble.
+1. Orca/Ensemble-приёмка: сценарий и детерминированная часть готовы —
+   [acceptance-ensemble.md](acceptance-ensemble.md); A1–A9 пройдены
+   2026-11-27, остался живой прогон (C1). У Ensemble 0.5.5 нет JSON-статуса
+   `agent-team`, поэтому `pass`/`two owners` ждут machine-readable status;
+   ожидаемый результат C1 — `warn`.
 2. F4 `--plan-yolo` — только после замера; не начинать без данных.
 3. Hub старта сессии и `brief` — личный runbook вне продукта (joint plan
    Ф3); `doctor --json` уже готов как источник проверок.

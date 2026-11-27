@@ -134,6 +134,10 @@ esac
 		writeFileSync(join(shim, "ensemble.json"), JSON.stringify(options.ensemble));
 		writeShim(shim, "agent-team", "#!/bin/sh\ncat \"$SHIM_DIR/ensemble.json\"\n");
 	}
+	if (options.ensembleText !== undefined) {
+		writeFileSync(join(shim, "ensemble.txt"), options.ensembleText);
+		writeShim(shim, "agent-team", "#!/bin/sh\ncat \"$SHIM_DIR/ensemble.txt\"\n");
+	}
 	return shim;
 }
 
@@ -434,6 +438,27 @@ describe("doctor", () => {
 		assert.equal(ensemble.level, "warn");
 		assert.match(ensemble.detail, /execution=external/);
 		assert.equal(result.ok, true);
+	});
+
+	it("treats agent-team text output as unconfirmed, not as activity", () => {
+		const plan = PLAN.replace(
+			'"verify": ["true"]',
+			'"verify": ["true"],\n  "execution": "external"',
+		);
+		const dir = fixture({ plan });
+		const result = runDoctor(
+			dir,
+			makeShims({
+				ensembleText:
+					"Team file: .agents/teams/t.team.json\nMode: team.\nNo run yet.\n",
+			}),
+		);
+		const ensemble = result.checks.find(
+			(check) => check.id === "ensemble.active",
+		);
+		assert.equal(ensemble.level, "warn");
+		assert.match(ensemble.detail, /not JSON/);
+		assert.doesNotMatch(ensemble.detail, /run active/);
 	});
 
 	it("passes execution external with an active ensemble run", () => {

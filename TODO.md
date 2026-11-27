@@ -7,6 +7,17 @@
 
 ## Сейчас
 
+- [x] Подготовка к приёмке `execution: external` (2026-11-27): сценарий
+      `docs/acceptance-ensemble.md`; A1–A9 пройдены на `/tmp`-фикстуре
+      (отказы `start/verify/finish/rebase`, `STATE.json`/worktree не
+      появляются, `stop` снимает `run.active`, JSON-шим даёт `pass` и
+      `two owners`); тест на текстовый ответ `agent-team` (Ensemble 0.5.5)
+      в `test/doctor.test.mjs`.
+- [ ] Живой прогон Ensemble по `docs/acceptance-ensemble.md` (нужна
+      team-сессия): для 0.5.5 ожидается `ensemble.active: warn`.
+- [ ] Запросить у Ensemble машиночитаемый статус `agent-team status --json`
+      (`schemaVersion`, `active`, `runs[]`); до него `pass`/`two owners`
+      в живом прогоне недостижимы, `doctor --strict` в `external` — exit 1.
 - [x] 1.0.1 — страховка без sandbox, начата с единственной
       воспроизведённой потери данных: WIP-патч (tracked + untracked через
       временный `GIT_INDEX_FILE`) и `.status` перед `force`-удалением

@@ -49,7 +49,7 @@ flowchart TD
 | Компакция выбросила детали уже после записи state | warn, если последняя компакция текущей сессии позже mtime `HANDOFF.md`; ручной фикс в блоке «вручную» | `runPreflight` | 0.7.1 |
 | **Незакоммиченная работа не видна новой сессии** | **flight recorder: ветка, HEAD и до 6 грязных путей в тексте handoff-запроса** | `checkHandoff` перед `sendUserMessage` | **0.5.24** |
 | Плагин мешает, когда не нужен | `workflowMode: off` — ни статуса, ни предупреждений, ни session info, launcher без supervisor | все хуки | 0.5.18 |
-| Два владельца задач (`omp` и Ensemble) | `plan.execution: external` → stop `external-run`; `doctor` предупреждает `two owners` | `start/verify/finish/rebase`, `doctor` | 0.5.21 |
+| Два владельца задач (`omp` и Ensemble) | `plan.execution: external` → stop `external-run`; `doctor` предупреждает `two owners` при JSON-статусе Ensemble (0.5.5 отдаёт только текст → `warn` unconfirmed) | `start/verify/finish/rebase`, `doctor` | 0.5.21 |
 | **Subagent-сессии не видны в бюджете: прогон тратит в разы больше видимой суммы** | ledger: root + вложенные subagent-файлы, `spendUsd` = Σ вкладов, stop `budget-spend` на старте и после merge | `applyCost`, `start`, `finish`, `status` | **0.7.4** |
 | **Компакция переписала JSONL: spend прыгает и даёт ложный stop** | `restarted` заменяет вклад файла (пересчёт с нуля), а не прибавляет полную сумму | `projectBudgets` | **0.7.4** |
 | **Хвост прошлой сессии теряется на handoff** | перед сменой `run.sessionFile` старый root дочитывается тем же offset-чтением | `syncSession` | **0.7.4** |
